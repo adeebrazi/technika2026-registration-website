@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { MAIN_WEBSITE_URL } from '../components/Navbar';
 
 export const Login: React.FC = () => {
   const [registrationIdOrEmail, setRegistrationIdOrEmail] = useState('');
@@ -70,7 +71,7 @@ export const Login: React.FC = () => {
             userSelect: 'none',
             marginBottom: '12px',
           }}
-          onClick={() => window.location.href = 'http://localhost:8080'}
+          onClick={() => window.location.href = MAIN_WEBSITE_URL}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{

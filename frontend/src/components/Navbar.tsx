@@ -4,7 +4,10 @@ import { useTheme } from '../context/ThemeContext';
 import logoPng from '@/assets/logo.png';
 import technikaLogoJpg from '@/assets/technika_logo.jpg';
 
-export const MAIN_WEBSITE_URL = 'http://localhost:8080';
+export const MAIN_WEBSITE_URL = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8080'
+    : 'https://technika2026.online';
 
 export const Navbar: React.FC = () => {
   const { theme, setTheme } = useTheme();

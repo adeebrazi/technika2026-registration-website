@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
+import { MAIN_WEBSITE_URL } from '../components/Navbar';
 
 // 45 Non-Special Events Grouped By Category
 const EVENT_CATEGORIES = [
@@ -364,7 +365,7 @@ export const Register: React.FC = () => {
             userSelect: 'none',
             marginBottom: '12px',
           }}
-          onClick={() => window.location.href = 'http://localhost:8080'}
+          onClick={() => window.location.href = MAIN_WEBSITE_URL}
         >
           {/* Row 1: TECH + NIKA */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

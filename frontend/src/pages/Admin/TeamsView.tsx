@@ -15,7 +15,7 @@ export const TeamsView: React.FC = () => {
 
   const fetchTeams = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/teams', {
+      const res = await fetch('/api/admin/teams', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         }
