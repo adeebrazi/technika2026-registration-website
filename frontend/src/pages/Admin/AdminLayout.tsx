@@ -3,7 +3,10 @@ import { Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-d
 import { useTheme } from '../../context/ThemeContext';
 
 export const AdminLayout: React.FC = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
   const navigate = useNavigate();
   const location = useLocation();
   const isDark = theme === 'dark';

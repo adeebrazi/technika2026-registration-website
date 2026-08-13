@@ -55,7 +55,7 @@ export const TeamsView: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {Object.entries(groupedTeams).map(([eventName, eventTeams]) => (
+        {Object.entries(groupedTeams).map(([eventName, eventTeams]: [string, any]) => (
           <div key={eventName} style={{
             backgroundColor: isDark ? '#1f2937' : '#ffffff',
             borderRadius: '8px',
@@ -74,7 +74,7 @@ export const TeamsView: React.FC = () => {
             </div>
             
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {eventTeams.map(team => (
+              {eventTeams.map((team: any) => (
                 <div key={team._id} style={{
                   border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
                   borderRadius: '6px',
