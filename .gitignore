@@ -1,0 +1,7 @@
+backend/node_modules/
+backend/.env
+backend/public/uploads/
+context/technica-498508-c6dc73edf93e.json
+.DS_Store
+*.log
+.vercel/
