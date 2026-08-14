@@ -837,14 +837,14 @@ export const Register: React.FC = () => {
                 justifyContent: 'center',
                 gap: '14px',
                 padding: '24px',
-                background: '#ffffff',
-                border: '3px solid #000000',
-                boxShadow: '4px 4px 0px 0px #000000',
+                background: '#000000',
+                border: '3px solid #ffffff',
+                boxShadow: '4px 4px 0px 0px #ffffff',
                 marginBottom: '24px',
                 textAlign: 'center',
-                color: '#000000'
+                color: '#ffffff'
               }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 900, background: '#FFE600', border: '2px solid #000000', padding: '4px 12px', textTransform: 'uppercase', boxShadow: '2px 2px 0px 0px #000000' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 900, background: '#FFE600', border: '2px solid #000000', color: '#000000', padding: '4px 12px', textTransform: 'uppercase', boxShadow: '2px 2px 0px 0px #ffffff' }}>
                   Scan to Pay (Registration Fee)
                 </div>
                 <img 
@@ -853,12 +853,14 @@ export const Register: React.FC = () => {
                   style={{ 
                     width: '180px', 
                     height: '180px', 
-                    border: '3px solid #000000',
-                    boxShadow: '3px 3px 0px 0px #000000',
-                    objectFit: 'contain'
+                    border: '3px solid #ffffff',
+                    boxShadow: '3px 3px 0px 0px #ffffff',
+                    objectFit: 'contain',
+                    background: '#ffffff',
+                    padding: '8px'
                   }} 
                 />
-                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, lineHeight: 1.4, maxWidth: '600px' }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, lineHeight: 1.4, maxWidth: '600px', color: '#ffffff' }}>
                   Scan the QR code above using GPay, PhonePe, Paytm, or any UPI app to pay the entry fee. Once complete, enter your unique 12-digit transaction UTR/UPI Ref No. and upload the payment screenshot below for verification.
                 </p>
               </div>
