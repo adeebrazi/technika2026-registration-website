@@ -68,9 +68,32 @@ const UserSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    utrEnteredManually: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+    utrFetchedFromScreenshot: {
+      type: String,
+      trim: true,
+    },
     paymentScreenshotUrl: {
       type: String,
       required: true,
+    },
+    expectedAmount: {
+      type: Number,
+      required: true,
+    },
+    verifiedAmount: {
+      type: Number,
+      default: 0,
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['SUCCESS', 'FAILED', 'PENDING', 'UNKNOWN'],
+      default: 'PENDING',
     },
     isRegistrationFrozen: {
       type: Boolean,

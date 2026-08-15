@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
-import paymentQrJpg from '../assets/payment_qr.jpeg';
 
 // 45 Non-Special Events Grouped By Category
 const EVENT_CATEGORIES = [
@@ -69,6 +68,14 @@ const EVENT_CATEGORIES = [
       { id: "story-telling", title: "Story Telling" },
       { id: "art-attack", title: "Art Attack" }
     ]
+  },
+  {
+    category: "Special Attractions",
+    badgeColor: "#C084FC",
+    events: [
+      { id: "paint-ball", title: "Paint Ball", isComingSoon: true },
+      { id: "night-show", title: "Night Show", isComingSoon: true }
+    ]
   }
 ];
 
@@ -102,6 +109,39 @@ export const Register: React.FC = () => {
   });
 
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
+
+  // Dynamic UPI Payment Config
+  const UPI_ID = 'adeebrazi22-3@okaxis'; // Replace with college UPI ID
+  const PAYEE_NAME = 'Technika 6.0';
+  const NOTE = 'Event Registration';
+
+  // Calculate dynamic registration fee total
+  const calculateTotalAmount = () => {
+    let total = 0;
+    
+    const normalEventsSelected = selectedEvents.filter(
+      (id) => id !== 'paint-ball' && id !== 'night-show'
+    );
+    
+    if (normalEventsSelected.length > 0) {
+      total += 150; // Rs. 150 flat fee for all selected normal events
+    }
+    
+    if (selectedEvents.includes('paint-ball')) {
+      total += 350; // Special Event 1
+    }
+    
+    if (selectedEvents.includes('night-show')) {
+      total += 650; // Special Event 2
+    }
+    
+    return total;
+  };
+
+  const totalAmount = calculateTotalAmount();
+  const upiString = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(NOTE)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState('');
@@ -716,101 +756,123 @@ export const Register: React.FC = () => {
                       const venueText = evtDetail?.venue || 'Campus Arena';
                       const descText = evtDetail?.description || 'Fest competition arena event.';
 
-                      return (
-                        <div
-                          key={evt.id}
-                          onClick={() => toggleEventSelection(evt.id)}
-                          style={{
-                            position: 'relative',
-                            overflow: 'hidden',
-                            minHeight: '160px',
-                            padding: '10px 12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            textAlign: 'left',
-                            color: '#ffffff',
-                            border: isChecked ? '3.5px solid #FFE600' : '3px solid #ffffff',
-                            boxShadow: isChecked ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff' : '5px 5px 0px 0px #ffffff',
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                            transition: 'all 0.15s ease',
-                            background: '#000000',
-                          }}
-                        >
-                          {/* Event Photo Full Card Background */}
-                          <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                            <img
-                              src={getEventPhoto(evt.id, evtIdx)}
-                              alt={evt.title}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              loading="lazy"
-                            />
-                            {/* Dark Gradient Overlay for Maximum Legibility */}
-                            <div style={{
-                              position: 'absolute',
-                              inset: 0,
-                              background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 100%)'
-                            }} />
-                          </div>
+                        return (
+                         <div
+                           key={evt.id}
+                           onClick={() => !(evt as any).isComingSoon && toggleEventSelection(evt.id)}
+                           style={{
+                             position: 'relative',
+                             overflow: 'hidden',
+                             minHeight: '160px',
+                             padding: '10px 12px',
+                             display: 'flex',
+                             flexDirection: 'column',
+                             justifyContent: 'space-between',
+                             textAlign: 'left',
+                             color: '#ffffff',
+                             border: isChecked ? '3.5px solid #FFE600' : '3px solid #ffffff',
+                             boxShadow: isChecked ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff' : '5px 5px 0px 0px #ffffff',
+                             cursor: (evt as any).isComingSoon ? 'not-allowed' : 'pointer',
+                             userSelect: 'none',
+                             transition: 'all 0.15s ease',
+                             background: '#000000',
+                             opacity: (evt as any).isComingSoon ? 0.65 : 1,
+                           }}
+                         >
+                           {/* Event Photo Full Card Background */}
+                           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                             <img
+                               src={getEventPhoto(evt.id, evtIdx)}
+                               alt={evt.title}
+                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                               loading="lazy"
+                             />
+                             {/* Dark Gradient Overlay for Maximum Legibility */}
+                             <div style={{
+                               position: 'absolute',
+                               inset: 0,
+                               background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 100%)'
+                             }} />
+                           </div>
 
-                          {/* Card Content Layer */}
-                          <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '6px' }}>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                                <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
-                                  {String(evtIdx + 1).padStart(2, '0')}
-                                </span>
-                                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
-                                  {evt.title}
-                                </h3>
-                              </div>
-                              <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.2 }}>
-                                {descText}
-                              </p>
-                            </div>
+                           {/* Card Content Layer */}
+                           <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '6px' }}>
+                             <div>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                                 <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
+                                   {String(evtIdx + 1).padStart(2, '0')}
+                                 </span>
+                                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
+                                   {evt.title}
+                                 </h3>
+                               </div>
+                               <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.2 }}>
+                                 {descText}
+                               </p>
+                             </div>
 
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveModalEvent(evtDetail || { ...evt, category: cat.category, description: descText, date: dateText, time: timeText, venue: venueText });
-                                  }}
-                                  style={{
-                                    fontSize: '0.65rem',
-                                    textTransform: 'uppercase',
-                                    fontWeight: 900,
-                                    background: '#8aebee',
-                                    color: '#000000',
-                                    border: '1.5px solid #000000',
-                                    boxShadow: '2px 2px 0px 0px #000000',
-                                    padding: '4px 8px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  View details →
-                                </button>
+                             <div>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                 <button
+                                   type="button"
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setActiveModalEvent(evtDetail || { ...evt, category: cat.category, description: descText, date: dateText, time: timeText, venue: venueText });
+                                   }}
+                                   style={{
+                                     fontSize: '0.65rem',
+                                     textTransform: 'uppercase',
+                                     fontWeight: 900,
+                                     background: '#8aebee',
+                                     color: '#000000',
+                                     border: '1.5px solid #000000',
+                                     boxShadow: '2px 2px 0px 0px #000000',
+                                     padding: '4px 8px',
+                                     cursor: 'pointer'
+                                   }}
+                                 >
+                                   View details →
+                                 </button>
 
-                                <div
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontSize: '0.65rem',
-                                    textTransform: 'uppercase',
-                                    fontWeight: 900,
-                                    background: isChecked ? '#FFE600' : '#ffffff',
-                                    color: '#000000',
-                                    border: '1.5px solid #000000',
-                                    boxShadow: '2px 2px 0px 0px #000000',
-                                    padding: '4px 8px',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  {isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}
-                                </div>
+                                 {(evt as any).isComingSoon ? (
+                                   <div
+                                     style={{
+                                       display: 'inline-flex',
+                                       alignItems: 'center',
+                                       gap: '4px',
+                                       fontSize: '0.65rem',
+                                       textTransform: 'uppercase',
+                                       fontWeight: 900,
+                                       background: '#ef4444',
+                                       color: '#ffffff',
+                                       border: '1.5px solid #000000',
+                                       boxShadow: '2px 2px 0px 0px #000000',
+                                       padding: '4px 8px',
+                                       cursor: 'not-allowed'
+                                     }}
+                                   >
+                                     COMING SOON
+                                   </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      fontSize: '0.65rem',
+                                      textTransform: 'uppercase',
+                                      fontWeight: 900,
+                                      background: isChecked ? '#FFE600' : '#ffffff',
+                                      color: '#000000',
+                                      border: '1.5px solid #000000',
+                                      boxShadow: '2px 2px 0px 0px #000000',
+                                      padding: '4px 8px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -845,23 +907,45 @@ export const Register: React.FC = () => {
                 color: '#ffffff'
               }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 900, background: '#FFE600', border: '2px solid #000000', color: '#000000', padding: '4px 12px', textTransform: 'uppercase', boxShadow: '2px 2px 0px 0px #ffffff' }}>
-                  Scan to Pay (Registration Fee)
+                  Scan to Pay (Total: ₹{totalAmount})
                 </div>
-                <img 
-                  src={paymentQrJpg} 
-                  alt="Payment QR Code" 
-                  style={{ 
-                    width: '180px', 
-                    height: '180px', 
-                    border: '3px solid #ffffff',
-                    boxShadow: '3px 3px 0px 0px #ffffff',
-                    objectFit: 'contain',
-                    background: '#ffffff',
-                    padding: '8px'
-                  }} 
-                />
+                {totalAmount > 0 ? (
+                  <img 
+                    src={qrCodeUrl} 
+                    alt="Payment QR Code" 
+                    style={{ 
+                      width: '180px', 
+                      height: '180px', 
+                      border: '3px solid #ffffff',
+                      boxShadow: '3px 3px 0px 0px #ffffff',
+                      objectFit: 'contain',
+                      background: '#ffffff',
+                      padding: '8px'
+                    }} 
+                  />
+                ) : (
+                  <div style={{
+                    width: '180px',
+                    height: '180px',
+                    border: '3px dashed #ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px',
+                    boxSizing: 'border-box',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    textAlign: 'center'
+                  }}>
+                    Select events above to generate QR Code for payment
+                  </div>
+                )}
                 <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, lineHeight: 1.4, maxWidth: '600px', color: '#ffffff' }}>
-                  Scan the QR code above using GPay, PhonePe, Paytm, or any UPI app to pay the entry fee. Once complete, enter your unique 12-digit transaction UTR/UPI Ref No. and upload the payment screenshot below for verification.
+                  {totalAmount > 0 
+                    ? `Scan the QR code above using GPay, PhonePe, Paytm, or any UPI app to pay the entry fee of ₹${totalAmount}. Once complete, enter your unique 12-digit transaction UTR/UPI Ref No. and upload the payment screenshot below for verification.`
+                    : "Please select one or more events from the sections above. A QR code will be generated automatically here for you to make the payment."
+                  }
                 </p>
               </div>
 

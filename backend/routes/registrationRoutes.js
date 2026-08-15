@@ -11,7 +11,8 @@ const Team = require('../models/Team');
 const TeamMember = require('../models/TeamMember');
 const cloudinaryService = require('../services/cloudinaryService');
 const { compressImage } = require('../utils/imageCompressor');
-const { queueParticipantSync, queueRegistrationSync } = require('../services/sheetsService');
+const { queueParticipantSync, queueRegistrationSync, appendVerificationRecord } = require('../services/sheetsService');
+const { verifyPaymentScreenshot } = require('../utils/geminiVerifier');
 
 // Multer configuration for file upload in memory
 const upload = multer({
@@ -222,6 +223,67 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       return res.status(400).json({ message: 'A valid Date of Birth or Age is required!' });
     }
 
+    // Parse selected events first to calculate expectedAmount
+    let selectedEvents = [];
+    if (req.body.selectedEvents) {
+      try {
+        selectedEvents = JSON.parse(req.body.selectedEvents);
+      } catch (e) {
+        console.warn('Failed to parse selectedEvents:', e.message);
+      }
+    }
+
+    // Calculate expected payment amount
+    let expectedAmount = 0;
+    const normalEventsSelected = selectedEvents.filter(
+      (id) => id !== 'paint-ball' && id !== 'night-show'
+    );
+    if (normalEventsSelected.length > 0) {
+      expectedAmount += 150;
+    }
+    if (selectedEvents.includes('paint-ball')) {
+      expectedAmount += 350;
+    }
+    if (selectedEvents.includes('night-show')) {
+      expectedAmount += 650;
+    }
+
+    if (expectedAmount === 0) {
+      return res.status(400).json({ message: 'You must select at least one event to register!' });
+    }
+
+    // AI Screenshot Verification Pipeline
+    const aiResult = await verifyPaymentScreenshot(paymentScreenshotUrl);
+
+    if (aiResult.status !== 'SUCCESS') {
+      return res.status(400).json({ message: 'Payment verification failed: The screenshot is not a successful transaction.' });
+    }
+
+    if (aiResult.isEdited) {
+      return res.status(400).json({ message: 'Payment verification failed: The screenshot shows signs of editing or tampering.' });
+    }
+
+    if (aiResult.amount !== expectedAmount) {
+      return res.status(400).json({ 
+        message: `Payment verification failed: Expected ₹${expectedAmount} but the screenshot shows a payment of ₹${aiResult.amount}.` 
+      });
+    }
+
+    // Check unique UTR for manually entered UTR
+    const existingManualUTR = await User.findOne({ utrEnteredManually: paymentUTR });
+    if (existingManualUTR) {
+      return res.status(400).json({ message: 'This manually entered UTR/Ref No. has already been used!' });
+    }
+
+    // Check unique UTR from AI extraction (only if it is a real UTR/Ref, not a fallback string)
+    const finalAiUtr = aiResult.finalAiUtr;
+    if (finalAiUtr && !finalAiUtr.startsWith('NO_UTR_FOUND')) {
+      const existingAiUTR = await User.findOne({ utrFetchedFromScreenshot: finalAiUtr });
+      if (existingAiUTR) {
+        return res.status(400).json({ message: `The UTR/Transaction ID (${finalAiUtr}) from your screenshot has already been used!` });
+      }
+    }
+
     const user = new User({
       registrationId,
       name,
@@ -234,19 +296,14 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       semester,
       passwordHash,
       paymentUTR,
-      paymentScreenshotUrl
+      utrEnteredManually: paymentUTR,
+      utrFetchedFromScreenshot: finalAiUtr,
+      paymentScreenshotUrl,
+      expectedAmount,
+      verifiedAmount: aiResult.amount,
+      verificationStatus: aiResult.status
     });
     await user.save();
-
-    // Register selected events
-    let selectedEvents = [];
-    if (req.body.selectedEvents) {
-      try {
-        selectedEvents = JSON.parse(req.body.selectedEvents);
-      } catch (e) {
-        console.warn('Failed to parse selectedEvents:', e.message);
-      }
-    }
 
     if (selectedEvents && selectedEvents.length > 0) {
       for (const slug of selectedEvents) {
@@ -302,7 +359,20 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       }
     }
 
-    // 7. Sync Google Sheets Synchronization (in background)
+    // Sync Google Sheets Audit Log (in background)
+    appendVerificationRecord({
+      name,
+      email,
+      selectedEvents,
+      expectedAmount,
+      verifiedAmount: aiResult.amount,
+      utrEnteredManually: paymentUTR,
+      utrFetchedFromScreenshot: finalAiUtr,
+      screenshotUrl: paymentScreenshotUrl,
+      status: aiResult.status
+    }).catch(err => console.error('[SHEETS AUDIT ERROR]', err.message));
+
+    // Sync Google Sheets Synchronization (in background)
     queueParticipantSync(user).catch(err => console.error('[SHEETS BACKGROUND ERROR] Failed to sync participant:', err.message));
 
     // 8. Send Response

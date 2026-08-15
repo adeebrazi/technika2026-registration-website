@@ -127,8 +127,9 @@ export const UsersView: React.FC = () => {
                   >
                     View SS
                   </button>
-                  <div style={{ fontSize: '0.75rem', color: isDark ? '#9ca3af' : '#6b7280', marginTop: '0.25rem' }}>
-                    UTR: {user.paymentUTR}
+                  <div style={{ fontSize: '0.75rem', color: isDark ? '#9ca3af' : '#6b7280', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <div><strong>UTR (Entered):</strong> {user.utrEnteredManually || user.paymentUTR}</div>
+                    <div><strong>UTR (Fetched):</strong> {user.utrFetchedFromScreenshot || 'PENDING'}</div>
                   </div>
                 </td>
                 {canDelete && (

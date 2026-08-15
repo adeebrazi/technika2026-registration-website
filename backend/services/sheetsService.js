@@ -624,9 +624,52 @@ const deleteRegistrationFromSheets = async (registrationId, eventId) => {
   }
 };
 
+const appendVerificationRecord = async (record) => {
+  if (!isConfigured || !sheetsClient) {
+    console.log(`[MOCK SHEETS] Appended verification record for ${record.name} to Google Sheets`);
+    return;
+  }
+  try {
+    await ensureSheetExists('VerificationRecords');
+    const headers = ['Timestamp', 'Name', 'Email', 'Events', 'Expected Amount', 'AI Verified Amount', 'UTR Entered Manually', 'UTR Fetched from Screenshot', 'Cloudinary URL', 'Status'];
+    
+    // Ensure headers are written first
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId,
+      range: 'VerificationRecords!A1:J1',
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: [headers] }
+    });
+
+    const rowData = [
+      new Date().toLocaleString(),
+      record.name,
+      record.email,
+      record.selectedEvents.join(', '),
+      record.expectedAmount,
+      record.verifiedAmount,
+      record.utrEnteredManually,
+      record.utrFetchedFromScreenshot,
+      record.screenshotUrl,
+      record.status
+    ];
+
+    await sheetsClient.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'VerificationRecords!A:J',
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: [rowData] }
+    });
+    console.log(`[SHEETS] Appended verification record for ${record.name} successfully.`);
+  } catch (error) {
+    console.error('Failed to append verification record to Google Sheets:', error.message);
+  }
+};
+
 module.exports = {
   queueParticipantSync,
   queueRegistrationSync,
   startQueueWorker,
   deleteRegistrationFromSheets,
+  appendVerificationRecord,
 };
