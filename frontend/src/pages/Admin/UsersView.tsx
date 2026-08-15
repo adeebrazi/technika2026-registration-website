@@ -1,9 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useTheme } from '../../context/ThemeContext';
-
 export const UsersView: React.FC = () => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
   const role = localStorage.getItem('adminRole');
   
   const [users, setUsers] = useState<any[]>([]);
@@ -59,10 +55,10 @@ export const UsersView: React.FC = () => {
     }
   };
 
-  if (loading) return <div style={{ color: isDark ? '#fff' : '#000' }}>Loading participants...</div>;
+  if (loading) return <div style={{ color: '#fff' }}>Loading participants...</div>;
   if (error) return <div style={{ color: 'red' }}>{error}</div>;
 
-  const canDelete = role === 'admin' || role === 'faculty';
+  const canDelete = role === 'admin';
 
   return (
     <div style={{ fontFamily: "'Space Grotesk', 'Outfit', sans-serif" }}>

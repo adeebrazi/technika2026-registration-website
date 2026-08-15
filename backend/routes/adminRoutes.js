@@ -120,7 +120,7 @@ router.get('/teams', verifyAdminToken, async (req, res) => {
 // @route   DELETE /api/admin/users/:id
 // @desc    Delete user and their registrations
 // @access  Private (Admin & Faculty Only)
-router.delete('/users/:id', verifyAdminToken, authorizeRoles('admin', 'faculty'), async (req, res) => {
+router.delete('/users/:id', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
   try {
     const userId = req.params.id;
     const user = await User.findById(userId);
