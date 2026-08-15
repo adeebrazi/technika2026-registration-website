@@ -73,12 +73,33 @@ router.get('/users', verifyAdminToken, async (req, res) => {
   try {
     const users = await User.find().select('-passwordHash').sort({ createdAt: -1 });
     
-    // Fetch registered events for each user
+    // Fetch all events to construct an in-memory mapping
+    const Event = require('../models/Event');
+    const events = await Event.find();
+    const eventMap = {};
+    events.forEach(e => {
+      eventMap[e.eventId] = e;
+    });
+
+    // Fetch registered events for each user using registrationId
     const usersWithEvents = await Promise.all(users.map(async (user) => {
-      const registrations = await Registration.find({ user: user._id }).populate('event', 'name category type');
+      const registrations = await Registration.find({ registrationId: user.registrationId });
+      
+      const registeredEvents = registrations.map(reg => {
+        const eventDoc = eventMap[reg.eventId];
+        return {
+          ...reg.toObject(),
+          event: eventDoc ? {
+            name: eventDoc.name,
+            category: eventDoc.category,
+            type: eventDoc.teamAllowed ? 'TEAM' : 'INDIVIDUAL'
+          } : null
+        };
+      });
+
       return {
         ...user.toObject(),
-        registeredEvents: registrations
+        registeredEvents
       };
     }));
 
