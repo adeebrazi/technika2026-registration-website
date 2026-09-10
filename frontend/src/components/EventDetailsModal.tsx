@@ -175,8 +175,31 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({ event, onC
           </div>
         )}
 
-        {/* Close Button */}
-        <div style={{ marginTop: '24px', textAlign: 'right' }}>
+        {/* Actions */}
+        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <a
+            href="/brochure.pdf"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#FFE600',
+              color: '#000000',
+              border: '2.5px solid #000000',
+              boxShadow: '4px 4px 0px 0px #000000',
+              padding: '10px 18px',
+              fontWeight: 900,
+              fontSize: '0.85rem',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <span>📄 View in Brochure (PDF)</span>
+            <span>↗</span>
+          </a>
           <button
             type="button"
             onClick={onClose}

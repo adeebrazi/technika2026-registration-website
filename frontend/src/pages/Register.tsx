@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
+import QRCode from 'qrcode';
 
 // 45 Non-Special Events Grouped By Category
 const EVENT_CATEGORIES = [
@@ -73,8 +74,8 @@ const EVENT_CATEGORIES = [
     category: "Special Attractions",
     badgeColor: "#C084FC",
     events: [
-      { id: "paint-ball", title: "Paint Ball", isComingSoon: true },
-      { id: "night-show", title: "Night Show", isComingSoon: true }
+      { id: "paint-ball", title: "Paint Ball", isComingSoon: true, price: 350 },
+      { id: "night-show", title: "Night Show", isComingSoon: true, price: 650 }
     ]
   }
 ];
@@ -110,37 +111,64 @@ export const Register: React.FC = () => {
 
   const [selectedEvents, setSelectedEvents] = useState<string[]>([]);
 
-  // Dynamic UPI Payment Config
-  const UPI_ID = 'adeebrazi22-3@okaxis'; // Replace with college UPI ID
-  const PAYEE_NAME = 'Technika 6.0';
-  const NOTE = 'Event Registration';
+  // Official ARKA JAIN UNIVERSITY UPI Payment Config
+  const UPI_ID = '3217855a@bandhan';
+  const PAYEE_NAME = 'ARKA JAIN UNIVERSITY';
+  const NOTE = 'Technika 6.0 Registration';
+
+  const SPECIAL_EVENT_PRICES: Record<string, number> = {
+    'paint-ball': 350,
+    'night-show': 650,
+  };
 
   // Calculate dynamic registration fee total
   const calculateTotalAmount = () => {
     let total = 0;
     
     const normalEventsSelected = selectedEvents.filter(
-      (id) => id !== 'paint-ball' && id !== 'night-show'
+      (id) => !(id in SPECIAL_EVENT_PRICES)
     );
     
     if (normalEventsSelected.length > 0) {
-      total += 150; // Rs. 150 flat fee for all selected normal events
+      total += 150; // Rs. 150 flat fee covers all selected normal events
     }
     
-    if (selectedEvents.includes('paint-ball')) {
-      total += 350; // Special Event 1
-    }
-    
-    if (selectedEvents.includes('night-show')) {
-      total += 650; // Special Event 2
-    }
+    // Add price for each selected special event
+    selectedEvents.forEach((id) => {
+      if (SPECIAL_EVENT_PRICES[id]) {
+        total += SPECIAL_EVENT_PRICES[id];
+      }
+    });
     
     return total;
   };
 
   const totalAmount = calculateTotalAmount();
   const upiString = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(NOTE)}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(upiString)}`;
+
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (totalAmount > 0) {
+      const upiUri = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(NOTE)}`;
+      QRCode.toDataURL(upiUri, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url) => setQrCodeDataUrl(url))
+        .catch((err) => {
+          console.error('QR generation error:', err);
+          setQrCodeDataUrl(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(upiUri)}`);
+        });
+    } else {
+      setQrCodeDataUrl('');
+    }
+  }, [totalAmount]);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -208,6 +236,12 @@ export const Register: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'paymentUTR') {
+      // Strictly digits only, maximum 12 characters
+      const digitsOnly = value.replace(/\D/g, '').slice(0, 12);
+      setFormData((prev) => ({ ...prev, [name]: digitsOnly }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -339,6 +373,16 @@ export const Register: React.FC = () => {
 
     if (!selectedFile) {
       setError('Please upload your payment verification screenshot.');
+      return;
+    }
+
+    if (!formData.paymentUTR.trim()) {
+      setError('Please enter your 12-digit Transaction UTR / UPI Reference Number.');
+      return;
+    }
+
+    if (!/^\d{12}$/.test(formData.paymentUTR.trim())) {
+      setError('Transaction UTR Number must be exactly 12 numeric digits (check your UPI payment receipt).');
       return;
     }
 
@@ -721,7 +765,12 @@ export const Register: React.FC = () => {
                 Select all the technical, creative, and cultural events you wish to participate in during Technika 6.0:
               </p>
 
-              {EVENT_CATEGORIES.map((cat, catIdx) => (
+              {EVENT_CATEGORIES.map((cat, catIdx) => {
+                const selectableEvents = cat.events.filter((e) => !(e as any).isComingSoon);
+                const allComingSoon = selectableEvents.length === 0;
+                const isAllSelected = !allComingSoon && selectableEvents.every((e) => selectedEvents.includes(e.id));
+
+                return (
                 <div key={catIdx} style={{ marginBottom: '24px', background: 'rgba(255,255,255,0.08)', border: '2.5px solid var(--border)', padding: '18px 20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
                     <h4 style={{ margin: 0, fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -730,20 +779,23 @@ export const Register: React.FC = () => {
                     </h4>
                     <button
                       type="button"
-                      onClick={() => toggleCategoryAll(cat.events.map(e => e.id))}
+                      disabled={allComingSoon}
+                      onClick={() => !allComingSoon && toggleCategoryAll(selectableEvents.map(e => e.id))}
                       style={{
-                        background: '#ffffff',
-                        border: '2px solid #000000',
-                        color: '#000000',
+                        background: allComingSoon ? '#e5e7eb' : '#ffffff',
+                        border: allComingSoon ? '2px solid #9ca3af' : '2px solid #000000',
+                        color: allComingSoon ? '#9ca3af' : '#000000',
                         fontSize: '0.75rem',
                         fontWeight: 900,
                         padding: '3px 10px',
-                        cursor: 'pointer',
+                        cursor: allComingSoon ? 'not-allowed' : 'pointer',
                         textTransform: 'uppercase',
-                        boxShadow: '2px 2px 0px 0px #000000'
+                        boxShadow: allComingSoon ? 'none' : '2px 2px 0px 0px #000000',
+                        opacity: allComingSoon ? 0.6 : 1,
                       }}
+                      title={allComingSoon ? 'All events in this category are coming soon' : undefined}
                     >
-                      {cat.events.every(e => selectedEvents.includes(e.id)) ? 'Deselect All' : 'Select All'}
+                      {isAllSelected ? 'Deselect All' : 'Select All'}
                     </button>
                   </div>
 
@@ -853,26 +905,38 @@ export const Register: React.FC = () => {
                                    >
                                      COMING SOON
                                    </div>
-                                ) : (
-                                  <div
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      fontSize: '0.65rem',
-                                      textTransform: 'uppercase',
-                                      fontWeight: 900,
-                                      background: isChecked ? '#FFE600' : '#ffffff',
-                                      color: '#000000',
-                                      border: '1.5px solid #000000',
-                                      boxShadow: '2px 2px 0px 0px #000000',
-                                      padding: '4px 8px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    {isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}
-                                  </div>
-                                )}
+                                 ) : (
+                                   <div
+                                     style={{
+                                       display: 'inline-flex',
+                                       alignItems: 'center',
+                                       gap: '4px',
+                                       fontSize: '0.65rem',
+                                       textTransform: 'uppercase',
+                                       fontWeight: 900,
+                                       background: isChecked ? '#FFE600' : '#ffffff',
+                                       color: '#000000',
+                                       border: '1.5px solid #000000',
+                                       boxShadow: '2px 2px 0px 0px #000000',
+                                       padding: '4px 8px',
+                                       cursor: 'pointer'
+                                     }}
+                                   >
+                                     <span>{isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}</span>
+                                     {(evt as any).price && (
+                                       <span style={{
+                                         marginLeft: '4px',
+                                         background: '#000000',
+                                         color: '#FFE600',
+                                         padding: '1px 5px',
+                                         fontSize: '0.62rem',
+                                         border: '1px solid #000000'
+                                       }}>
+                                         ₹{(evt as any).price}
+                                       </span>
+                                     )}
+                                   </div>
+                                 )}
                               </div>
                             </div>
                           </div>
@@ -881,7 +945,8 @@ export const Register: React.FC = () => {
                     })}
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
 
             {/* Section 5: Payment Details (Neon Yellow/Pink Box) */}
@@ -910,23 +975,36 @@ export const Register: React.FC = () => {
                   Scan to Pay (Total: ₹{totalAmount})
                 </div>
                 {totalAmount > 0 ? (
-                  <img 
-                    src={qrCodeUrl} 
-                    alt="Payment QR Code" 
-                    style={{ 
-                      width: '180px', 
-                      height: '180px', 
-                      border: '3px solid #ffffff',
-                      boxShadow: '3px 3px 0px 0px #ffffff',
-                      objectFit: 'contain',
-                      background: '#ffffff',
-                      padding: '8px'
-                    }} 
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <img 
+                      src={qrCodeDataUrl || qrCodeUrl} 
+                      alt={`ARKA JAIN UNIVERSITY Payment QR Code - ₹${totalAmount}`} 
+                      style={{ 
+                        width: '210px', 
+                        height: '210px', 
+                        border: '3px solid #ffffff',
+                        boxShadow: '3px 3px 0px 0px #ffffff',
+                        objectFit: 'contain',
+                        background: '#ffffff',
+                        padding: '6px'
+                      }} 
+                    />
+                    <div style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      background: 'rgba(255,255,255,0.15)',
+                      padding: '4px 10px',
+                      border: '1px solid #ffffff',
+                      color: '#ffffff',
+                      marginTop: '4px'
+                    }}>
+                      Payee: <strong>ARKA JAIN UNIVERSITY</strong> (UPI: <code style={{ color: '#FFE600' }}>3217855a@bandhan</code>)
+                    </div>
+                  </div>
                 ) : (
                   <div style={{
-                    width: '180px',
-                    height: '180px',
+                    width: '200px',
+                    height: '200px',
                     border: '3px dashed #ffffff',
                     display: 'flex',
                     alignItems: 'center',
@@ -938,32 +1016,35 @@ export const Register: React.FC = () => {
                     color: '#ffffff',
                     textAlign: 'center'
                   }}>
-                    Select events above to generate QR Code for payment
+                    Select events above to display ARKA JAIN UNIVERSITY QR Code
                   </div>
                 )}
-                <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, lineHeight: 1.4, maxWidth: '600px', color: '#ffffff' }}>
-                  {totalAmount > 0 
-                    ? `Scan the QR code above using GPay, PhonePe, Paytm, or any UPI app to pay the entry fee of ₹${totalAmount}. Once complete, enter your unique 12-digit transaction UTR/UPI Ref No. and upload the payment screenshot below for verification.`
-                    : "Please select one or more events from the sections above. A QR code will be generated automatically here for you to make the payment."
-                  }
-                </p>
               </div>
 
               <div className="form-grid">
                 <div className="form-group">
                   <label htmlFor="paymentUTR">
-                    TRANSACTION UTR <span className="required">*</span>
+                    TRANSACTION UTR (12 DIGITS) <span className="required">*</span>
                   </label>
                   <input
                     type="text"
                     name="paymentUTR"
                     id="paymentUTR"
                     required
-                    placeholder="12-digit UTR"
+                    maxLength={12}
+                    pattern="\d{12}"
+                    inputMode="numeric"
+                    placeholder="e.g. 425612348901"
                     value={formData.paymentUTR}
                     onChange={handleInputChange}
                   />
-                  <small style={{ color: '#000000', fontWeight: 600, fontSize: '0.75rem', marginTop: '2px' }}>Must be unique.</small>
+                  <small style={{ color: 'var(--foreground, #000000)', fontWeight: 700, fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                    {formData.paymentUTR.length === 12 ? (
+                      <span style={{ color: '#16a34a', fontWeight: 900 }}>✓ Valid 12-digit UTR</span>
+                    ) : (
+                      <span>Must be exactly 12 numeric digits ({formData.paymentUTR.length}/12)</span>
+                    )}
+                  </small>
                 </div>
 
                 <div className="form-group">

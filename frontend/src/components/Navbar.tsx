@@ -103,7 +103,7 @@ export const Navbar: React.FC = () => {
 
             {/* Brochure button */}
             <a
-              href="https://technika.example.com/brochure.pdf"
+              href="/brochure.pdf"
               target="_blank"
               rel="noreferrer"
               className="nav-btn-brochure"

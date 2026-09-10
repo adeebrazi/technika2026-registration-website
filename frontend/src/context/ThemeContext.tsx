@@ -11,7 +11,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('technika_theme') as Theme) || 'dark';
+    return 'main';
   });
 
   const setTheme = (newTheme: Theme) => {
@@ -25,10 +25,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     if (theme === 'dark') {
       root.classList.add('dark');
-    } else if (theme === 'main') {
-      root.classList.add('theme-main');
-    } else {
+    } else if (theme === 'light') {
       root.classList.add('theme-light');
+    } else {
+      root.classList.add('theme-main');
     }
     
     root.setAttribute('data-theme', theme);

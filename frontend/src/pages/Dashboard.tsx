@@ -512,75 +512,66 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Dashboard Subnav Card */}
       <div className="card glassmorphism dashboard-nav">
-        {/* TECHNIKA 6.0 Logo — matches the hero branding */}
-        <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1, userSelect: 'none', margin: 0, gap: '2px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{
-              fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
-              fontWeight: 900,
-              fontSize: '1.55rem',
-              color: 'var(--foreground)',
-              letterSpacing: '-0.03em',
-              textTransform: 'uppercase',
-            }}>TECH</span>
-            <span style={{
-              fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
-              fontWeight: 900,
-              fontSize: '1.55rem',
-              color: '#000000',
-              letterSpacing: '-0.03em',
-              textTransform: 'uppercase',
-              background: 'var(--brut-lime, #8aebee)',
-              border: '2px solid var(--foreground)',
-              padding: '0 8px',
-              display: 'inline-block',
-            }}>NIKA</span>
-          </div>
-          <div>
-            <span style={{
-              fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
-              fontWeight: 900,
-              fontSize: '1.1rem',
-              letterSpacing: '-0.02em',
-              padding: '0 8px',
-              display: 'inline-block',
-              color: 'var(--background)',
-              background: 'var(--foreground)',
-              border: '2px solid var(--foreground)',
-            }}>6.0</span>
-          </div>
+        {/* TECHNIKA 6.0 Logo — Sleek integrated cyber branding */}
+        <div
+          className="dashboard-brand"
+          onClick={() => setActiveTab('dashboard')}
+          title="Technika 6.0 Dashboard"
+        >
+          <span className="dashboard-brand-tech">TECH</span>
+          <span className="dashboard-brand-nika">NIKA</span>
+          <span className="dashboard-brand-ver">6.0</span>
         </div>
 
         <div className="nav-tabs">
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
-            <i className="fa-solid fa-gauge-high"></i> Dashboard
+            <i className="fa-solid fa-gauge-high"></i>
+            <span>Dashboard</span>
           </button>
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
-            <i className="fa-solid fa-user-gear"></i> Profile
+            <i className="fa-solid fa-user-gear"></i>
+            <span>Profile</span>
           </button>
           <button
+            type="button"
             className={`nav-tab-btn ${activeTab === 'alerts' ? 'active' : ''}`}
             onClick={() => setActiveTab('alerts')}
           >
-            <i className="fa-solid fa-bell"></i> Alerts{' '}
+            <i className="fa-solid fa-bell"></i>
+            <span>Alerts</span>
             {pendingInvitesCount > 0 && <span className="badge">{pendingInvitesCount}</span>}
           </button>
           <button
-            className={`nav-tab-btn ${activeTab === 'arenas' ? 'active' : ''}`}
+            type="button"
+            className={`nav-tab-btn nav-tab-arenas ${activeTab === 'arenas' ? 'active' : ''}`}
             onClick={() => setActiveTab('arenas')}
           >
-            <i className="fa-solid fa-trophy"></i> Technika 6.0 Arenas
+            <i className="fa-solid fa-trophy"></i>
+            <span>Technika 6.0 Arenas</span>
           </button>
+          <a
+            href="/brochure.pdf"
+            target="_blank"
+            rel="noreferrer"
+            className="nav-tab-btn nav-tab-brochure"
+          >
+            <i className="fa-solid fa-file-pdf"></i>
+            <span>Brochure</span>
+            <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.7rem', opacity: 0.85 }}></i>
+          </a>
         </div>
 
-        <button className="logout-btn" onClick={handleLogout}>
-          <i className="fa-solid fa-arrow-right-from-bracket"></i> Logout
+        <button type="button" className="logout-btn" onClick={handleLogout}>
+          <i className="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Logout</span>
         </button>
       </div>
 

@@ -137,14 +137,19 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters long!' });
     }
 
-    if (!paymentUTR) {
-      return res.status(400).json({ message: 'Payment UTR is required!' });
+    const cleanUTR = (paymentUTR || '').toString().trim();
+    if (!cleanUTR) {
+      return res.status(400).json({ message: 'Payment UTR / Reference number is required!' });
+    }
+
+    if (!/^\d{12}$/.test(cleanUTR)) {
+      return res.status(400).json({ message: 'Payment UTR Number must be exactly 12 numeric digits!' });
     }
 
     // Check unique UTR
-    const existingUTR = await User.findOne({ paymentUTR });
+    const existingUTR = await User.findOne({ paymentUTR: cleanUTR });
     if (existingUTR) {
-      return res.status(400).json({ message: 'This Payment UTR has already been used for registration!' });
+      return res.status(400).json({ message: 'This Payment UTR (12-digit Ref No.) has already been used for registration!' });
     }
 
     // Check unique email
@@ -253,26 +258,34 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
     }
 
     // AI Screenshot Verification Pipeline
-    const aiResult = await verifyPaymentScreenshot(paymentScreenshotUrl);
+    const aiResult = await verifyPaymentScreenshot(compressedBuffer, req.file.mimetype || 'image/jpeg', paymentScreenshotUrl);
 
     if (aiResult.status !== 'SUCCESS') {
-      return res.status(400).json({ message: 'Payment verification failed: The screenshot is not a successful transaction.' });
+      return res.status(400).json({ message: 'Payment verification failed: The screenshot does not show a successful completed transaction.' });
     }
 
     if (aiResult.isEdited) {
-      return res.status(400).json({ message: 'Payment verification failed: The screenshot shows signs of editing or tampering.' });
+      return res.status(400).json({ message: 'Payment verification failed: The screenshot shows signs of digital editing or tampering.' });
+    }
+
+    // Security Check: Payee must be ARKA JAIN UNIVERSITY
+    if (!aiResult.isPayeeArkaJain) {
+      const detectedPayee = aiResult.payeeName || aiResult.payeeUpi || 'an unauthorized recipient';
+      return res.status(400).json({ 
+        message: `Payment security check failed: Payment must be sent to ARKA JAIN UNIVERSITY (UPI: 3217855a@bandhan). The uploaded receipt shows payment sent to: ${detectedPayee}.` 
+      });
     }
 
     if (aiResult.amount !== expectedAmount) {
       return res.status(400).json({ 
-        message: `Payment verification failed: Expected ₹${expectedAmount} but the screenshot shows a payment of ₹${aiResult.amount}.` 
+        message: `Payment verification failed: Expected payment of ₹${expectedAmount} for your selected events, but the screenshot shows a payment of ₹${aiResult.amount}.` 
       });
     }
 
     // Check unique UTR for manually entered UTR
-    const existingManualUTR = await User.findOne({ utrEnteredManually: paymentUTR });
+    const existingManualUTR = await User.findOne({ utrEnteredManually: cleanUTR });
     if (existingManualUTR) {
-      return res.status(400).json({ message: 'This manually entered UTR/Ref No. has already been used!' });
+      return res.status(400).json({ message: 'This manually entered 12-digit UTR/Ref No. has already been used!' });
     }
 
     // Check unique UTR from AI extraction (only if it is a real UTR/Ref, not a fallback string)
@@ -295,8 +308,8 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       course,
       semester,
       passwordHash,
-      paymentUTR,
-      utrEnteredManually: paymentUTR,
+      paymentUTR: cleanUTR,
+      utrEnteredManually: cleanUTR,
       utrFetchedFromScreenshot: finalAiUtr,
       paymentScreenshotUrl,
       expectedAmount,
