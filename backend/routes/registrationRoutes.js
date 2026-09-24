@@ -238,19 +238,10 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       }
     }
 
-    // Calculate expected payment amount
+    // Calculate expected payment amount (Flat Rs. 150)
     let expectedAmount = 0;
-    const normalEventsSelected = selectedEvents.filter(
-      (id) => id !== 'paint-ball' && id !== 'night-show'
-    );
-    if (normalEventsSelected.length > 0) {
-      expectedAmount += 150;
-    }
-    if (selectedEvents.includes('paint-ball')) {
-      expectedAmount += 350;
-    }
-    if (selectedEvents.includes('night-show')) {
-      expectedAmount += 650;
+    if (selectedEvents.length > 0) {
+      expectedAmount = 150;
     }
 
     if (expectedAmount === 0) {

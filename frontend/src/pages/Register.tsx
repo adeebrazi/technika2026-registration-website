@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
+import { DatePicker } from '../components/DatePicker';
 import QRCode from 'qrcode';
 
 // 45 Non-Special Events Grouped By Category
@@ -69,19 +70,11 @@ const EVENT_CATEGORIES = [
       { id: "story-telling", title: "Story Telling" },
       { id: "art-attack", title: "Art Attack" }
     ]
-  },
-  {
-    category: "Special Attractions",
-    badgeColor: "#C084FC",
-    events: [
-      { id: "paint-ball", title: "Paint Ball", isComingSoon: true, price: 350 },
-      { id: "night-show", title: "Night Show", isComingSoon: true, price: 650 }
-    ]
   }
 ];
 
 const INSTITUTIONS = [
-  "19.Maharishi Mahesh Yogi Ramayan University, Ayodhya", "AIIMS Deoghar", "Ambalika Institute Of Management And Technology Campus, Lucknow, Uttar Pradesh", "Amity International School \u2013 Noida", "Amity University Patna", "Amity University Raipur", "Amity University \u2013 Noida", "Amity University, Ranchi", "Arpa River Valley International School Bilaspur, Chhattisgarh", "Aryabhatta Knowledge University, Patna", "BIT Sindri", "Babasaheb Bhimrao Ambedkar Bihar University", "Babasaheb Bhimrao Ambedkar University, Lucknow", "Babu Banarasi Das University, lucknow", "Banaras Hindu University", "Bankura University", "Bhilai Institute of Technology", "Bihar Engineering University, Patna", "Biju Patnaik University of Technology ,Rourkela, Odisha", "Birla Institute of Technology (BIT) Mesra, Ranchi", "Cambridge institute of technology, Ranchi", "Chaibasa Engineering College", "Chanakya National Law University, Patna", "Chinmaya Vidyalaya, Bokaro", "City Montessori School \u2013 Lucknow", "Deepika English Medium School (CBSE), Rourkela", "Delhi Public School (DPS) Kalinga, Bhubaneswar", "Delhi Public School (DPS), Ranchi", "Delhi Public School Bhilai", "Delhi Public School Bokaro", "Delhi Public School Noida", "Delhi Public School Patna", "Delhi Public School Ruby Park, Kolkata", "Delhi Public School, Bilaspur", "Delhi Public School, Raipur(DPS)", "Delhi Public School, Rourkela", "Dr. A.P.J. Abdul Kalam Technical University \u2013 Lucknow", "Dr. C.V. Raman University (Bilaspur)", "Gangadhar Meher University Sambalpur", "Government Polytechnic Adityapur, Jamshedpur", "Guru Ghasidas Vishwavidyalaya, Bilaspur", "Guru Nanak Public School, Rourkela", "IEM Kolkata", "IERT Prayagraj", "IIEST (Indian Institute of Engineering Science and Technology) ,Shibpur", "Indian Institute of Information Technology Allahabad \u2013 Prayagraj", "Indian Institute of Information Technology Bhagalpur", "Indian Institute of Information Technology Kalyani", "Indian Institute of Information Technology Lucknow", "Indian Institute of Management Calcutta (IIM)", "Indian Institute of Technology (IIT) Dhanbad (ISM)", "Indian Institute of Technology Bhilai", "Indian Institute of Technology Bhubaneswar (IIT Bhubaneswar)", "Indian Institute of Technology Kharagpur", "Indian Institute of Technology Patna", "Indian institute of technology,  Varanasi", "Indira Gandhi National Open University, Patna", "Indo Danish Tool Room, Jamshedpur", "International Institute of Information Technology Naya Raipur", "J.K. Institute of Applied Physics and Technology, prayagraj", "Jadavpur University, Kolkata", "Jamshedpur Women's University", "Jaypee Institute of Information Technology \u2013 Noida", "Kalinga Institute of Industrial Technology (KIIT)", "Kalinga University (Naya Raipur)", "Kameshwar Singh Darbhanga Sanskrit University (KSDSU)", "Karim City College, Jamshedpur", "Khallikote Unitary University (KUU)", "Kolhan University", "Krishnarpit Institute, prayagraj", "La Martiniere College \u2013 Lucknow", "La Martiniere for Boys, Kolkata", "La Martiniere for Girls, Kolkata", "Lalit Narayan Mithila University (LNMU), Darbhanga", "Loyola High School, Patna", "Loyola School Jamshedpur", "Magadh University, Gaya", "Maharaja Sriram Chandra Bhanja Deo University", "Maharishi University of Management and Technology, Bilaspur", "Maulana Mazharul Haque Arabic & Persian University, Patna", "Motilal Nehru National Institute of Technology Allahabad \u2013 Prayagraj", "Muzaffarpur Institute of Technology", "Narula Institute of Technology (JIS)", "National Institute of Technology (NIT) Jamshedpur", "National Institute of Technology Durgapur", "National Institute of Technology Patna", "National Institute of Technology Raipur", "National Institute of Technology Rourkela (NIT Rourkela)", "Netaji Subhas University, Jamshedpur", "ODM Public School , Bhubaneswar", "ODM Sapphire Global School, Ranchi", "Odisha University of Technology and Research, Bhubaneshwar", "Podar International School Raipur (CBSE)", "Presidency University, Kolkata", "Pt. Ravishankar Shukla University, Raipur", "RVS College Of Engineering And Technology, Jamshedpur", "Rajendra University,Balangir", "Rani Rashmoni Green University,Singur, West Bengal 712409", "Sam Higginbottom University of Agriculture, Technology and Sciences, prayagraj", "Sambalpur University", "Sampurnanand Sanskrit University, Varanasi", "Seth Anandram Jaipuria School \u2013 Lucknow", "Shri Davara University, Raipur", "Sidho-Kanho-Birsha University, Purulia", "Sona Devi University , Jamshedpur", "South Point School, Kolkata", "Srinath Public School, Jamshedpur", "Srinath university", "St. Karen's High School, Patna", "St. Michael's High School,Digha Ghat, Patna", "St. Xavier's College, Kolkata", "St. Xavier's Collegiate School, Kolkata, West Bengal", "Subhash Institute of Technology, Deoghar", "Techno India University, Kolkata", "UCER Allahabad", "University of Allahabad", "University of Gour Banga, Mokdumpur, Malda, West Bengal 732103", "University of Kalyani", "Usha Martin University, Ranchi", "Utkal University, Bhubaneshwar", "Utkalmani Gopabandhu Institute of Engineering, Rourkela", "Veer Surendra Sai University of Technology, Burla", "Vikash Residential School - Bhubaneshwar", "Women's Polytechnic , Gamaharia", "XLRI - Xavier School of Management, Jamshedpur", "Others"
+  "19.Maharishi Mahesh Yogi Ramayan University, Ayodhya", "AIIMS Deoghar", "Ambalika Institute Of Management And Technology Campus, Lucknow, Uttar Pradesh", "Amity International School – Noida", "Amity University Patna", "Amity University Raipur", "Amity University – Noida", "Amity University, Ranchi", "Arpa River Valley International School Bilaspur, Chhattisgarh", "Aryabhatta Knowledge University, Patna", "BIT Sindri", "Babasaheb Bhimrao Ambedkar Bihar University", "Babasaheb Bhimrao Ambedkar University, Lucknow", "Babu Banarasi Das University, lucknow", "Banaras Hindu University", "Bankura University", "Bhilai Institute of Technology", "Bihar Engineering University, Patna", "Biju Patnaik University of Technology ,Rourkela, Odisha", "Birla Institute of Technology (BIT) Mesra, Ranchi", "Cambridge institute of technology, Ranchi", "Chaibasa Engineering College", "Chanakya National Law University, Patna", "Chinmaya Vidyalaya, Bokaro", "City Montessori School – Lucknow", "Deepika English Medium School (CBSE), Rourkela", "Delhi Public School (DPS) Kalinga, Bhubaneswar", "Delhi Public School (DPS), Ranchi", "Delhi Public School Bhilai", "Delhi Public School Bokaro", "Delhi Public School Noida", "Delhi Public School Patna", "Delhi Public School Ruby Park, Kolkata", "Delhi Public School, Bilaspur", "Delhi Public School, Raipur(DPS)", "Delhi Public School, Rourkela", "Dr. A.P.J. Abdul Kalam Technical University – Lucknow", "Dr. C.V. Raman University (Bilaspur)", "Gangadhar Meher University Sambalpur", "Government Polytechnic Adityapur, Jamshedpur", "Guru Ghasidas Vishwavidyalaya, Bilaspur", "Guru Nanak Public School, Rourkela", "IEM Kolkata", "IERT Prayagraj", "IIEST (Indian Institute of Engineering Science and Technology) ,Shibpur", "Indian Institute of Information Technology Allahabad – Prayagraj", "Indian Institute of Information Technology Bhagalpur", "Indian Institute of Information Technology Kalyani", "Indian Institute of Information Technology Lucknow", "Indian Institute of Management Calcutta (IIM)", "Indian Institute of Technology (IIT) Dhanbad (ISM)", "Indian Institute of Technology Bhilai", "Indian Institute of Technology Bhubaneswar (IIT Bhubaneswar)", "Indian Institute of Technology Kharagpur", "Indian Institute of Technology Patna", "Indian institute of technology,  Varanasi", "Indira Gandhi National Open University, Patna", "Indo Danish Tool Room, Jamshedpur", "International Institute of Information Technology Naya Raipur", "J.K. Institute of Applied Physics and Technology, prayagraj", "Jadavpur University, Kolkata", "Jamshedpur Women's University", "Jaypee Institute of Information Technology – Noida", "Kalinga Institute of Industrial Technology (KIIT)", "Kalinga University (Naya Raipur)", "Kameshwar Singh Darbhanga Sanskrit University (KSDSU)", "Karim City College, Jamshedpur", "Khallikote Unitary University (KUU)", "Kolhan University", "Krishnarpit Institute, prayagraj", "La Martiniere College – Lucknow", "La Martiniere for Boys, Kolkata", "La Martiniere for Girls, Kolkata", "Lalit Narayan Mithila University (LNMU), Darbhanga", "Loyola High School, Patna", "Loyola School Jamshedpur", "Magadh University, Gaya", "Maharaja Sriram Chandra Bhanja Deo University", "Maharishi University of Management and Technology, Bilaspur", "Maulana Mazharul Haque Arabic & Persian University, Patna", "Motilal Nehru National Institute of Technology Allahabad – Prayagraj", "Muzaffarpur Institute of Technology", "Narula Institute of Technology (JIS)", "National Institute of Technology (NIT) Jamshedpur", "National Institute of Technology Durgapur", "National Institute of Technology Patna", "National Institute of Technology Raipur", "National Institute of Technology Rourkela (NIT Rourkela)", "Netaji Subhas University, Jamshedpur", "ODM Public School , Bhubaneswar", "ODM Sapphire Global School, Ranchi", "Odisha University of Technology and Research, Bhubaneshwar", "Podar International School Raipur (CBSE)", "Presidency University, Kolkata", "Pt. Ravishankar Shukla University, Raipur", "RVS College Of Engineering And Technology, Jamshedpur", "Rajendra University,Balangir", "Rani Rashmoni Green University,Singur, West Bengal 712409", "Sam Higginbottom University of Agriculture, Technology and Sciences, prayagraj", "Sambalpur University", "Sampurnanand Sanskrit University, Varanasi", "Seth Anandram Jaipuria School – Lucknow", "Shri Davara University, Raipur", "Sidho-Kanho-Birsha University, Purulia", "Sona Devi University , Jamshedpur", "South Point School, Kolkata", "Srinath Public School, Jamshedpur", "Srinath university", "St. Karen's High School, Patna", "St. Michael's High School,Digha Ghat, Patna", "St. Xavier's College, Kolkata", "St. Xavier's Collegiate School, Kolkata, West Bengal", "Subhash Institute of Technology, Deoghar", "Techno India University, Kolkata", "UCER Allahabad", "University of Allahabad", "University of Gour Banga, Mokdumpur, Malda, West Bengal 732103", "University of Kalyani", "Usha Martin University, Ranchi", "Utkal University, Bhubaneshwar", "Utkalmani Gopabandhu Institute of Engineering, Rourkela", "Veer Surendra Sai University of Technology, Burla", "Vikash Residential School - Bhubaneshwar", "Women's Polytechnic , Gamaharia", "XLRI - Xavier School of Management, Jamshedpur", "Others"
 ];
 
 const SEMESTERS = [
@@ -116,31 +109,11 @@ export const Register: React.FC = () => {
   const PAYEE_NAME = 'ARKA JAIN UNIVERSITY';
   const NOTE = 'Technika 6.0 Registration';
 
-  const SPECIAL_EVENT_PRICES: Record<string, number> = {
-    'paint-ball': 350,
-    'night-show': 650,
-  };
+  const SPECIAL_EVENT_PRICES: Record<string, number> = {};
 
-  // Calculate dynamic registration fee total
+  // Calculate dynamic registration fee total (Rs. 150 flat fee)
   const calculateTotalAmount = () => {
-    let total = 0;
-    
-    const normalEventsSelected = selectedEvents.filter(
-      (id) => !(id in SPECIAL_EVENT_PRICES)
-    );
-    
-    if (normalEventsSelected.length > 0) {
-      total += 150; // Rs. 150 flat fee covers all selected normal events
-    }
-    
-    // Add price for each selected special event
-    selectedEvents.forEach((id) => {
-      if (SPECIAL_EVENT_PRICES[id]) {
-        total += SPECIAL_EVENT_PRICES[id];
-      }
-    });
-    
-    return total;
+    return selectedEvents.length > 0 ? 150 : 0;
   };
 
   const totalAmount = calculateTotalAmount();
@@ -217,8 +190,8 @@ export const Register: React.FC = () => {
     return age > 0 ? String(age) : '';
   };
 
-  const handleDobChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const dobVal = e.target.value;
+  const handleDobChange = (valOrEvent: string | React.ChangeEvent<HTMLInputElement>) => {
+    const dobVal = typeof valOrEvent === 'string' ? valOrEvent : valOrEvent.target.value;
     const computedAge = calculateAge(dobVal);
     setFormData((prev) => ({
       ...prev,
@@ -555,15 +528,43 @@ export const Register: React.FC = () => {
                 </div>
 
                 {!isEmailVerified && (
-                  <div className="form-group" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexDirection: 'row' }}>
+                  <div className="form-group">
                     {!isOtpSent ? (
-                      <button type="button" onClick={handleSendOtp} disabled={sendingOtp} style={{ padding: '12px 20px', background: 'var(--brut-blue)', color: '#fff', border: '3px solid #000', fontWeight: 'bold', cursor: 'pointer' }}>
-                        {sendingOtp ? 'Sending...' : 'Send OTP'}
-                      </button>
+                      <>
+                        <label className="otp-desktop-spacer" aria-hidden="true">
+                          OTP VERIFICATION
+                        </label>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={handleSendOtp}
+                            disabled={sendingOtp}
+                            style={{
+                              height: '47px',
+                              padding: '0 24px',
+                              background: 'var(--brut-blue)',
+                              color: '#fff',
+                              border: '3px solid #000',
+                              fontWeight: 'bold',
+                              fontSize: '0.95rem',
+                              cursor: 'pointer',
+                              boxShadow: '3px 3px 0px 0px #000',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {sendingOtp ? 'Sending...' : 'Send OTP'}
+                          </button>
+                        </div>
+                      </>
                     ) : (
                       <>
-                        <div style={{ flex: 1 }}>
-                          <label htmlFor="otp">ENTER OTP <span className="required">*</span></label>
+                        <label htmlFor="otp">
+                          ENTER OTP <span className="required">*</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: '10px' }}>
                           <input
                             type="text"
                             name="otp"
@@ -571,11 +572,31 @@ export const Register: React.FC = () => {
                             placeholder="6-digit code"
                             value={otp}
                             onChange={(e) => setOtp(e.target.value)}
+                            style={{ flex: 1, height: '47px' }}
                           />
+                          <button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            disabled={verifyingOtp}
+                            style={{
+                              height: '47px',
+                              padding: '0 20px',
+                              background: 'var(--brut-green)',
+                              color: '#000',
+                              border: '3px solid #000',
+                              fontWeight: 'bold',
+                              fontSize: '0.95rem',
+                              cursor: 'pointer',
+                              boxShadow: '3px 3px 0px 0px #000',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
+                          </button>
                         </div>
-                        <button type="button" onClick={handleVerifyOtp} disabled={verifyingOtp} style={{ padding: '12px 20px', background: 'var(--brut-green)', color: '#000', border: '3px solid #000', fontWeight: 'bold', cursor: 'pointer' }}>
-                          {verifyingOtp ? 'Verifying...' : 'Verify OTP'}
-                        </button>
                       </>
                     )}
                   </div>
@@ -590,14 +611,14 @@ export const Register: React.FC = () => {
                       </span>
                     )}
                   </label>
-                  <input
-                    type="date"
-                    name="dob"
+                  <DatePicker
                     id="dob"
+                    name="dob"
                     required
                     value={formData.dob}
-                    onChange={handleDobChange}
-                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(dateStr) => handleDobChange(dateStr)}
+                    minYear={1990}
+                    maxYear={2026}
                   />
                 </div>
 

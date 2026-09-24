@@ -3645,4 +3645,48 @@ body.has-expanded-event #monument-viewport {
     width: 80px;
     height: 80px;
   }
+
+  .otp-desktop-spacer {
+    display: none !important;
+  }
 }
+
+.otp-desktop-spacer {
+  visibility: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Neo-Brutalist Forgot Password Button */
+.btn-forgot-password {
+  background: var(--accent-neon-yellow, #D6FD52);
+  color: #000000 !important;
+  font-family: var(--font-title, 'Space Grotesk', sans-serif);
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 2px solid #000000;
+  box-shadow: 2px 2px 0px 0px #000000;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 0px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  line-height: 1.2;
+}
+
+.btn-forgot-password:hover {
+  background: var(--accent-neon-cyan, #3CE6FC) !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px 0px #000000;
+}
+
+.btn-forgot-password:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0px 0px 0px 0px #000000;
+}
+

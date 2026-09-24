@@ -47,7 +47,6 @@ router.post('/login', async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET || 'super_secret_jwt_key_123456',
-      { expiresIn: '7d' },
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -194,4 +193,91 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/forgot-password/send-otp
+// @desc    Send password reset OTP to user's registered email
+// @access  Public
+router.post('/forgot-password/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ message: 'Please enter your registered Gmail address.' });
+  }
+
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(404).json({ message: 'No registered participant found with this Gmail address.' });
+    }
+
+    // Generate random 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Upsert OTP record
+    await Otp.findOneAndUpdate(
+      { email: normalizedEmail },
+      { otp, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    // Send reset email
+    const { sendPasswordResetOtpEmail } = require('../utils/emailService');
+    await sendPasswordResetOtpEmail(normalizedEmail, otp);
+
+    res.json({ success: true, message: 'Password reset OTP has been sent to your Gmail!' });
+  } catch (error) {
+    console.error('Forgot Password Send OTP Error:', error);
+    res.status(500).json({ message: 'Failed to send reset OTP. Please check your network or try again.' });
+  }
+});
+
+// @route   POST /api/auth/forgot-password/reset
+// @desc    Verify OTP and reset user's password
+// @access  Public
+router.post('/forgot-password/reset', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ message: 'Email, OTP, and new password are required.' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+  }
+
+  try {
+    const normalizedEmail = email.toLowerCase().trim();
+    const otpRecord = await Otp.findOne({ email: normalizedEmail });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'OTP has expired or was not requested. Please request a new code.' });
+    }
+
+    if (otpRecord.otp !== otp.trim()) {
+      return res.status(400).json({ message: 'Incorrect OTP entered. Please try again.' });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      return res.status(404).json({ message: 'Participant not found.' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    // Clear used OTP
+    await Otp.deleteOne({ email: normalizedEmail });
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully! You can now log in with your new password.',
+    });
+  } catch (error) {
+    console.error('Reset Password Error:', error);
+    res.status(500).json({ message: 'Failed to reset password. Please try again.' });
+  }
+});
+
 module.exports = router;
+

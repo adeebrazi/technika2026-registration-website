@@ -1594,57 +1594,5 @@
       "Mr. Moaaz Akhtar ()",
       "Mr. Harsh Pathak ()"
     ]
-  },
-  {
-    "id": "paint-ball",
-    "title": "Paint Ball",
-    "category": "Special",
-    "description": "Experience the ultimate tactical paintball combat challenge where teams compete in strategy, reflexes, and team coordination to eliminate opponents in the arena.",
-    "date": "Day 1 & Day 2",
-    "time": "All Day",
-    "venue": "Paintball Arena Lawn",
-    "prizePool": "Prizes Worth ₹8,000",
-    "coordinator": "Dr. Viranshu Kumar (+91 82102 57269)",
-    "minMembers": 2,
-    "maxMembers": 5,
-    "isTeamEvent": true,
-    "objective": "Engage in a team-based tactical paint ball simulation to eliminate the opposing team.",
-    "rules_list": [
-      "Safety gear (goggles, chest protectors) must be worn at all times in the arena.",
-      "No physical contact or close-range firing is permitted.",
-      "Decisions of the marshals/referees are final and binding."
-    ],
-    "rounds_list": [
-      "Elimination brackets leading to the final face-off."
-    ],
-    "criteria_list": [
-      "Successfully capturing the opponent's flag or eliminating all members within the time limit."
-    ]
-  },
-  {
-    "id": "night-show",
-    "title": "Night Show",
-    "category": "Special",
-    "description": "The grand finale of Technika 6.0! A sensational star-studded night featuring live acoustic music, DJ sets, valedictory prize distribution, and dynamic lighting showcases.",
-    "date": "Day 2",
-    "time": "06:30 PM",
-    "venue": "Main Stage OAT",
-    "prizePool": "Spectacular Show",
-    "coordinator": "Prof. Mamatha V. (+91 78588 12586)",
-    "minMembers": 1,
-    "maxMembers": 1,
-    "isTeamEvent": false,
-    "objective": "Celebrate the conclusion of the fest with live music and performances.",
-    "rules_list": [
-      "Participants must carry their entry passes or valid student ID card.",
-      "Follow on-campus discipline and security instructions.",
-      "No outside food or drinks allowed in the auditorium."
-    ],
-    "rounds_list": [
-      "Single concluding performance session."
-    ],
-    "criteria_list": [
-      "Open to all registered participants and guests."
-    ]
   }
 ]
