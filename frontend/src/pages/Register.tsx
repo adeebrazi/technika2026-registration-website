@@ -109,8 +109,6 @@ export const Register: React.FC = () => {
   const PAYEE_NAME = 'ARKA JAIN UNIVERSITY';
   const NOTE = 'Technika 6.0 Registration';
 
-  const SPECIAL_EVENT_PRICES: Record<string, number> = {};
-
   // Calculate dynamic registration fee total (Rs. 150 flat fee)
   const calculateTotalAmount = () => {
     return selectedEvents.length > 0 ? 150 : 0;
