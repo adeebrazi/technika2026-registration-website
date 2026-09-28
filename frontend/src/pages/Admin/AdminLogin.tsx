@@ -5,7 +5,7 @@ type AdminRoleOption = 'Administration' | 'Faculty Coordinator' | 'Student Coord
 
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState<AdminRoleOption>('Administration');
+  const [selectedRole, setSelectedRole] = useState<AdminRoleOption>('Faculty Coordinator');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -15,8 +15,8 @@ export const AdminLogin: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const roleOptions: { key: AdminRoleOption; label: string; icon: string; desc: string }[] = [
-    { key: 'Administration', label: 'Administration', icon: '🛡️', desc: 'Core organizing committee' },
     { key: 'Faculty Coordinator', label: 'Faculty Coordinator', icon: '🎓', desc: 'Faculty event advisors' },
+    { key: 'Administration', label: 'Administration', icon: '🛡️', desc: 'Core organizing committee' },
     { key: 'Student Coordinator', label: 'Student Coordinator', icon: '⚡', desc: 'Event heads & coordinators' },
   ];
 

@@ -7,37 +7,51 @@ const Team = require('../models/Team');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 
-// Parse env users string: "admin@test.com:pass1,admin2@test.com:pass2"
+// Parse env users string: supports both "Name:email:password" and "email:password"
 const parseEnvUsers = (envStr) => {
   if (!envStr) return [];
-  return envStr.split(',').map(pair => {
-    const [email, password] = pair.split(':');
-    return { email: email?.trim(), password: password?.trim() };
-  });
+  return envStr.split(',').map(entry => {
+    const parts = entry.split(':').map(p => p.trim());
+    if (parts.length >= 3) {
+      return { name: parts[0], email: parts[1].toLowerCase(), password: parts[2] };
+    } else if (parts.length === 2) {
+      return { name: null, email: parts[0].toLowerCase(), password: parts[1] };
+    }
+    return null;
+  }).filter(Boolean);
 };
 
-// Known name mappings for team members / coordinators / admins
+// Fallback known name mappings synced with Main Website (organisers.json)
 const ADMIN_PROFILES = {
+  // Convenors & Faculty Coordinators
+  'arvindk@technika2026.online': { name: 'Dr. Arvind Kumar Pandey', designation: 'Faculty Coordinator' },
+  'ashwinik@technika2026.online': { name: 'Dr. Ashwini Kumar', designation: 'Faculty Coordinator' },
+  'mamathav@technika2026.online': { name: 'Prof. Mamatha Vayelapelli', designation: 'Faculty Coordinator' },
+  'viranshuk@technika2026.online': { name: 'Dr. Viranshu Kumar', designation: 'Faculty Coordinator' },
+  'rashida@technika2026.online': { name: 'Prof. Syed Rashid Anwar', designation: 'Faculty Coordinator' },
+  'divyap@technika2026.online': { name: 'Prof. Divya Paikaray', designation: 'Faculty Coordinator' },
+  'premnaths@technika2026.online': { name: 'Dr. Prem Nath Suman', designation: 'Faculty Coordinator' },
+  'sayantanid@technika2026.online': { name: 'Prof. Sayantani De', designation: 'Faculty Coordinator' },
+  'astikp@technika2026.online': { name: 'Prof. Astik Pradhan', designation: 'Faculty Coordinator' },
+  'padmajat@technika2026.online': { name: 'Dr. Padmaja Tripathy', designation: 'Faculty Coordinator' },
+
+  // Administration
   'adeeb@technika2026.online': { name: 'Adeeb Razi', designation: 'Administration' },
-  'anjali@technika2026.online': { name: 'Anjali Kumari', designation: 'Administration' },
-  'mamathav@technika2026.online': { name: 'Prof. Mamatha V', designation: 'Faculty Coordinator' },
-  'viranshuk@technika2026.online': { name: 'Viranshu Kumar', designation: 'Student Coordinator' },
-  'rashida@technika2026.online': { name: 'Rashid Ali', designation: 'Student Coordinator' },
-  'divyap@technika2026.online': { name: 'Divya Prakash', designation: 'Student Coordinator' },
-  'premnaths@technika2026.online': { name: 'Prem Nath Sharma', designation: 'Student Coordinator' },
-  'sayantanid@technika2026.online': { name: 'Sayantani Das', designation: 'Student Coordinator' },
-  'astikp@technika2026.online': { name: 'Astik Pandey', designation: 'Student Coordinator' },
+  'anjali@technika2026.online': { name: 'Anjali Singh', designation: 'Administration' },
+
+  // Student Coordinators
   'sonalim@technika2026.online': { name: 'Sonali Mahato', designation: 'Student Coordinator' },
-  'nikitam@technika2026.online': { name: 'Nikita Kumari', designation: 'Student Coordinator' },
-  'aadityas@technika2026.online': { name: 'Aaditya Sharma', designation: 'Student Coordinator' },
+  'nikitam@technika2026.online': { name: 'Nikita Mishra', designation: 'Student Coordinator' },
+  'aadityas@technika2026.online': { name: 'Aaditya Singh', designation: 'Student Coordinator' },
+  'sohailk@technika2026.online': { name: 'Sohail Khan', designation: 'Student Coordinator' },
   'sanchita@technika2026.online': { name: 'Sanchit Agarwal', designation: 'Student Coordinator' },
-  'harshp@technika2026.online': { name: 'Harsh Prasad', designation: 'Student Coordinator' },
-  'ishikas@technika2026.online': { name: 'Ishika Singh', designation: 'Student Coordinator' },
+  'harshp@technika2026.online': { name: 'Harsh Pathak', designation: 'Student Coordinator' },
+  'ishikas@technika2026.online': { name: 'Ishika Shrivastava', designation: 'Student Coordinator' },
   'ankitr@technika2026.online': { name: 'Ankit Raj', designation: 'Student Coordinator' },
-  'ssumanr@technika2026.online': { name: 'S Suman Roy', designation: 'Student Coordinator' },
+  'ssumanr@technika2026.online': { name: 'S Suman Rao', designation: 'Student Coordinator' },
   'princek@technika2026.online': { name: 'Prince Kumar', designation: 'Student Coordinator' },
-  'anishs@technika2026.online': { name: 'Anish Singh', designation: 'Student Coordinator' },
-  'rishavs@technika2026.online': { name: 'Rishav Sharma', designation: 'Student Coordinator' },
+  'anishs@technika2026.online': { name: 'Anish Kr Singh', designation: 'Student Coordinator' },
+  'rishavs@technika2026.online': { name: 'Rishav Kr Singh', designation: 'Student Coordinator' },
   'saraswatik@technika2026.online': { name: 'Saraswati Kumari', designation: 'Student Coordinator' }
 };
 
@@ -52,18 +66,20 @@ const formatNameFromEmail = (email) => {
     .join(' ');
 };
 
-const getRoleDesignation = (roleKey, requestedRole) => {
-  if (requestedRole && ['Faculty Coordinator', 'Administration', 'Student Coordinator'].includes(requestedRole)) {
-    return requestedRole;
-  }
-  if (roleKey === 'admin') return 'Administration';
-  if (roleKey === 'faculty') return 'Faculty Coordinator';
-  if (roleKey === 'coordinator') return 'Student Coordinator';
-  return 'Staff Member';
+const ROLE_NAME_TO_KEY = {
+  'Faculty Coordinator': 'faculty',
+  'Administration': 'admin',
+  'Student Coordinator': 'coordinator'
+};
+
+const ROLE_KEY_TO_TITLE = {
+  'faculty': 'Faculty Coordinator',
+  'admin': 'Administration',
+  'coordinator': 'Student Coordinator'
 };
 
 // @route   POST /api/admin/login
-// @desc    Admin authentication with role and designation
+// @desc    Admin authentication with strict role verification
 // @access  Public
 router.post('/login', (req, res) => {
   const { email, password, role } = req.body;
@@ -75,66 +91,57 @@ router.post('/login', (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
   const cleanPass = password.trim();
 
-  // Load from env
+  // Load role groups from env
   const rolesMap = {
-    admin: parseEnvUsers(process.env.ADMIN_USERS),
     faculty: parseEnvUsers(process.env.FACULTY_USERS),
+    admin: parseEnvUsers(process.env.ADMIN_USERS),
     coordinator: parseEnvUsers(process.env.COORDINATOR_USERS),
     volunteer: parseEnvUsers(process.env.VOLUNTEER_USERS)
   };
 
-  const roleKeyMap = {
-    'Administration': 'admin',
-    'Faculty Coordinator': 'faculty',
-    'Student Coordinator': 'coordinator',
-    'admin': 'admin',
-    'faculty': 'faculty',
-    'coordinator': 'coordinator'
-  };
+  // Find which pool this user actually belongs to
+  let foundUser = null;
+  let actualRoleKey = null;
 
-  const requestedKey = role ? roleKeyMap[role] : null;
-
-  let matchedRole = null;
-
-  // 1. If role specified, test matching in that specific role
-  if (requestedKey && rolesMap[requestedKey]) {
-    const userInRole = rolesMap[requestedKey].find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass);
-    if (userInRole) {
-      matchedRole = requestedKey;
+  for (const [rKey, usersList] of Object.entries(rolesMap)) {
+    const match = usersList.find(u => u.email === cleanEmail && u.password === cleanPass);
+    if (match) {
+      foundUser = match;
+      actualRoleKey = rKey;
+      break;
     }
   }
 
-  // 2. Special case: If user picked 'Faculty Coordinator' or 'Administration' and is in admin users
-  if (!matchedRole && requestedKey === 'faculty') {
-    const userInAdmin = rolesMap.admin.find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass);
-    if (userInAdmin) {
-      matchedRole = 'faculty';
-    }
+  // If no credentials matched in any pool
+  if (!foundUser) {
+    return res.status(401).json({ message: 'Invalid email or password' });
   }
 
-  // 3. Fallback: match any role if not matched above
-  if (!matchedRole) {
-    for (const [rKey, users] of Object.entries(rolesMap)) {
-      const u = users.find(user => user.email.toLowerCase() === cleanEmail && user.password === cleanPass);
-      if (u) {
-        matchedRole = rKey;
-        break;
-      }
-    }
+  // STRICT ROLE ENFORCEMENT:
+  // If user selected a specific role on frontend, it MUST match their assigned role in .env!
+  const requestedRoleKey = role ? ROLE_NAME_TO_KEY[role] : null;
+
+  if (requestedRoleKey && requestedRoleKey !== actualRoleKey) {
+    const actualTitle = ROLE_KEY_TO_TITLE[actualRoleKey] || actualRoleKey;
+    const requestedTitle = role;
+    return res.status(403).json({
+      message: `Access Denied: Your account is registered as ${actualTitle}. You cannot log in as ${requestedTitle}.`
+    });
   }
 
-  if (!matchedRole) {
-    return res.status(401).json({ message: 'Invalid credentials or unauthorized role' });
-  }
+  const finalRoleKey = actualRoleKey;
+  const finalDesignation = ROLE_KEY_TO_TITLE[finalRoleKey] || 'Staff Member';
+  
+  // Resolve display name:
+  // 1. Name specified in .env ("Name:email:pass")
+  // 2. Fallback known name from ADMIN_PROFILES
+  // 3. Formatted email name
+  const displayName = foundUser.name || ADMIN_PROFILES[cleanEmail]?.name || formatNameFromEmail(cleanEmail);
 
-  const known = ADMIN_PROFILES[cleanEmail];
-  const displayName = known?.name || formatNameFromEmail(cleanEmail);
-  const finalDesignation = role ? role : (known?.designation || getRoleDesignation(matchedRole));
-
-  // Create token
+  // Create JWT token
   const payload = {
     email: cleanEmail,
-    role: matchedRole,
+    role: finalRoleKey,
     name: displayName,
     designation: finalDesignation,
     isAdmin: true
@@ -149,7 +156,7 @@ router.post('/login', (req, res) => {
       res.json({
         success: true,
         token,
-        role: matchedRole,
+        role: finalRoleKey,
         name: displayName,
         designation: finalDesignation
       });
