@@ -1381,33 +1381,123 @@ input:focus + .input-icon, select:focus + .input-icon {
   border: 1px solid rgba(99, 102, 241, 0.4) !important;
 }
 
-/* Light theme overrides for high contrast */
-.theme-light .info-title {
+/* Light theme overrides for high contrast & full dashboard support */
+.theme-light, html.theme-light, [data-theme="light"] {
+  --bg-color: #F4EAE6 !important;
+  --panel-bg: #FFFFFF !important;
+  --panel-border: #000000 !important;
+  --border-color: #000000 !important;
+  --text-main: #000000 !important;
+  --text-muted: #475569 !important;
+  --text-dark: #475569 !important;
+  --input-bg: #FFFFFF !important;
+  --shadow-neon: 5px 5px 0px #000000 !important;
+}
+
+.theme-light body {
+  background-color: #F4EAE6 !important;
   color: #000000 !important;
 }
 
-.theme-light .section-subtitle {
-  color: #334155 !important;
-}
-
-.theme-light .registered-event-item h4 {
+.theme-light .card,
+.theme-light .glassmorphism {
+  background: #FFFFFF !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 6px 6px 0px #000000 !important;
   color: #000000 !important;
 }
 
-.theme-light .registered-event-item small {
+.theme-light .card-header h2 {
+  color: #000000 !important;
+}
+
+.theme-light .card-header p {
   color: #475569 !important;
 }
 
-.theme-light .registered-event-item .badge-indiv {
-  background: rgba(6, 182, 212, 0.1) !important;
-  color: #0891b2 !important;
-  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+.theme-light .info-title {
+  color: #000000 !important;
+  border-left-color: #f5a201 !important;
 }
 
-.theme-light .registered-event-item .badge-team {
-  background: rgba(79, 70, 229, 0.1) !important;
-  color: #4f46e5 !important;
-  border: 1px solid rgba(79, 70, 229, 0.3) !important;
+.theme-light .section-subtitle {
+  color: #475569 !important;
+}
+
+/* Dashboard Nav in Light Theme */
+.theme-light .dashboard-nav {
+  background: #FFFFFF !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+
+.theme-light .dashboard-brand-tech {
+  color: #000000 !important;
+}
+
+.theme-light .nav-tab-btn {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border: 2.5px solid #000000 !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+}
+
+.theme-light .nav-tab-btn:hover {
+  background: #f1f5f9 !important;
+  color: #000000 !important;
+}
+
+.theme-light .nav-tab-btn.active {
+  background: #8aebee !important;
+  color: #000000 !important;
+  border: 2.5px solid #000000 !important;
+  box-shadow: 1px 1px 0px #000000 !important;
+}
+
+.theme-light .nav-tab-btn.nav-tab-brochure {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  border: 2.5px solid #000000 !important;
+  box-shadow: 3px 3px 0px #000000 !important;
+}
+
+/* Event Cards on Dashboard */
+.theme-light .dashboard-event-card {
+  background: #FFFFFF !important;
+  border: 3px solid #000000 !important;
+  box-shadow: 5px 5px 0px 0px #000000 !important;
+  color: #000000 !important;
+}
+
+.theme-light .dashboard-event-card h4 {
+  color: #000000 !important;
+}
+
+.theme-light .dashboard-event-card small {
+  color: #475569 !important;
+}
+
+.theme-light .dashboard-event-card .team-roster-row {
+  background: #f8fafc !important;
+  border: 1.5px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.theme-light .dashboard-event-card .team-roster-row strong {
+  color: #000000 !important;
+}
+
+/* Profile Items in Light Theme */
+.theme-light .profile-item {
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.theme-light .profile-item span:first-child {
+  color: #64748b !important;
+}
+
+.theme-light .profile-item span:last-child {
+  color: #000000 !important;
 }
 
 .sub-tabs {

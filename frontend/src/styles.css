@@ -153,6 +153,34 @@
   --grid-color: rgba(28, 171, 176, 0.4);
 }
 
+.theme-light, html.theme-light, [data-theme="light"] {
+  --background: #F4EAE6;
+  --foreground: #000000;
+  --card: #FFFFFF;
+  --card-foreground: #000000;
+  --popover: #FFFFFF;
+  --popover-foreground: #000000;
+  --primary: #000000;
+  --primary-foreground: #FFFFFF;
+  --secondary: #8aebee;
+  --secondary-foreground: #000000;
+  --muted: #e2e8f0;
+  --muted-foreground: #475569;
+  --accent: #f5a201;
+  --accent-foreground: #000000;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #000000;
+  --input: #FFFFFF;
+  --ring: #000000;
+  --brut-yellow: #f5a201;
+  --brut-pink: #1cabb0;
+  --brut-blue: #004d6d;
+  --brut-lime: #8aebee;
+  --brut-orange: #f5a201;
+  --grid-color: rgba(0, 0, 0, 0.08);
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;

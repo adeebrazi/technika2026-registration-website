@@ -249,11 +249,12 @@ export const Dashboard: React.FC = () => {
                         return (
                           <div
                             key={reg.eventId}
+                            className="dashboard-event-card"
                             style={{
                               padding: '16px 20px',
-                              background: 'var(--input-bg, #1e293b)',
-                              border: '3px solid var(--foreground)',
-                              boxShadow: '5px 5px 0px 0px var(--foreground)',
+                              background: 'var(--card)',
+                              border: '3px solid var(--border-color)',
+                              boxShadow: '5px 5px 0px 0px var(--border-color)',
                               color: 'var(--text-main)',
                               display: 'flex',
                               flexDirection: 'column',
@@ -271,9 +272,13 @@ export const Dashboard: React.FC = () => {
                                 style={{
                                   fontSize: '0.75rem',
                                   padding: '4px 10px',
-                                  borderRadius: '4px',
-                                  fontWeight: 700,
+                                  borderRadius: '0px',
+                                  border: '2px solid #000000',
+                                  fontWeight: 800,
                                   textTransform: 'uppercase',
+                                  background: isTeam ? '#FFE600' : '#8aebee',
+                                  color: '#000000',
+                                  boxShadow: '2px 2px 0px 0px #000000',
                                 }}
                               >
                                 {isTeam ? `Team (${reg.teamId})` : 'Individual'}
@@ -286,17 +291,17 @@ export const Dashboard: React.FC = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                   <div>
                                     <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-main)' }}>
-                                      TEAM NAME: <span style={{ color: '#FFE600' }}>{userTeam?.teamName || 'Team'}</span>
+                                      TEAM NAME: <span style={{ color: 'var(--accent, #f5a201)' }}>{userTeam?.teamName || 'Team'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                                      <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#FFE600', background: '#000000', padding: '2px 8px', border: '1.5px solid #FFE600' }}>
+                                      <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#000000', background: '#FFE600', padding: '2px 8px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000000' }}>
                                         TEAM ID: {reg.teamId}
                                       </span>
                                     </div>
                                   </div>
 
                                   <div>
-                                    <span style={{ background: '#10b981', color: '#fff', fontSize: '0.68rem', fontWeight: 900, padding: '3px 8px', border: '1px solid #000' }}>
+                                    <span style={{ background: '#10b981', color: '#000000', fontSize: '0.72rem', fontWeight: 900, padding: '3px 8px', border: '1.5px solid #000000' }}>
                                       ✓ REGISTERED TEAM
                                     </span>
                                   </div>
@@ -311,6 +316,7 @@ export const Dashboard: React.FC = () => {
                                     {userTeam.members.map((member) => (
                                       <div
                                         key={member.registrationId}
+                                        className="team-roster-row"
                                         style={{
                                           display: 'flex',
                                           justifyContent: 'space-between',
