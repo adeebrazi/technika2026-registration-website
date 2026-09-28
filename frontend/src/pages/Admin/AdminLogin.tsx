@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type AdminRoleOption = 'Administration' | 'Faculty Coordinator' | 'Student Coordinator';
@@ -6,16 +6,32 @@ type AdminRoleOption = 'Administration' | 'Faculty Coordinator' | 'Student Coord
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState<AdminRoleOption>('Administration');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const roleOptions: { key: AdminRoleOption; label: string; icon: string; desc: string }[] = [
     { key: 'Administration', label: 'Administration', icon: '🛡️', desc: 'Core organizing committee' },
     { key: 'Faculty Coordinator', label: 'Faculty Coordinator', icon: '🎓', desc: 'Faculty event advisors' },
     { key: 'Student Coordinator', label: 'Student Coordinator', icon: '⚡', desc: 'Event heads & coordinators' },
   ];
+
+  const currentRoleObj = roleOptions.find((r) => r.key === selectedRole) || roleOptions[0];
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -33,7 +49,7 @@ export const AdminLogin: React.FC = () => {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          role: selectedRole
+          role: selectedRole,
         }),
       });
 
@@ -75,7 +91,7 @@ export const AdminLogin: React.FC = () => {
         <div className="clay-card-header">
           <span className="clay-badge-tag">TECHNIKA 6.0 PORTAL</span>
           <h1 className="clay-title">ADMIN LOGIN</h1>
-          <p className="clay-subtitle">Enter your official credentials and designated role to continue</p>
+          <p className="clay-subtitle">Enter your official credentials and select your authorized role</p>
         </div>
 
         {error && (
@@ -86,42 +102,10 @@ export const AdminLogin: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="clay-form">
-          {/* ── Category 1: Specify Role ── */}
+          {/* ── Category 01: Login Credentials (Moved to 01) ── */}
           <div className="clay-category-section">
             <div className="clay-category-header">
               <span className="clay-category-num">01</span>
-              <span className="clay-category-title">SPECIFY YOUR ROLE</span>
-            </div>
-
-            <div className="clay-roles-grid">
-              {roleOptions.map((opt) => {
-                const isSelected = selectedRole === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole(opt.key);
-                      setError('');
-                    }}
-                    className={`clay-role-pill ${isSelected ? 'active' : ''}`}
-                  >
-                    <span className="role-icon">{opt.icon}</span>
-                    <div className="role-info">
-                      <span className="role-name">{opt.label}</span>
-                      <span className="role-desc">{opt.desc}</span>
-                    </div>
-                    {isSelected && <span className="role-check">✓</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── Category 2: Categorized Login Credentials ── */}
-          <div className="clay-category-section">
-            <div className="clay-category-header">
-              <span className="clay-category-num">02</span>
               <span className="clay-category-title">LOGIN CREDENTIALS</span>
             </div>
 
@@ -171,6 +155,71 @@ export const AdminLogin: React.FC = () => {
                   {showPassword ? '👁️' : '🙈'}
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* ── Category 02: Specify Your Role (Dropdown on 02) ── */}
+          <div className="clay-category-section" style={{ position: 'relative', zIndex: 10 }}>
+            <div className="clay-category-header">
+              <span className="clay-category-num">02</span>
+              <span className="clay-category-title">SPECIFY YOUR ROLE</span>
+            </div>
+
+            <div className="clay-dropdown-wrapper" ref={dropdownRef}>
+              <label className="clay-label">
+                <span>ASSIGNED DESIGNATION</span>
+              </label>
+
+              {/* Clay Dropdown Trigger */}
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={`clay-dropdown-trigger ${isDropdownOpen ? 'open' : ''}`}
+                aria-haspopup="listbox"
+                aria-expanded={isDropdownOpen}
+              >
+                <div className="clay-dropdown-current">
+                  <span className="dropdown-current-icon">{currentRoleObj.icon}</span>
+                  <div className="dropdown-current-info">
+                    <span className="dropdown-current-name">{currentRoleObj.label}</span>
+                    <span className="dropdown-current-desc">{currentRoleObj.desc}</span>
+                  </div>
+                </div>
+
+                <div className="clay-chevron-pill">
+                  <span className={`clay-chevron-arrow ${isDropdownOpen ? 'rotated' : ''}`}>▼</span>
+                </div>
+              </button>
+
+              {/* Clay Dropdown Options Menu */}
+              {isDropdownOpen && (
+                <div className="clay-dropdown-menu" role="listbox">
+                  {roleOptions.map((opt) => {
+                    const isSelected = selectedRole === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        onClick={() => {
+                          setSelectedRole(opt.key);
+                          setIsDropdownOpen(false);
+                          setError('');
+                        }}
+                        className={`clay-dropdown-item ${isSelected ? 'selected' : ''}`}
+                      >
+                        <span className="item-icon">{opt.icon}</span>
+                        <div className="item-text">
+                          <span className="item-label">{opt.label}</span>
+                          <span className="item-desc">{opt.desc}</span>
+                        </div>
+                        {isSelected && <span className="item-check">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -389,7 +438,7 @@ export const AdminLogin: React.FC = () => {
         .clay-form {
           display: flex;
           flex-direction: column;
-          gap: 1.4rem;
+          gap: 1.3rem;
         }
 
         /* ── Categorized Sections ── */
@@ -434,87 +483,198 @@ export const AdminLogin: React.FC = () => {
           text-transform: uppercase;
         }
 
-        /* ── Role Pills ── */
-        .clay-roles-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 0.65rem;
+        /* ── Dropdown Specifics ── */
+        .clay-dropdown-wrapper {
+          position: relative;
         }
 
-        .clay-role-pill {
+        .clay-dropdown-trigger {
           display: flex;
           align-items: center;
-          gap: 12px;
+          justify-content: space-between;
           width: 100%;
           padding: 0.75rem 1rem;
+          background: #e2eaf4;
           border-radius: 18px;
           border: 2px solid transparent;
           cursor: pointer;
           font-family: inherit;
           text-align: left;
-          transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-          background: #e9eff7;
-          color: #334155;
           box-shadow:
-            4px 5px 12px rgba(162, 178, 201, 0.35),
-            -3px -3px 8px rgba(255, 255, 255, 0.85),
-            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
-            inset -2px -2px 4px rgba(162, 178, 201, 0.2);
+            inset 4px 4px 8px rgba(162, 178, 201, 0.45),
+            inset -3px -3px 6px rgba(255, 255, 255, 0.9);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .clay-role-pill:hover {
-          transform: translateY(-2px);
-          box-shadow:
-            6px 8px 16px rgba(162, 178, 201, 0.45),
-            -4px -4px 10px rgba(255, 255, 255, 0.95);
+        .clay-dropdown-trigger:hover {
+          background: #e8f0fa;
         }
 
-        .clay-role-pill.active {
+        .clay-dropdown-trigger.open {
+          border-color: #3b82f6;
+          background: #ffffff;
+          box-shadow:
+            0 0 0 4px rgba(59, 130, 246, 0.15),
+            inset 2px 2px 4px rgba(162, 178, 201, 0.25),
+            inset -2px -2px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .clay-dropdown-current {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .dropdown-current-icon {
+          font-size: 1.4rem;
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
+        }
+
+        .dropdown-current-info {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .dropdown-current-name {
+          font-size: 0.92rem;
+          font-weight: 800;
+          color: #0f172a;
+          line-height: 1.2;
+        }
+
+        .dropdown-current-desc {
+          font-size: 0.72rem;
+          color: #64748b;
+          font-weight: 500;
+          margin-top: 1px;
+        }
+
+        .clay-chevron-pill {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #f1f5f9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow:
+            2px 3px 6px rgba(162, 178, 201, 0.4),
+            -2px -2px 4px rgba(255, 255, 255, 0.8),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.8);
+          flex-shrink: 0;
+        }
+
+        .clay-chevron-arrow {
+          font-size: 0.65rem;
+          color: #475569;
+          transition: transform 0.25s ease;
+        }
+
+        .clay-chevron-arrow.rotated {
+          transform: rotate(180deg);
+        }
+
+        /* Dropdown Menu Overlay */
+        .clay-dropdown-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          z-index: 999;
+          background: #eef4fb;
+          border-radius: 20px;
+          padding: 0.55rem;
+          border: 2.5px solid rgba(255, 255, 255, 0.95);
+          box-shadow:
+            14px 18px 36px rgba(162, 178, 201, 0.6),
+            -8px -8px 24px rgba(255, 255, 255, 0.95),
+            inset 2px 2px 6px rgba(255, 255, 255, 0.85);
+          animation: dropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+        }
+
+        @keyframes dropdownSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .clay-dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 0.75rem 1rem;
+          border-radius: 14px;
+          border: none;
+          background: #f4f8fd;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: left;
+          width: 100%;
+          transition: all 0.15s ease;
+          box-shadow:
+            2px 3px 6px rgba(162, 178, 201, 0.25),
+            -2px -2px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .clay-dropdown-item:hover {
+          transform: translateY(-1px);
+          background: #e6effa;
+          box-shadow:
+            4px 6px 12px rgba(162, 178, 201, 0.35),
+            -2px -2px 6px rgba(255, 255, 255, 0.9);
+        }
+
+        .clay-dropdown-item.selected {
           background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
           color: #ffffff;
-          border: 2px solid rgba(255, 255, 255, 0.6);
           box-shadow:
-            8px 10px 22px rgba(37, 99, 235, 0.4),
-            inset 3px 3px 6px rgba(255, 255, 255, 0.45),
-            inset -4px -4px 8px rgba(15, 23, 42, 0.3);
-          transform: translateY(-2px) scale(1.01);
+            6px 8px 18px rgba(37, 99, 235, 0.38),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.4),
+            inset -3px -3px 6px rgba(15, 23, 42, 0.3);
         }
 
-        .clay-role-pill.active .role-desc {
-          color: rgba(255, 255, 255, 0.82);
+        .clay-dropdown-item.selected .item-desc {
+          color: rgba(255, 255, 255, 0.85);
         }
 
-        .role-icon {
-          font-size: 1.4rem;
+        .item-icon {
+          font-size: 1.35rem;
           flex-shrink: 0;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
         }
 
-        .role-info {
+        .item-text {
           flex: 1;
           display: flex;
           flex-direction: column;
         }
 
-        .role-name {
-          font-size: 0.9rem;
+        .item-label {
+          font-size: 0.88rem;
           font-weight: 800;
           line-height: 1.2;
         }
 
-        .role-desc {
-          font-size: 0.72rem;
+        .item-desc {
+          font-size: 0.7rem;
           color: #64748b;
-          margin-top: 2px;
+          margin-top: 1px;
           font-weight: 500;
         }
 
-        .role-check {
-          font-size: 1rem;
+        .item-check {
+          font-size: 0.95rem;
           font-weight: 900;
           background: rgba(255, 255, 255, 0.25);
-          width: 24px;
-          height: 24px;
+          width: 22px;
+          height: 22px;
           border-radius: 50%;
           display: flex;
           align-items: center;
@@ -626,6 +786,7 @@ export const AdminLogin: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          margin-top: 0.2rem;
         }
 
         .clay-submit-btn:hover:not(:disabled) {
