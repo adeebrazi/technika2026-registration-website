@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import logoPng from '@/assets/logo.png';
 import technikaLogoJpg from '@/assets/technika_logo.jpg';
@@ -12,6 +12,8 @@ export const MAIN_WEBSITE_URL = typeof window !== 'undefined' &&
 export const Navbar: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   const handleHomeClick = () => {
     window.location.href = MAIN_WEBSITE_URL;
@@ -66,44 +68,46 @@ export const Navbar: React.FC = () => {
 
           {/* ── Right Actions ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* 3-Way Theme Switcher */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                background: 'var(--background, #fff)',
-                border: '2px solid var(--foreground, #000)',
-                padding: '2px',
-                gap: '2px',
-              }}
-            >
-              {(['main', 'dark', 'light'] as const).map(t => {
-                const isActive = theme === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTheme(t)}
-                    style={{
-                      padding: '2px 8px',
-                      fontSize: '10px',
-                      fontWeight: 900,
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      border: isActive ? '1px solid #000000' : '1px solid transparent',
-                      background: isActive ? 'var(--brut-yellow, #facc15)' : 'transparent',
-                      color: isActive ? '#000000' : 'var(--muted-foreground, #888)',
-                      boxShadow: isActive ? '1px 1px 0px 0px rgba(0,0,0,1)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.1s ease',
-                    }}
-                  >
-                    {t.toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
+            {/* 3-Way Theme Switcher (Hidden on Admin pages) */}
+            {!isAdminRoute && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  background: 'var(--background, #fff)',
+                  border: '2px solid var(--foreground, #000)',
+                  padding: '2px',
+                  gap: '2px',
+                }}
+              >
+                {(['main', 'dark', 'light'] as const).map(t => {
+                  const isActive = theme === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTheme(t)}
+                      style={{
+                        padding: '2px 8px',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        border: isActive ? '1px solid #000000' : '1px solid transparent',
+                        background: isActive ? 'var(--brut-yellow, #facc15)' : 'transparent',
+                        color: isActive ? '#000000' : 'var(--muted-foreground, #888)',
+                        boxShadow: isActive ? '1px 1px 0px 0px rgba(0,0,0,1)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      {t.toUpperCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Brochure button */}
             <a

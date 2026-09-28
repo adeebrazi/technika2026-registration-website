@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+type AdminRoleOption = 'Administration' | 'Faculty Coordinator' | 'Student Coordinator';
+
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
+  const [selectedRole, setSelectedRole] = useState<AdminRoleOption>('Administration');
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const roleOptions: { key: AdminRoleOption; label: string; icon: string; desc: string }[] = [
+    { key: 'Administration', label: 'Administration', icon: '🛡️', desc: 'Core organizing committee' },
+    { key: 'Faculty Coordinator', label: 'Faculty Coordinator', icon: '🎓', desc: 'Faculty event advisors' },
+    { key: 'Student Coordinator', label: 'Student Coordinator', icon: '⚡', desc: 'Event heads & coordinators' },
+  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,7 +30,11 @@ export const AdminLogin: React.FC = () => {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          role: selectedRole
+        }),
       });
 
       const data = await res.json();
@@ -27,166 +42,655 @@ export const AdminLogin: React.FC = () => {
       if (res.ok) {
         localStorage.setItem('adminToken', data.token);
         localStorage.setItem('adminRole', data.role);
+        localStorage.setItem('adminName', data.name || 'Administrator');
+        localStorage.setItem('adminDesignation', data.designation || selectedRole);
         navigate('/admin/users');
       } else {
-        setError(data.message || 'Login failed');
+        setError(data.message || 'Login failed. Please check your credentials.');
       }
     } catch (err) {
-      setError('Network error. Is the backend running?');
+      setError('Network error. Is the backend server running?');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'radial-gradient(ellipse at bottom, #111827 0%, #030712 100%)',
-      padding: '2rem',
-      position: 'relative',
-      overflow: 'hidden',
-      fontFamily: "'Space Grotesk', 'Outfit', sans-serif"
-    }}>
-      {/* Blurred glowing circles */}
-      <div style={{
-        position: 'absolute',
-        top: '15%',
-        left: '20%',
-        width: '250px',
-        height: '250px',
-        background: 'rgba(60, 230, 252, 0.15)',
-        borderRadius: '50%',
-        filter: 'blur(90px)',
-        zIndex: 0,
-        pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '15%',
-        right: '20%',
-        width: '300px',
-        height: '300px',
-        background: 'rgba(255, 0, 127, 0.12)',
-        borderRadius: '50%',
-        filter: 'blur(95px)',
-        zIndex: 0,
-        pointerEvents: 'none'
-      }} />
+    <div className="clay-login-page">
+      {/* ── Background Floating Clay Elements ── */}
+      <div className="clay-floating-orb orb-1" />
+      <div className="clay-floating-orb orb-2" />
+      <div className="clay-floating-orb orb-3" />
+      <div className="clay-floating-orb orb-4" />
 
-      <div style={{
-        position: 'relative',
-        zIndex: 1,
-        maxWidth: '400px',
-        width: '100%',
-        background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        padding: '2.5rem',
-        borderRadius: '16px',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4)'
-      }}>
-        <h2 style={{ 
-          fontSize: '2rem', 
-          fontWeight: '900', 
-          color: '#ffffff',
-          textAlign: 'center',
-          marginBottom: '2rem',
-          letterSpacing: '-0.02em',
-          textShadow: '0 0 10px rgba(60, 230, 252, 0.3)'
-        }}>
-          ADMIN PORTAL
-        </h2>
-        
+      {/* ── Main Claymorphism Login Card ── */}
+      <div className="clay-card">
+        {/* Top 3D Clay Emblem */}
+        <div className="clay-emblem-wrapper">
+          <div className="clay-emblem">
+            <span className="clay-emblem-icon">🔐</span>
+          </div>
+        </div>
+
+        <div className="clay-card-header">
+          <span className="clay-badge-tag">TECHNIKA 6.0 PORTAL</span>
+          <h1 className="clay-title">ADMIN LOGIN</h1>
+          <p className="clay-subtitle">Enter your official credentials and designated role to continue</p>
+        </div>
+
         {error && (
-          <div style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#f87171',
-            padding: '0.75rem 1rem',
-            borderRadius: '8px',
-            marginBottom: '1.5rem',
-            textAlign: 'center',
-            fontSize: '0.85rem',
-            fontWeight: 500
-          }}>
-            {error}
+          <div className="clay-error-box">
+            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Email Address</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                color: '#ffffff',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'all 0.2s',
-                fontFamily: 'inherit'
-              }}
-            />
-          </div>
-          
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                color: '#ffffff',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'all 0.2s',
-                fontFamily: 'inherit'
-              }}
-            />
+        <form onSubmit={handleSubmit} className="clay-form">
+          {/* ── Category 1: Specify Role ── */}
+          <div className="clay-category-section">
+            <div className="clay-category-header">
+              <span className="clay-category-num">01</span>
+              <span className="clay-category-title">SPECIFY YOUR ROLE</span>
+            </div>
+
+            <div className="clay-roles-grid">
+              {roleOptions.map((opt) => {
+                const isSelected = selectedRole === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRole(opt.key);
+                      setError('');
+                    }}
+                    className={`clay-role-pill ${isSelected ? 'active' : ''}`}
+                  >
+                    <span className="role-icon">{opt.icon}</span>
+                    <div className="role-info">
+                      <span className="role-name">{opt.label}</span>
+                      <span className="role-desc">{opt.desc}</span>
+                    </div>
+                    {isSelected && <span className="role-check">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
+          {/* ── Category 2: Categorized Login Credentials ── */}
+          <div className="clay-category-section">
+            <div className="clay-category-header">
+              <span className="clay-category-num">02</span>
+              <span className="clay-category-title">LOGIN CREDENTIALS</span>
+            </div>
+
+            {/* Email Field */}
+            <div className="clay-field-group">
+              <label className="clay-label">
+                <span>OFFICIAL EMAIL ADDRESS</span>
+              </label>
+              <div className="clay-input-inset">
+                <span className="input-icon">✉️</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="name@technika2026.online"
+                  required
+                  autoComplete="email"
+                  className="clay-input"
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="clay-field-group">
+              <label className="clay-label">
+                <span>ACCOUNT PASSWORD</span>
+              </label>
+              <div className="clay-input-inset">
+                <span className="input-icon">🔒</span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="clay-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="clay-eye-btn"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '👁️' : '🙈'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Action Submit Button ── */}
           <button
             type="submit"
             disabled={loading}
-            style={{
-              marginTop: '1rem',
-              width: '100%',
-              padding: '0.875rem',
-              background: 'linear-gradient(135deg, #3ce6fc 0%, #a855f7 100%)',
-              color: '#000000',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '0.95rem',
-              fontWeight: '900',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-              transition: 'transform 0.15s, box-shadow 0.15s',
-              boxShadow: '0 4px 14px 0 rgba(60, 230, 252, 0.3)'
-            }}
+            className={`clay-submit-btn ${loading ? 'loading' : ''}`}
           >
-            {loading ? 'AUTHENTICATING...' : 'ACCESS PORTAL'}
+            {loading ? (
+              <span className="btn-content">
+                <span className="clay-spinner" />
+                VERIFYING PERMISSIONS...
+              </span>
+            ) : (
+              <span className="btn-content">
+                ACCESS ADMIN PORTAL →
+              </span>
+            )}
           </button>
         </form>
+
+        <div className="clay-footer-note">
+          <span>🔒 Protected by Role-Based JWT Encryption • Technika 2026</span>
+        </div>
       </div>
+
+      {/* ── Claymorphism Stylesheet ── */}
+      <style>{`
+        .clay-login-page {
+          min-height: calc(100vh - 64px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 2.5rem 1rem;
+          background: #e6ecf5;
+          position: relative;
+          overflow: hidden;
+          font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          color: #1e293b;
+        }
+
+        /* ── Floating 3D Clay Spheres ── */
+        .clay-floating-orb {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 0;
+          filter: drop-shadow(0 15px 25px rgba(0,0,0,0.08));
+        }
+
+        .orb-1 {
+          width: 220px;
+          height: 220px;
+          top: 5%;
+          left: 8%;
+          background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
+          box-shadow: 
+            inset -14px -14px 28px rgba(99, 102, 241, 0.45),
+            inset 14px 14px 28px rgba(255, 255, 255, 0.7);
+          animation: floatOrb 8s ease-in-out infinite alternate;
+        }
+
+        .orb-2 {
+          width: 180px;
+          height: 180px;
+          bottom: 8%;
+          right: 8%;
+          background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
+          box-shadow: 
+            inset -12px -12px 24px rgba(16, 185, 129, 0.45),
+            inset 12px 12px 24px rgba(255, 255, 255, 0.7);
+          animation: floatOrb 10s ease-in-out 1s infinite alternate-reverse;
+        }
+
+        .orb-3 {
+          width: 110px;
+          height: 110px;
+          top: 15%;
+          right: 18%;
+          background: linear-gradient(135deg, #fbcfe8 0%, #f472b6 100%);
+          box-shadow: 
+            inset -8px -8px 18px rgba(236, 72, 153, 0.45),
+            inset 8px 8px 18px rgba(255, 255, 255, 0.7);
+          animation: floatOrb 7s ease-in-out 0.5s infinite alternate;
+        }
+
+        .orb-4 {
+          width: 130px;
+          height: 130px;
+          bottom: 12%;
+          left: 15%;
+          background: linear-gradient(135deg, #fde047 0%, #eab308 100%);
+          box-shadow: 
+            inset -9px -9px 20px rgba(202, 138, 4, 0.45),
+            inset 9px 9px 20px rgba(255, 255, 255, 0.7);
+          animation: floatOrb 9s ease-in-out 2s infinite alternate-reverse;
+        }
+
+        @keyframes floatOrb {
+          0% { transform: translateY(0px) rotate(0deg); }
+          100% { transform: translateY(-24px) rotate(8deg); }
+        }
+
+        /* ── Claymorphism Card ── */
+        .clay-card {
+          position: relative;
+          z-index: 2;
+          width: 100%;
+          max-width: 490px;
+          background: #eef3f9;
+          border-radius: 36px;
+          padding: 2.5rem 2.2rem 2rem 2.2rem;
+          border: 3px solid rgba(255, 255, 255, 0.85);
+          box-shadow:
+            24px 28px 48px rgba(162, 178, 201, 0.55),
+            -20px -20px 40px rgba(255, 255, 255, 0.95),
+            inset 4px 4px 10px rgba(255, 255, 255, 0.9),
+            inset -6px -6px 14px rgba(162, 178, 201, 0.35);
+          transition: transform 0.2s ease;
+        }
+
+        /* ── Top 3D Clay Emblem ── */
+        .clay-emblem-wrapper {
+          display: flex;
+          justify-content: center;
+          margin-top: -4.5rem;
+          margin-bottom: 1.25rem;
+        }
+
+        .clay-emblem {
+          width: 82px;
+          height: 82px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+          border: 4px solid #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow:
+            10px 14px 28px rgba(37, 99, 235, 0.4),
+            inset 5px 5px 10px rgba(255, 255, 255, 0.65),
+            inset -6px -6px 12px rgba(15, 23, 42, 0.35);
+          transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .clay-emblem:hover {
+          transform: scale(1.08) rotate(5deg);
+        }
+
+        .clay-emblem-icon {
+          font-size: 2.2rem;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        /* ── Header ── */
+        .clay-card-header {
+          text-align: center;
+          margin-bottom: 1.8rem;
+        }
+
+        .clay-badge-tag {
+          display: inline-block;
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #2563eb;
+          background: #dbeafe;
+          padding: 4px 12px;
+          border-radius: 9999px;
+          box-shadow: 
+            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+            inset -2px -2px 4px rgba(37, 99, 235, 0.2),
+            2px 3px 6px rgba(37, 99, 235, 0.12);
+          margin-bottom: 0.6rem;
+        }
+
+        .clay-title {
+          font-size: 1.95rem;
+          font-weight: 900;
+          color: #0f172a;
+          margin: 0;
+          letter-spacing: -0.03em;
+        }
+
+        .clay-subtitle {
+          font-size: 0.84rem;
+          color: #64748b;
+          margin-top: 0.4rem;
+          margin-bottom: 0;
+          line-height: 1.4;
+          font-weight: 500;
+        }
+
+        /* ── Error Box ── */
+        .clay-error-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #fee2e2;
+          color: #991b1b;
+          padding: 0.85rem 1.1rem;
+          border-radius: 18px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          margin-bottom: 1.4rem;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          box-shadow:
+            6px 8px 16px rgba(239, 68, 68, 0.15),
+            inset 3px 3px 6px rgba(255, 255, 255, 0.8),
+            inset -3px -3px 6px rgba(239, 68, 68, 0.18);
+        }
+
+        /* ── Form Layout ── */
+        .clay-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.4rem;
+        }
+
+        /* ── Categorized Sections ── */
+        .clay-category-section {
+          background: #f4f8fd;
+          border-radius: 24px;
+          padding: 1.25rem;
+          border: 2px solid rgba(255, 255, 255, 0.9);
+          box-shadow:
+            8px 10px 22px rgba(162, 178, 201, 0.25),
+            -6px -6px 16px rgba(255, 255, 255, 0.8),
+            inset 2px 2px 6px rgba(255, 255, 255, 0.8),
+            inset -3px -3px 6px rgba(162, 178, 201, 0.2);
+        }
+
+        .clay-category-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 0.9rem;
+        }
+
+        .clay-category-num {
+          font-size: 0.65rem;
+          font-weight: 900;
+          background: #2563eb;
+          color: #ffffff;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 1px 2px 4px rgba(37, 99, 235, 0.3);
+        }
+
+        .clay-category-title {
+          font-size: 0.72rem;
+          font-weight: 800;
+          color: #475569;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        /* ── Role Pills ── */
+        .clay-roles-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 0.65rem;
+        }
+
+        .clay-role-pill {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border-radius: 18px;
+          border: 2px solid transparent;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: left;
+          transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+          background: #e9eff7;
+          color: #334155;
+          box-shadow:
+            4px 5px 12px rgba(162, 178, 201, 0.35),
+            -3px -3px 8px rgba(255, 255, 255, 0.85),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+            inset -2px -2px 4px rgba(162, 178, 201, 0.2);
+        }
+
+        .clay-role-pill:hover {
+          transform: translateY(-2px);
+          box-shadow:
+            6px 8px 16px rgba(162, 178, 201, 0.45),
+            -4px -4px 10px rgba(255, 255, 255, 0.95);
+        }
+
+        .clay-role-pill.active {
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          color: #ffffff;
+          border: 2px solid rgba(255, 255, 255, 0.6);
+          box-shadow:
+            8px 10px 22px rgba(37, 99, 235, 0.4),
+            inset 3px 3px 6px rgba(255, 255, 255, 0.45),
+            inset -4px -4px 8px rgba(15, 23, 42, 0.3);
+          transform: translateY(-2px) scale(1.01);
+        }
+
+        .clay-role-pill.active .role-desc {
+          color: rgba(255, 255, 255, 0.82);
+        }
+
+        .role-icon {
+          font-size: 1.4rem;
+          flex-shrink: 0;
+          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .role-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .role-name {
+          font-size: 0.9rem;
+          font-weight: 800;
+          line-height: 1.2;
+        }
+
+        .role-desc {
+          font-size: 0.72rem;
+          color: #64748b;
+          margin-top: 2px;
+          font-weight: 500;
+        }
+
+        .role-check {
+          font-size: 1rem;
+          font-weight: 900;
+          background: rgba(255, 255, 255, 0.25);
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        /* ── Input Groups ── */
+        .clay-field-group {
+          margin-bottom: 0.85rem;
+        }
+
+        .clay-field-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .clay-label {
+          display: block;
+          font-size: 0.72rem;
+          font-weight: 800;
+          color: #475569;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          margin-bottom: 0.4rem;
+          padding-left: 4px;
+        }
+
+        .clay-input-inset {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #e2eaf4;
+          border-radius: 18px;
+          padding: 0.45rem 1rem;
+          border: 2px solid transparent;
+          box-shadow:
+            inset 4px 4px 8px rgba(162, 178, 201, 0.45),
+            inset -3px -3px 6px rgba(255, 255, 255, 0.9);
+          transition: all 0.2s ease;
+        }
+
+        .clay-input-inset:focus-within {
+          border-color: #3b82f6;
+          background: #ffffff;
+          box-shadow:
+            0 0 0 4px rgba(59, 130, 246, 0.15),
+            inset 2px 2px 4px rgba(162, 178, 201, 0.25),
+            inset -2px -2px 4px rgba(255, 255, 255, 0.8);
+        }
+
+        .input-icon {
+          font-size: 1.15rem;
+          opacity: 0.8;
+          flex-shrink: 0;
+        }
+
+        .clay-input {
+          flex: 1;
+          border: none;
+          background: transparent;
+          color: #0f172a;
+          font-size: 0.92rem;
+          font-weight: 600;
+          font-family: inherit;
+          padding: 0.5rem 0;
+          outline: none;
+          width: 100%;
+        }
+
+        .clay-input::placeholder {
+          color: #94a3b8;
+          font-weight: 400;
+        }
+
+        .clay-eye-btn {
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 1.1rem;
+          padding: 4px;
+          border-radius: 8px;
+          opacity: 0.7;
+          transition: opacity 0.15s;
+        }
+
+        .clay-eye-btn:hover {
+          opacity: 1;
+        }
+
+        /* ── 3D Clay Submit Button ── */
+        .clay-submit-btn {
+          width: 100%;
+          padding: 1.05rem;
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          color: #ffffff;
+          border-radius: 22px;
+          border: 2px solid rgba(255, 255, 255, 0.65);
+          font-family: inherit;
+          font-size: 0.95rem;
+          font-weight: 900;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          cursor: pointer;
+          box-shadow:
+            10px 14px 28px rgba(37, 99, 235, 0.42),
+            -4px -4px 10px rgba(255, 255, 255, 0.7),
+            inset 3px 3px 6px rgba(255, 255, 255, 0.5),
+            inset -4px -4px 8px rgba(15, 23, 42, 0.35);
+          transition: all 0.15s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .clay-submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow:
+            12px 18px 32px rgba(37, 99, 235, 0.48),
+            -4px -4px 12px rgba(255, 255, 255, 0.8),
+            inset 4px 4px 8px rgba(255, 255, 255, 0.6),
+            inset -4px -4px 8px rgba(15, 23, 42, 0.35);
+        }
+
+        .clay-submit-btn:active:not(:disabled) {
+          transform: translateY(2px) scale(0.99);
+          box-shadow:
+            4px 6px 16px rgba(37, 99, 235, 0.35),
+            inset 4px 4px 10px rgba(15, 23, 42, 0.4),
+            inset -2px -2px 6px rgba(255, 255, 255, 0.3);
+        }
+
+        .clay-submit-btn:disabled {
+          opacity: 0.75;
+          cursor: not-allowed;
+        }
+
+        .btn-content {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .clay-spinner {
+          width: 18px;
+          height: 18px;
+          border: 3px solid rgba(255, 255, 255, 0.4);
+          border-top-color: #ffffff;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        /* ── Footer ── */
+        .clay-footer-note {
+          text-align: center;
+          margin-top: 1.4rem;
+          font-size: 0.72rem;
+          color: #94a3b8;
+          font-weight: 600;
+        }
+
+        @media (max-width: 640px) {
+          .clay-card {
+            padding: 2.2rem 1.4rem 1.6rem 1.4rem;
+            border-radius: 28px;
+          }
+          .clay-title {
+            font-size: 1.65rem;
+          }
+          .clay-floating-orb {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 };

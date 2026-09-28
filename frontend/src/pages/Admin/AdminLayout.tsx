@@ -6,6 +6,8 @@ export const AdminLayout: React.FC = () => {
 
   const token = localStorage.getItem('adminToken');
   const role = localStorage.getItem('adminRole');
+  const name = localStorage.getItem('adminName') || 'Administrator';
+  const designation = localStorage.getItem('adminDesignation') || (role === 'admin' ? 'Administration' : 'Coordinator');
 
   if (!token) {
     return <Navigate to="/admin/login" replace />;
@@ -14,7 +16,19 @@ export const AdminLayout: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
+    localStorage.removeItem('adminName');
+    localStorage.removeItem('adminDesignation');
     navigate('/admin/login');
+  };
+
+  const getInitials = (fullName: string) => {
+    return fullName
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
   };
 
   const navItems = [
@@ -70,13 +84,68 @@ export const AdminLayout: React.FC = () => {
         position: 'relative',
         zIndex: 2
       }}>
-        <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#ffffff', margin: 0, letterSpacing: '-0.02em', textShadow: '0 0 10px rgba(60, 230, 252, 0.2)' }}>
-            TECHNIKA
-          </h1>
-          <span style={{ fontSize: '0.65rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>
-            Portal: {role}
-          </span>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.2rem' }}>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: '900', color: '#ffffff', margin: 0, letterSpacing: '-0.02em', textShadow: '0 0 10px rgba(60, 230, 252, 0.2)' }}>
+              TECHNIKA 6.0
+            </h1>
+            <span style={{ fontSize: '0.62rem', background: 'rgba(60, 230, 252, 0.15)', color: '#3ce6fc', padding: '2px 7px', borderRadius: '4px', fontWeight: 800, textTransform: 'uppercase' }}>
+              ADMIN
+            </span>
+          </div>
+
+          {/* User Profile Card */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'rgba(255, 255, 255, 0.04)',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.08)'
+          }}>
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3ce6fc 0%, #a855f7 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: '0.85rem',
+              color: '#000000',
+              flexShrink: 0
+            }}>
+              {getInitials(name)}
+            </div>
+            <div style={{ overflow: 'hidden', minWidth: 0 }}>
+              <div style={{
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {name}
+              </div>
+              <div style={{
+                color: '#38bdf8',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80' }} />
+                {designation}
+              </div>
+            </div>
+          </div>
         </div>
 
         <nav style={{ flex: 1, padding: '1.5rem 1rem' }}>

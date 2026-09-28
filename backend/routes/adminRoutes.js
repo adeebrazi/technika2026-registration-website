@@ -16,15 +16,64 @@ const parseEnvUsers = (envStr) => {
   });
 };
 
+// Known name mappings for team members / coordinators / admins
+const ADMIN_PROFILES = {
+  'adeeb@technika2026.online': { name: 'Adeeb Razi', designation: 'Administration' },
+  'anjali@technika2026.online': { name: 'Anjali Kumari', designation: 'Administration' },
+  'mamathav@technika2026.online': { name: 'Prof. Mamatha V', designation: 'Faculty Coordinator' },
+  'viranshuk@technika2026.online': { name: 'Viranshu Kumar', designation: 'Student Coordinator' },
+  'rashida@technika2026.online': { name: 'Rashid Ali', designation: 'Student Coordinator' },
+  'divyap@technika2026.online': { name: 'Divya Prakash', designation: 'Student Coordinator' },
+  'premnaths@technika2026.online': { name: 'Prem Nath Sharma', designation: 'Student Coordinator' },
+  'sayantanid@technika2026.online': { name: 'Sayantani Das', designation: 'Student Coordinator' },
+  'astikp@technika2026.online': { name: 'Astik Pandey', designation: 'Student Coordinator' },
+  'sonalim@technika2026.online': { name: 'Sonali Mahato', designation: 'Student Coordinator' },
+  'nikitam@technika2026.online': { name: 'Nikita Kumari', designation: 'Student Coordinator' },
+  'aadityas@technika2026.online': { name: 'Aaditya Sharma', designation: 'Student Coordinator' },
+  'sanchita@technika2026.online': { name: 'Sanchit Agarwal', designation: 'Student Coordinator' },
+  'harshp@technika2026.online': { name: 'Harsh Prasad', designation: 'Student Coordinator' },
+  'ishikas@technika2026.online': { name: 'Ishika Singh', designation: 'Student Coordinator' },
+  'ankitr@technika2026.online': { name: 'Ankit Raj', designation: 'Student Coordinator' },
+  'ssumanr@technika2026.online': { name: 'S Suman Roy', designation: 'Student Coordinator' },
+  'princek@technika2026.online': { name: 'Prince Kumar', designation: 'Student Coordinator' },
+  'anishs@technika2026.online': { name: 'Anish Singh', designation: 'Student Coordinator' },
+  'rishavs@technika2026.online': { name: 'Rishav Sharma', designation: 'Student Coordinator' },
+  'saraswatik@technika2026.online': { name: 'Saraswati Kumari', designation: 'Student Coordinator' }
+};
+
+const formatNameFromEmail = (email) => {
+  if (!email) return 'Admin User';
+  const prefix = email.split('@')[0];
+  return prefix
+    .replace(/[._-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+};
+
+const getRoleDesignation = (roleKey, requestedRole) => {
+  if (requestedRole && ['Faculty Coordinator', 'Administration', 'Student Coordinator'].includes(requestedRole)) {
+    return requestedRole;
+  }
+  if (roleKey === 'admin') return 'Administration';
+  if (roleKey === 'faculty') return 'Faculty Coordinator';
+  if (roleKey === 'coordinator') return 'Student Coordinator';
+  return 'Staff Member';
+};
+
 // @route   POST /api/admin/login
-// @desc    Admin authentication
+// @desc    Admin authentication with role and designation
 // @access  Public
 router.post('/login', (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPass = password.trim();
 
   // Load from env
   const rolesMap = {
@@ -34,24 +83,60 @@ router.post('/login', (req, res) => {
     volunteer: parseEnvUsers(process.env.VOLUNTEER_USERS)
   };
 
+  const roleKeyMap = {
+    'Administration': 'admin',
+    'Faculty Coordinator': 'faculty',
+    'Student Coordinator': 'coordinator',
+    'admin': 'admin',
+    'faculty': 'faculty',
+    'coordinator': 'coordinator'
+  };
+
+  const requestedKey = role ? roleKeyMap[role] : null;
+
   let matchedRole = null;
 
-  for (const [role, users] of Object.entries(rolesMap)) {
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      matchedRole = role;
-      break;
+  // 1. If role specified, test matching in that specific role
+  if (requestedKey && rolesMap[requestedKey]) {
+    const userInRole = rolesMap[requestedKey].find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass);
+    if (userInRole) {
+      matchedRole = requestedKey;
+    }
+  }
+
+  // 2. Special case: If user picked 'Faculty Coordinator' or 'Administration' and is in admin users
+  if (!matchedRole && requestedKey === 'faculty') {
+    const userInAdmin = rolesMap.admin.find(u => u.email.toLowerCase() === cleanEmail && u.password === cleanPass);
+    if (userInAdmin) {
+      matchedRole = 'faculty';
+    }
+  }
+
+  // 3. Fallback: match any role if not matched above
+  if (!matchedRole) {
+    for (const [rKey, users] of Object.entries(rolesMap)) {
+      const u = users.find(user => user.email.toLowerCase() === cleanEmail && user.password === cleanPass);
+      if (u) {
+        matchedRole = rKey;
+        break;
+      }
     }
   }
 
   if (!matchedRole) {
-    return res.status(401).json({ message: 'Invalid credentials or no permission' });
+    return res.status(401).json({ message: 'Invalid credentials or unauthorized role' });
   }
+
+  const known = ADMIN_PROFILES[cleanEmail];
+  const displayName = known?.name || formatNameFromEmail(cleanEmail);
+  const finalDesignation = role ? role : (known?.designation || getRoleDesignation(matchedRole));
 
   // Create token
   const payload = {
-    email,
+    email: cleanEmail,
     role: matchedRole,
+    name: displayName,
+    designation: finalDesignation,
     isAdmin: true
   };
 
@@ -61,7 +146,13 @@ router.post('/login', (req, res) => {
     { expiresIn: '12h' },
     (err, token) => {
       if (err) throw err;
-      res.json({ success: true, token, role: matchedRole });
+      res.json({
+        success: true,
+        token,
+        role: matchedRole,
+        name: displayName,
+        designation: finalDesignation
+      });
     }
   );
 });
