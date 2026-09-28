@@ -286,7 +286,7 @@ export const Dashboard: React.FC = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                   <div>
                                     <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-main)' }}>
-                                      TEAM: <span style={{ color: '#FFE600' }}>{userTeam?.teamName || 'Team'}</span>
+                                      TEAM NAME: <span style={{ color: '#FFE600' }}>{userTeam?.teamName || 'Team'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                                       <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#FFE600', background: '#000000', padding: '2px 8px', border: '1.5px solid #FFE600' }}>
