@@ -29,8 +29,10 @@ export const Navbar: React.FC = () => {
           left: 0,
           right: 0,
           zIndex: 9999,
-          background: 'var(--brut-yellow, #facc15)',
-          borderBottom: '3px solid var(--foreground, #000)',
+          background: isAdminRoute ? '#eef3f9' : 'var(--brut-yellow, #facc15)',
+          borderBottom: isAdminRoute ? '2.5px solid rgba(255, 255, 255, 0.95)' : '3px solid var(--foreground, #000)',
+          boxShadow: isAdminRoute ? '0 10px 30px rgba(162, 178, 201, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.9)' : 'none',
+          transition: 'all 0.25s ease',
         }}
       >
         <div
@@ -45,11 +47,30 @@ export const Navbar: React.FC = () => {
         >
           {/* ── Logos ── */}
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              flexShrink: 0,
+              background: isAdminRoute ? '#f4f8fd' : 'transparent',
+              padding: isAdminRoute ? '5px 14px' : '0',
+              borderRadius: isAdminRoute ? '16px' : '0',
+              boxShadow: isAdminRoute ? 'inset 2px 2px 5px rgba(255, 255, 255, 0.9), inset -2px -2px 5px rgba(162, 178, 201, 0.3)' : 'none',
+              border: isAdminRoute ? '1.5px solid rgba(255, 255, 255, 0.85)' : 'none',
+            }}
             onClick={() => navigate('/')}
           >
             <img src={logoPng} alt="ARKA JAIN University" style={{ height: '38px', width: 'auto', objectFit: 'contain' }} />
-            <div style={{ width: '2px', height: '24px', background: 'var(--foreground, #000)', opacity: 0.3 }} className="hidden-mobile" />
+            <div
+              style={{
+                width: '2px',
+                height: '24px',
+                background: isAdminRoute ? '#94a3b8' : 'var(--foreground, #000)',
+                opacity: isAdminRoute ? 0.4 : 0.3,
+              }}
+              className="hidden-mobile"
+            />
             <img
               src={technikaLogoJpg}
               alt="Technika Logo"
@@ -57,14 +78,13 @@ export const Navbar: React.FC = () => {
                 height: '38px',
                 width: 'auto',
                 objectFit: 'contain',
-                border: '2px solid var(--foreground, #000)',
-                boxShadow: '1.5px 1.5px 0px 0px rgba(0,0,0,1)',
+                borderRadius: isAdminRoute ? '10px' : '0',
+                border: isAdminRoute ? '2px solid rgba(255, 255, 255, 0.8)' : '2px solid var(--foreground, #000)',
+                boxShadow: isAdminRoute ? '3px 4px 10px rgba(162, 178, 201, 0.35)' : '1.5px 1.5px 0px 0px rgba(0,0,0,1)',
               }}
               className="hidden-mobile"
             />
           </div>
-
-
 
           {/* ── Right Actions ── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -109,73 +129,88 @@ export const Navbar: React.FC = () => {
               </div>
             )}
 
-            {/* Brochure button */}
-            <a
-              href="/brochure.pdf"
-              target="_blank"
-              rel="noreferrer"
-              className="nav-btn-brochure"
-              style={{
-                display: 'inline-block',
-                padding: '6px 14px',
-                fontSize: '0.75rem',
-                fontWeight: 900,
-                fontFamily: "'Space Grotesk', sans-serif",
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--foreground, #000)',
-                background: 'var(--background, #fff)',
-                border: '2px solid var(--foreground, #000)',
-                boxShadow: '2px 2px 0px rgba(0,0,0,1)',
-                textDecoration: 'none',
-                transition: 'all 0.1s ease',
-                whiteSpace: 'nowrap',
-              }}
-              onMouseEnter={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.transform = 'translate(1px, 1px)';
-                el.style.boxShadow = 'none';
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget as HTMLElement;
-                el.style.transform = 'none';
-                el.style.boxShadow = '2px 2px 0px rgba(0,0,0,1)';
-              }}
-            >
-              Brochure
-            </a>
+            {/* Brochure button (Hidden on Admin pages) */}
+            {!isAdminRoute && (
+              <a
+                href="/brochure.pdf"
+                target="_blank"
+                rel="noreferrer"
+                className="nav-btn-brochure"
+                style={{
+                  display: 'inline-block',
+                  padding: '6px 14px',
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  color: 'var(--foreground, #000)',
+                  background: 'var(--background, #fff)',
+                  border: '2px solid var(--foreground, #000)',
+                  boxShadow: '2px 2px 0px rgba(0,0,0,1)',
+                  textDecoration: 'none',
+                  transition: 'all 0.1s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'translate(1px, 1px)';
+                  el.style.boxShadow = 'none';
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLElement;
+                  el.style.transform = 'none';
+                  el.style.boxShadow = '2px 2px 0px rgba(0,0,0,1)';
+                }}
+              >
+                Brochure
+              </a>
+            )}
 
             {/* Home button */}
             <button
               onClick={handleHomeClick}
-              className="nav-btn-register"
+              className={isAdminRoute ? 'clay-nav-btn' : 'nav-btn-register'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '6px 16px',
+                gap: '6px',
+                padding: isAdminRoute ? '8px 18px' : '6px 16px',
                 fontSize: '0.75rem',
                 fontWeight: 900,
                 fontFamily: "'Space Grotesk', sans-serif",
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
-                color: 'var(--background, #fff)',
-                background: 'var(--foreground, #000)',
-                border: '2px solid var(--foreground, #000)',
-                boxShadow: '2px 2px 0px rgba(0,0,0,1)',
+                color: '#ffffff',
+                background: isAdminRoute ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'var(--foreground, #000)',
+                borderRadius: isAdminRoute ? '14px' : '0',
+                border: isAdminRoute ? '2px solid rgba(255, 255, 255, 0.7)' : '2px solid var(--foreground, #000)',
+                boxShadow: isAdminRoute
+                  ? '4px 6px 14px rgba(37, 99, 235, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.45), inset -2px -2px 4px rgba(15, 23, 42, 0.25)'
+                  : '2px 2px 0px rgba(0,0,0,1)',
                 cursor: 'pointer',
-                transition: 'all 0.1s ease',
+                transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap',
               }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.transform = 'translate(1px, 1px)';
-                el.style.boxShadow = 'none';
+                if (isAdminRoute) {
+                  el.style.transform = 'translateY(-1px)';
+                  el.style.boxShadow = '5px 8px 18px rgba(37, 99, 235, 0.45), inset 2px 2px 4px rgba(255, 255, 255, 0.5), inset -2px -2px 4px rgba(15, 23, 42, 0.25)';
+                } else {
+                  el.style.transform = 'translate(1px, 1px)';
+                  el.style.boxShadow = 'none';
+                }
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLElement;
-                el.style.transform = 'none';
-                el.style.boxShadow = '2px 2px 0px rgba(0,0,0,1)';
+                if (isAdminRoute) {
+                  el.style.transform = 'none';
+                  el.style.boxShadow = '4px 6px 14px rgba(37, 99, 235, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.45), inset -2px -2px 4px rgba(15, 23, 42, 0.25)';
+                } else {
+                  el.style.transform = 'none';
+                  el.style.boxShadow = '2px 2px 0px rgba(0,0,0,1)';
+                }
               }}
             >
               HOME →

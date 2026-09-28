@@ -109,13 +109,15 @@ export const AdminLogin: React.FC = () => {
               <span className="clay-category-title">LOGIN CREDENTIALS</span>
             </div>
 
-            {/* Email Field */}
+            {/* Email Field with updated label */}
             <div className="clay-field-group">
               <label className="clay-label">
-                <span>OFFICIAL EMAIL ADDRESS</span>
+                <span>Enter Your @technika2026.online email</span>
               </label>
-              <div className="clay-input-inset">
-                <span className="input-icon">✉️</span>
+              <div className="clay-input-box">
+                <div className="clay-input-badge">
+                  <span>✉️</span>
+                </div>
                 <input
                   type="email"
                   name="email"
@@ -124,7 +126,7 @@ export const AdminLogin: React.FC = () => {
                   placeholder="name@technika2026.online"
                   required
                   autoComplete="email"
-                  className="clay-input"
+                  className="clay-pure-input"
                 />
               </div>
             </div>
@@ -134,8 +136,10 @@ export const AdminLogin: React.FC = () => {
               <label className="clay-label">
                 <span>ACCOUNT PASSWORD</span>
               </label>
-              <div className="clay-input-inset">
-                <span className="input-icon">🔒</span>
+              <div className="clay-input-box">
+                <div className="clay-input-badge">
+                  <span>🔒</span>
+                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
@@ -144,7 +148,7 @@ export const AdminLogin: React.FC = () => {
                   placeholder="••••••••••••"
                   required
                   autoComplete="current-password"
-                  className="clay-input"
+                  className="clay-pure-input"
                 />
                 <button
                   type="button"
@@ -483,6 +487,122 @@ export const AdminLogin: React.FC = () => {
           text-transform: uppercase;
         }
 
+        /* ── Redesigned Input Groups ── */
+        .clay-field-group {
+          margin-bottom: 0.95rem;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .clay-field-group:last-child {
+          margin-bottom: 0;
+        }
+
+        .clay-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: #334155;
+          letter-spacing: 0.02em;
+          margin-bottom: 0.45rem;
+          padding-left: 4px;
+        }
+
+        .clay-input-box {
+          display: flex !important;
+          align-items: center !important;
+          gap: 10px !important;
+          background: #e2eaf4 !important;
+          border-radius: 20px !important;
+          padding: 6px 10px !important;
+          border: 2px solid transparent !important;
+          box-sizing: border-box !important;
+          width: 100% !important;
+          box-shadow:
+            inset 3px 3px 7px rgba(162, 178, 201, 0.5),
+            inset -3px -3px 7px rgba(255, 255, 255, 0.95) !important;
+          transition: all 0.2s ease !important;
+          overflow: hidden !important;
+        }
+
+        .clay-input-box:focus-within {
+          border-color: #3b82f6 !important;
+          background: #ffffff !important;
+          box-shadow:
+            0 0 0 4px rgba(59, 130, 246, 0.18),
+            inset 2px 2px 4px rgba(162, 178, 201, 0.25),
+            inset -2px -2px 4px rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .clay-input-badge {
+          width: 38px !important;
+          height: 38px !important;
+          border-radius: 14px !important;
+          background: #f1f5fa !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          font-size: 1.15rem !important;
+          flex-shrink: 0 !important;
+          box-shadow:
+            2px 2px 5px rgba(162, 178, 201, 0.35),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
+        }
+
+        .clay-pure-input {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          width: 100% !important;
+          border: none !important;
+          outline: none !important;
+          background: transparent !important;
+          background-color: transparent !important;
+          color: #0f172a !important;
+          font-size: 0.92rem !important;
+          font-weight: 600 !important;
+          font-family: inherit !important;
+          padding: 8px 4px !important;
+          height: auto !important;
+          box-shadow: none !important;
+        }
+
+        .clay-pure-input::placeholder {
+          color: #94a3b8 !important;
+          font-weight: 400 !important;
+        }
+
+        .clay-pure-input:-webkit-autofill,
+        .clay-pure-input:-webkit-autofill:hover, 
+        .clay-pure-input:-webkit-autofill:focus,
+        .clay-pure-input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #e2eaf4 inset !important;
+          -webkit-text-fill-color: #0f172a !important;
+          caret-color: #0f172a !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+
+        .clay-eye-btn {
+          border: none !important;
+          background: #f1f5fa !important;
+          cursor: pointer !important;
+          font-size: 1.1rem !important;
+          width: 36px !important;
+          height: 36px !important;
+          border-radius: 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          box-shadow:
+            2px 2px 4px rgba(162, 178, 201, 0.3),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
+          transition: transform 0.15s, opacity 0.15s !important;
+          flex-shrink: 0 !important;
+        }
+
+        .clay-eye-btn:hover {
+          transform: scale(1.05) !important;
+        }
+
         /* ── Dropdown Specifics ── */
         .clay-dropdown-wrapper {
           position: relative;
@@ -679,88 +799,6 @@ export const AdminLogin: React.FC = () => {
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-
-        /* ── Input Groups ── */
-        .clay-field-group {
-          margin-bottom: 0.85rem;
-        }
-
-        .clay-field-group:last-child {
-          margin-bottom: 0;
-        }
-
-        .clay-label {
-          display: block;
-          font-size: 0.72rem;
-          font-weight: 800;
-          color: #475569;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          margin-bottom: 0.4rem;
-          padding-left: 4px;
-        }
-
-        .clay-input-inset {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: #e2eaf4;
-          border-radius: 18px;
-          padding: 0.45rem 1rem;
-          border: 2px solid transparent;
-          box-shadow:
-            inset 4px 4px 8px rgba(162, 178, 201, 0.45),
-            inset -3px -3px 6px rgba(255, 255, 255, 0.9);
-          transition: all 0.2s ease;
-        }
-
-        .clay-input-inset:focus-within {
-          border-color: #3b82f6;
-          background: #ffffff;
-          box-shadow:
-            0 0 0 4px rgba(59, 130, 246, 0.15),
-            inset 2px 2px 4px rgba(162, 178, 201, 0.25),
-            inset -2px -2px 4px rgba(255, 255, 255, 0.8);
-        }
-
-        .input-icon {
-          font-size: 1.15rem;
-          opacity: 0.8;
-          flex-shrink: 0;
-        }
-
-        .clay-input {
-          flex: 1;
-          border: none;
-          background: transparent;
-          color: #0f172a;
-          font-size: 0.92rem;
-          font-weight: 600;
-          font-family: inherit;
-          padding: 0.5rem 0;
-          outline: none;
-          width: 100%;
-        }
-
-        .clay-input::placeholder {
-          color: #94a3b8;
-          font-weight: 400;
-        }
-
-        .clay-eye-btn {
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          font-size: 1.1rem;
-          padding: 4px;
-          border-radius: 8px;
-          opacity: 0.7;
-          transition: opacity 0.15s;
-        }
-
-        .clay-eye-btn:hover {
-          opacity: 1;
         }
 
         /* ── 3D Clay Submit Button ── */
