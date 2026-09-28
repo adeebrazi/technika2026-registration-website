@@ -22,6 +22,15 @@ export const AdminLogin: React.FC = () => {
 
   const currentRoleObj = roleOptions.find((r) => r.key === selectedRole) || roleOptions[0];
 
+  // Prevent scrollbar on login page to fit exact one screen height
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -79,7 +88,7 @@ export const AdminLogin: React.FC = () => {
       <div className="clay-floating-orb orb-3" />
       <div className="clay-floating-orb orb-4" />
 
-      {/* ── Main Claymorphism Login Card ── */}
+      {/* ── Main Compact Claymorphism Login Card ── */}
       <div className="clay-card">
         {/* Top 3D Clay Emblem */}
         <div className="clay-emblem-wrapper">
@@ -96,7 +105,7 @@ export const AdminLogin: React.FC = () => {
 
         {error && (
           <div className="clay-error-box">
-            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+            <span style={{ fontSize: '1rem' }}>⚠️</span>
             <span>{error}</span>
           </div>
         )}
@@ -236,7 +245,7 @@ export const AdminLogin: React.FC = () => {
             {loading ? (
               <span className="btn-content">
                 <span className="clay-spinner" />
-                VERIFYING PERMISSIONS...
+                VERIFYING...
               </span>
             ) : (
               <span className="btn-content">
@@ -251,19 +260,21 @@ export const AdminLogin: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Claymorphism Stylesheet ── */}
+      {/* ── Claymorphism Stylesheet (Compact Viewport Fit) ── */}
       <style>{`
         .clay-login-page {
-          min-height: calc(100vh - 64px);
+          height: calc(100vh - 64px);
+          max-height: calc(100vh - 64px);
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 2.5rem 1rem;
+          padding: 0.75rem 1rem;
           background: #e6ecf5;
           position: relative;
           overflow: hidden;
           font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           color: #1e293b;
+          box-sizing: border-box;
         }
 
         /* ── Floating 3D Clay Spheres ── */
@@ -276,220 +287,218 @@ export const AdminLogin: React.FC = () => {
         }
 
         .orb-1 {
-          width: 220px;
-          height: 220px;
-          top: 5%;
-          left: 8%;
+          width: 170px;
+          height: 170px;
+          top: 6%;
+          left: 7%;
           background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
           box-shadow: 
-            inset -14px -14px 28px rgba(99, 102, 241, 0.45),
-            inset 14px 14px 28px rgba(255, 255, 255, 0.7);
+            inset -10px -10px 20px rgba(99, 102, 241, 0.45),
+            inset 10px 10px 20px rgba(255, 255, 255, 0.7);
           animation: floatOrb 8s ease-in-out infinite alternate;
         }
 
         .orb-2 {
-          width: 180px;
-          height: 180px;
-          bottom: 8%;
-          right: 8%;
+          width: 140px;
+          height: 140px;
+          bottom: 6%;
+          right: 7%;
           background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);
           box-shadow: 
-            inset -12px -12px 24px rgba(16, 185, 129, 0.45),
-            inset 12px 12px 24px rgba(255, 255, 255, 0.7);
+            inset -10px -10px 20px rgba(16, 185, 129, 0.45),
+            inset 10px 10px 20px rgba(255, 255, 255, 0.7);
           animation: floatOrb 10s ease-in-out 1s infinite alternate-reverse;
         }
 
         .orb-3 {
-          width: 110px;
-          height: 110px;
-          top: 15%;
-          right: 18%;
+          width: 90px;
+          height: 90px;
+          top: 12%;
+          right: 15%;
           background: linear-gradient(135deg, #fbcfe8 0%, #f472b6 100%);
           box-shadow: 
-            inset -8px -8px 18px rgba(236, 72, 153, 0.45),
-            inset 8px 8px 18px rgba(255, 255, 255, 0.7);
+            inset -6px -6px 14px rgba(236, 72, 153, 0.45),
+            inset 6px 6px 14px rgba(255, 255, 255, 0.7);
           animation: floatOrb 7s ease-in-out 0.5s infinite alternate;
         }
 
         .orb-4 {
-          width: 130px;
-          height: 130px;
-          bottom: 12%;
-          left: 15%;
+          width: 100px;
+          height: 100px;
+          bottom: 10%;
+          left: 12%;
           background: linear-gradient(135deg, #fde047 0%, #eab308 100%);
           box-shadow: 
-            inset -9px -9px 20px rgba(202, 138, 4, 0.45),
-            inset 9px 9px 20px rgba(255, 255, 255, 0.7);
+            inset -7px -7px 16px rgba(202, 138, 4, 0.45),
+            inset 7px 7px 16px rgba(255, 255, 255, 0.7);
           animation: floatOrb 9s ease-in-out 2s infinite alternate-reverse;
         }
 
         @keyframes floatOrb {
           0% { transform: translateY(0px) rotate(0deg); }
-          100% { transform: translateY(-24px) rotate(8deg); }
+          100% { transform: translateY(-16px) rotate(6deg); }
         }
 
-        /* ── Claymorphism Card ── */
+        /* ── Compact Claymorphism Card ── */
         .clay-card {
           position: relative;
           z-index: 2;
           width: 100%;
-          max-width: 490px;
+          max-width: 440px;
           background: #eef3f9;
-          border-radius: 36px;
-          padding: 2.5rem 2.2rem 2rem 2.2rem;
-          border: 3px solid rgba(255, 255, 255, 0.85);
+          border-radius: 28px;
+          padding: 1.4rem 1.6rem 1.1rem 1.6rem;
+          border: 2.5px solid rgba(255, 255, 255, 0.9);
           box-shadow:
-            24px 28px 48px rgba(162, 178, 201, 0.55),
-            -20px -20px 40px rgba(255, 255, 255, 0.95),
-            inset 4px 4px 10px rgba(255, 255, 255, 0.9),
-            inset -6px -6px 14px rgba(162, 178, 201, 0.35);
-          transition: transform 0.2s ease;
+            20px 24px 44px rgba(162, 178, 201, 0.52),
+            -16px -16px 36px rgba(255, 255, 255, 0.95),
+            inset 3px 3px 8px rgba(255, 255, 255, 0.9),
+            inset -5px -5px 10px rgba(162, 178, 201, 0.3);
+          box-sizing: border-box;
         }
 
-        /* ── Top 3D Clay Emblem ── */
+        /* ── Top 3D Clay Emblem (Compact) ── */
         .clay-emblem-wrapper {
           display: flex;
           justify-content: center;
-          margin-top: -4.5rem;
-          margin-bottom: 1.25rem;
+          margin-top: -3.2rem;
+          margin-bottom: 0.45rem;
         }
 
         .clay-emblem {
-          width: 82px;
-          height: 82px;
+          width: 60px;
+          height: 60px;
           border-radius: 50%;
           background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-          border: 4px solid #ffffff;
+          border: 3.5px solid #ffffff;
           display: flex;
           align-items: center;
           justify-content: center;
           box-shadow:
-            10px 14px 28px rgba(37, 99, 235, 0.4),
-            inset 5px 5px 10px rgba(255, 255, 255, 0.65),
-            inset -6px -6px 12px rgba(15, 23, 42, 0.35);
+            8px 12px 22px rgba(37, 99, 235, 0.4),
+            inset 4px 4px 8px rgba(255, 255, 255, 0.65),
+            inset -4px -4px 8px rgba(15, 23, 42, 0.35);
           transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
-        .clay-emblem:hover {
-          transform: scale(1.08) rotate(5deg);
-        }
-
         .clay-emblem-icon {
-          font-size: 2.2rem;
+          font-size: 1.65rem;
           filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
-        /* ── Header ── */
+        /* ── Compact Header ── */
         .clay-card-header {
           text-align: center;
-          margin-bottom: 1.8rem;
+          margin-bottom: 0.85rem;
         }
 
         .clay-badge-tag {
           display: inline-block;
-          font-size: 0.68rem;
+          font-size: 0.62rem;
           font-weight: 800;
-          letter-spacing: 0.12em;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
           color: #2563eb;
           background: #dbeafe;
-          padding: 4px 12px;
+          padding: 2px 10px;
           border-radius: 9999px;
           box-shadow: 
-            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
-            inset -2px -2px 4px rgba(37, 99, 235, 0.2),
-            2px 3px 6px rgba(37, 99, 235, 0.12);
-          margin-bottom: 0.6rem;
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.8),
+            inset -1.5px -1.5px 3px rgba(37, 99, 235, 0.2),
+            2px 2px 5px rgba(37, 99, 235, 0.1);
+          margin-bottom: 0.25rem;
         }
 
         .clay-title {
-          font-size: 1.95rem;
+          font-size: 1.45rem;
           font-weight: 900;
           color: #0f172a;
           margin: 0;
-          letter-spacing: -0.03em;
+          letter-spacing: -0.02em;
+          line-height: 1.1;
         }
 
         .clay-subtitle {
-          font-size: 0.84rem;
+          font-size: 0.74rem;
           color: #64748b;
-          margin-top: 0.4rem;
+          margin-top: 0.2rem;
           margin-bottom: 0;
-          line-height: 1.4;
+          line-height: 1.3;
           font-weight: 500;
         }
 
-        /* ── Error Box ── */
+        /* ── Compact Error Box ── */
         .clay-error-box {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           background: #fee2e2;
           color: #991b1b;
-          padding: 0.85rem 1.1rem;
-          border-radius: 18px;
-          font-size: 0.85rem;
+          padding: 0.55rem 0.85rem;
+          border-radius: 14px;
+          font-size: 0.78rem;
           font-weight: 600;
-          margin-bottom: 1.4rem;
+          margin-bottom: 0.75rem;
           border: 1px solid rgba(239, 68, 68, 0.2);
           box-shadow:
-            6px 8px 16px rgba(239, 68, 68, 0.15),
-            inset 3px 3px 6px rgba(255, 255, 255, 0.8),
-            inset -3px -3px 6px rgba(239, 68, 68, 0.18);
+            4px 6px 12px rgba(239, 68, 68, 0.15),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+            inset -2px -2px 4px rgba(239, 68, 68, 0.18);
         }
 
         /* ── Form Layout ── */
         .clay-form {
           display: flex;
           flex-direction: column;
-          gap: 1.3rem;
+          gap: 0.75rem;
         }
 
-        /* ── Categorized Sections ── */
+        /* ── Categorized Sections (Compact) ── */
         .clay-category-section {
           background: #f4f8fd;
-          border-radius: 24px;
-          padding: 1.25rem;
+          border-radius: 18px;
+          padding: 0.75rem 0.95rem;
           border: 2px solid rgba(255, 255, 255, 0.9);
           box-shadow:
-            8px 10px 22px rgba(162, 178, 201, 0.25),
-            -6px -6px 16px rgba(255, 255, 255, 0.8),
-            inset 2px 2px 6px rgba(255, 255, 255, 0.8),
-            inset -3px -3px 6px rgba(162, 178, 201, 0.2);
+            6px 8px 18px rgba(162, 178, 201, 0.22),
+            -5px -5px 14px rgba(255, 255, 255, 0.8),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.8),
+            inset -2px -2px 4px rgba(162, 178, 201, 0.18);
+          box-sizing: border-box;
         }
 
         .clay-category-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 0.9rem;
+          gap: 7px;
+          margin-bottom: 0.5rem;
         }
 
         .clay-category-num {
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           font-weight: 900;
           background: #2563eb;
           color: #ffffff;
-          width: 20px;
-          height: 20px;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 1px 2px 4px rgba(37, 99, 235, 0.3);
+          box-shadow: 1px 1px 3px rgba(37, 99, 235, 0.3);
         }
 
         .clay-category-title {
-          font-size: 0.72rem;
+          font-size: 0.68rem;
           font-weight: 800;
           color: #475569;
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }
 
-        /* ── Redesigned Input Groups ── */
+        /* ── Compact Input Groups ── */
         .clay-field-group {
-          margin-bottom: 0.95rem;
+          margin-bottom: 0.5rem;
           width: 100%;
           box-sizing: border-box;
         }
@@ -500,27 +509,27 @@ export const AdminLogin: React.FC = () => {
 
         .clay-label {
           display: block;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 800;
           color: #334155;
           letter-spacing: 0.02em;
-          margin-bottom: 0.45rem;
-          padding-left: 4px;
+          margin-bottom: 0.25rem;
+          padding-left: 2px;
         }
 
         .clay-input-box {
           display: flex !important;
           align-items: center !important;
-          gap: 10px !important;
+          gap: 8px !important;
           background: #e2eaf4 !important;
-          border-radius: 20px !important;
-          padding: 6px 10px !important;
+          border-radius: 14px !important;
+          padding: 4px 8px !important;
           border: 2px solid transparent !important;
           box-sizing: border-box !important;
           width: 100% !important;
           box-shadow:
-            inset 3px 3px 7px rgba(162, 178, 201, 0.5),
-            inset -3px -3px 7px rgba(255, 255, 255, 0.95) !important;
+            inset 3px 3px 6px rgba(162, 178, 201, 0.5),
+            inset -3px -3px 6px rgba(255, 255, 255, 0.95) !important;
           transition: all 0.2s ease !important;
           overflow: hidden !important;
         }
@@ -529,23 +538,23 @@ export const AdminLogin: React.FC = () => {
           border-color: #3b82f6 !important;
           background: #ffffff !important;
           box-shadow:
-            0 0 0 4px rgba(59, 130, 246, 0.18),
+            0 0 0 3px rgba(59, 130, 246, 0.18),
             inset 2px 2px 4px rgba(162, 178, 201, 0.25),
             inset -2px -2px 4px rgba(255, 255, 255, 0.9) !important;
         }
 
         .clay-input-badge {
-          width: 38px !important;
-          height: 38px !important;
-          border-radius: 14px !important;
+          width: 30px !important;
+          height: 30px !important;
+          border-radius: 10px !important;
           background: #f1f5fa !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
-          font-size: 1.15rem !important;
+          font-size: 0.95rem !important;
           flex-shrink: 0 !important;
           box-shadow:
-            2px 2px 5px rgba(162, 178, 201, 0.35),
+            2px 2px 4px rgba(162, 178, 201, 0.35),
             inset 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
         }
 
@@ -558,10 +567,10 @@ export const AdminLogin: React.FC = () => {
           background: transparent !important;
           background-color: transparent !important;
           color: #0f172a !important;
-          font-size: 0.92rem !important;
+          font-size: 0.85rem !important;
           font-weight: 600 !important;
           font-family: inherit !important;
-          padding: 8px 4px !important;
+          padding: 5px 3px !important;
           height: auto !important;
           box-shadow: none !important;
         }
@@ -585,25 +594,25 @@ export const AdminLogin: React.FC = () => {
           border: none !important;
           background: #f1f5fa !important;
           cursor: pointer !important;
-          font-size: 1.1rem !important;
-          width: 36px !important;
-          height: 36px !important;
-          border-radius: 12px !important;
+          font-size: 0.95rem !important;
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 9px !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
           box-shadow:
             2px 2px 4px rgba(162, 178, 201, 0.3),
             inset 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
-          transition: transform 0.15s, opacity 0.15s !important;
+          transition: transform 0.15s !important;
           flex-shrink: 0 !important;
         }
 
         .clay-eye-btn:hover {
-          transform: scale(1.05) !important;
+          transform: scale(1.06) !important;
         }
 
-        /* ── Dropdown Specifics ── */
+        /* ── Compact Dropdown Specifics ── */
         .clay-dropdown-wrapper {
           position: relative;
         }
@@ -613,17 +622,18 @@ export const AdminLogin: React.FC = () => {
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          padding: 0.75rem 1rem;
+          padding: 0.5rem 0.85rem;
           background: #e2eaf4;
-          border-radius: 18px;
+          border-radius: 14px;
           border: 2px solid transparent;
           cursor: pointer;
           font-family: inherit;
           text-align: left;
           box-shadow:
-            inset 4px 4px 8px rgba(162, 178, 201, 0.45),
+            inset 3px 3px 6px rgba(162, 178, 201, 0.45),
             inset -3px -3px 6px rgba(255, 255, 255, 0.9);
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-sizing: border-box;
         }
 
         .clay-dropdown-trigger:hover {
@@ -634,7 +644,7 @@ export const AdminLogin: React.FC = () => {
           border-color: #3b82f6;
           background: #ffffff;
           box-shadow:
-            0 0 0 4px rgba(59, 130, 246, 0.15),
+            0 0 0 3px rgba(59, 130, 246, 0.15),
             inset 2px 2px 4px rgba(162, 178, 201, 0.25),
             inset -2px -2px 4px rgba(255, 255, 255, 0.8);
         }
@@ -642,11 +652,11 @@ export const AdminLogin: React.FC = () => {
         .clay-dropdown-current {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 9px;
         }
 
         .dropdown-current-icon {
-          font-size: 1.4rem;
+          font-size: 1.2rem;
           filter: drop-shadow(0 2px 3px rgba(0,0,0,0.1));
         }
 
@@ -656,36 +666,35 @@ export const AdminLogin: React.FC = () => {
         }
 
         .dropdown-current-name {
-          font-size: 0.92rem;
+          font-size: 0.84rem;
           font-weight: 800;
           color: #0f172a;
-          line-height: 1.2;
+          line-height: 1.15;
         }
 
         .dropdown-current-desc {
-          font-size: 0.72rem;
+          font-size: 0.65rem;
           color: #64748b;
           font-weight: 500;
-          margin-top: 1px;
         }
 
         .clay-chevron-pill {
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
           background: #f1f5f9;
           display: flex;
           align-items: center;
           justify-content: center;
           box-shadow:
-            2px 3px 6px rgba(162, 178, 201, 0.4),
-            -2px -2px 4px rgba(255, 255, 255, 0.8),
+            2px 2px 4px rgba(162, 178, 201, 0.4),
+            -1.5px -1.5px 3px rgba(255, 255, 255, 0.8),
             inset 1px 1px 2px rgba(255, 255, 255, 0.8);
           flex-shrink: 0;
         }
 
         .clay-chevron-arrow {
-          font-size: 0.65rem;
+          font-size: 0.55rem;
           color: #475569;
           transition: transform 0.25s ease;
         }
@@ -697,28 +706,28 @@ export const AdminLogin: React.FC = () => {
         /* Dropdown Menu Overlay */
         .clay-dropdown-menu {
           position: absolute;
-          top: calc(100% + 8px);
+          top: calc(100% + 6px);
           left: 0;
           right: 0;
           z-index: 999;
           background: #eef4fb;
-          border-radius: 20px;
-          padding: 0.55rem;
-          border: 2.5px solid rgba(255, 255, 255, 0.95);
+          border-radius: 16px;
+          padding: 0.45rem;
+          border: 2px solid rgba(255, 255, 255, 0.95);
           box-shadow:
-            14px 18px 36px rgba(162, 178, 201, 0.6),
-            -8px -8px 24px rgba(255, 255, 255, 0.95),
-            inset 2px 2px 6px rgba(255, 255, 255, 0.85);
-          animation: dropdownSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            12px 16px 32px rgba(162, 178, 201, 0.6),
+            -6px -6px 20px rgba(255, 255, 255, 0.95),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.85);
           display: flex;
           flex-direction: column;
-          gap: 0.45rem;
+          gap: 0.35rem;
+          animation: dropdownSlideIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes dropdownSlideIn {
           from {
             opacity: 0;
-            transform: translateY(-8px) scale(0.98);
+            transform: translateY(-6px) scale(0.98);
           }
           to {
             opacity: 1;
@@ -729,9 +738,9 @@ export const AdminLogin: React.FC = () => {
         .clay-dropdown-item {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 0.75rem 1rem;
-          border-radius: 14px;
+          gap: 10px;
+          padding: 0.6rem 0.85rem;
+          border-radius: 12px;
           border: none;
           background: #f4f8fd;
           cursor: pointer;
@@ -740,25 +749,25 @@ export const AdminLogin: React.FC = () => {
           width: 100%;
           transition: all 0.15s ease;
           box-shadow:
-            2px 3px 6px rgba(162, 178, 201, 0.25),
-            -2px -2px 4px rgba(255, 255, 255, 0.8);
+            1.5px 2px 4px rgba(162, 178, 201, 0.25),
+            -1.5px -1.5px 3px rgba(255, 255, 255, 0.8);
         }
 
         .clay-dropdown-item:hover {
           transform: translateY(-1px);
           background: #e6effa;
           box-shadow:
-            4px 6px 12px rgba(162, 178, 201, 0.35),
-            -2px -2px 6px rgba(255, 255, 255, 0.9);
+            3px 4px 8px rgba(162, 178, 201, 0.35),
+            -2px -2px 4px rgba(255, 255, 255, 0.9);
         }
 
         .clay-dropdown-item.selected {
           background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
           color: #ffffff;
           box-shadow:
-            6px 8px 18px rgba(37, 99, 235, 0.38),
-            inset 2px 2px 4px rgba(255, 255, 255, 0.4),
-            inset -3px -3px 6px rgba(15, 23, 42, 0.3);
+            5px 6px 14px rgba(37, 99, 235, 0.38),
+            inset 2px 2px 3px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 4px rgba(15, 23, 42, 0.3);
         }
 
         .clay-dropdown-item.selected .item-desc {
@@ -766,7 +775,7 @@ export const AdminLogin: React.FC = () => {
         }
 
         .item-icon {
-          font-size: 1.35rem;
+          font-size: 1.15rem;
           flex-shrink: 0;
         }
 
@@ -777,71 +786,68 @@ export const AdminLogin: React.FC = () => {
         }
 
         .item-label {
-          font-size: 0.88rem;
+          font-size: 0.82rem;
           font-weight: 800;
-          line-height: 1.2;
+          line-height: 1.15;
         }
 
         .item-desc {
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           color: #64748b;
-          margin-top: 1px;
           font-weight: 500;
         }
 
         .item-check {
-          font-size: 0.95rem;
+          font-size: 0.85rem;
           font-weight: 900;
           background: rgba(255, 255, 255, 0.25);
-          width: 22px;
-          height: 22px;
+          width: 18px;
+          height: 18px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        /* ── 3D Clay Submit Button ── */
+        /* ── Compact 3D Clay Submit Button ── */
         .clay-submit-btn {
           width: 100%;
-          padding: 1.05rem;
+          padding: 0.8rem 1rem;
           background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
           color: #ffffff;
-          border-radius: 22px;
+          border-radius: 16px;
           border: 2px solid rgba(255, 255, 255, 0.65);
           font-family: inherit;
-          font-size: 0.95rem;
+          font-size: 0.88rem;
           font-weight: 900;
           letter-spacing: 0.06em;
           text-transform: uppercase;
           cursor: pointer;
           box-shadow:
-            10px 14px 28px rgba(37, 99, 235, 0.42),
-            -4px -4px 10px rgba(255, 255, 255, 0.7),
-            inset 3px 3px 6px rgba(255, 255, 255, 0.5),
-            inset -4px -4px 8px rgba(15, 23, 42, 0.35);
+            8px 10px 20px rgba(37, 99, 235, 0.38),
+            -3px -3px 8px rgba(255, 255, 255, 0.7),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.5),
+            inset -3px -3px 6px rgba(15, 23, 42, 0.3);
           transition: all 0.15s ease;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin-top: 0.2rem;
+          margin-top: 0.1rem;
         }
 
         .clay-submit-btn:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow:
-            12px 18px 32px rgba(37, 99, 235, 0.48),
-            -4px -4px 12px rgba(255, 255, 255, 0.8),
-            inset 4px 4px 8px rgba(255, 255, 255, 0.6),
-            inset -4px -4px 8px rgba(15, 23, 42, 0.35);
+            10px 14px 24px rgba(37, 99, 235, 0.44),
+            -3px -3px 10px rgba(255, 255, 255, 0.8),
+            inset 3px 3px 6px rgba(255, 255, 255, 0.6);
         }
 
         .clay-submit-btn:active:not(:disabled) {
-          transform: translateY(2px) scale(0.99);
+          transform: translateY(1px) scale(0.99);
           box-shadow:
-            4px 6px 16px rgba(37, 99, 235, 0.35),
-            inset 4px 4px 10px rgba(15, 23, 42, 0.4),
-            inset -2px -2px 6px rgba(255, 255, 255, 0.3);
+            3px 4px 10px rgba(37, 99, 235, 0.3),
+            inset 3px 3px 6px rgba(15, 23, 42, 0.35);
         }
 
         .clay-submit-btn:disabled {
@@ -852,13 +858,13 @@ export const AdminLogin: React.FC = () => {
         .btn-content {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
         }
 
         .clay-spinner {
-          width: 18px;
-          height: 18px;
-          border: 3px solid rgba(255, 255, 255, 0.4);
+          width: 15px;
+          height: 15px;
+          border: 2.5px solid rgba(255, 255, 255, 0.4);
           border-top-color: #ffffff;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
@@ -871,22 +877,39 @@ export const AdminLogin: React.FC = () => {
         /* ── Footer ── */
         .clay-footer-note {
           text-align: center;
-          margin-top: 1.4rem;
-          font-size: 0.72rem;
+          margin-top: 0.65rem;
+          font-size: 0.68rem;
           color: #94a3b8;
           font-weight: 600;
         }
 
-        @media (max-width: 640px) {
+        @media (max-height: 700px) {
+          .clay-login-page {
+            padding: 0.35rem 0.5rem;
+          }
           .clay-card {
-            padding: 2.2rem 1.4rem 1.6rem 1.4rem;
-            border-radius: 28px;
+            padding: 1.1rem 1.3rem 0.8rem 1.3rem;
+            max-width: 410px;
+          }
+          .clay-emblem-wrapper {
+            margin-top: -2.6rem;
+            margin-bottom: 0.2rem;
+          }
+          .clay-emblem {
+            width: 48px;
+            height: 48px;
+          }
+          .clay-emblem-icon {
+            font-size: 1.3rem;
           }
           .clay-title {
-            font-size: 1.65rem;
+            font-size: 1.25rem;
           }
-          .clay-floating-orb {
+          .clay-subtitle {
             display: none;
+          }
+          .clay-form {
+            gap: 0.5rem;
           }
         }
       `}</style>
