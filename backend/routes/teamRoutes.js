@@ -642,6 +642,7 @@ router.get('/my-teams', auth, async (req, res) => {
 
       result.push({
         teamId: team.teamId,
+        teamName: team.teamName || 'Team',
         eventId: team.eventId,
         eventName: event ? event.name : 'Unknown Event',
         minMembers: event ? event.minMembers : 1,
