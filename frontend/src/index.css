@@ -1749,18 +1749,66 @@ input:focus + .input-icon, select:focus + .input-icon {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
 @media (min-width: 768px) {
   .register-events-grid {
     grid-template-columns: repeat(2, 1fr);
+    align-items: start;
   }
 }
 
 @media (min-width: 1024px) {
   .register-events-grid {
     grid-template-columns: repeat(3, 1fr);
+    align-items: start;
   }
+}
+
+/* Scoped compact input styling for event cards (high specificity to override .brut-section) */
+.brut-section input.event-team-input[type="text"],
+input.event-team-input[type="text"],
+.event-team-input {
+  background-color: #090d16 !important;
+  border: 1.5px solid #FFE600 !important;
+  color: #FFE600 !important;
+  font-size: 0.74rem !important;
+  font-weight: 800 !important;
+  padding: 6px 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 0px !important;
+  outline: none !important;
+  height: auto !important;
+}
+
+.brut-section input.event-team-input[type="text"]::placeholder,
+.event-team-input::placeholder {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+.brut-section input.event-team-input-cyan[type="text"],
+input.event-team-input-cyan[type="text"],
+.event-team-input-cyan {
+  background-color: #090d16 !important;
+  border: 1.5px solid #3CE6FC !important;
+  color: #3CE6FC !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+  padding: 6px 8px !important;
+  border-radius: 0px !important;
+  outline: none !important;
+  letter-spacing: 0.08em !important;
+  font-family: monospace !important;
+  height: auto !important;
+}
+
+.brut-section input.event-team-input-cyan[type="text"]::placeholder,
+.event-team-input-cyan::placeholder {
+  color: #64748b !important;
+  font-weight: 500 !important;
 }
 
 

@@ -9,6 +9,7 @@ const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const auth = require('../middleware/auth');
 const { queueRegistrationSync, deleteRegistrationFromSheets } = require('../services/sheetsService');
+const { EVENT_ID_MAP } = require('../utils/eventConstants');
 
 // Helper: Generate unique Team ID (e.g., T10492)
 const generateTeamId = async () => {
@@ -22,6 +23,62 @@ const generateTeamId = async () => {
   }
   return teamId;
 };
+
+// @route   POST /api/teams/validate-code
+// @desc    Validate a Team ID for an event before signup (Public)
+// @access  Public
+router.post('/validate-code', async (req, res) => {
+  const { teamId, eventSlug, eventId: explicitEventId } = req.body;
+
+  try {
+    if (!teamId || (!eventSlug && !explicitEventId)) {
+      return res.status(400).json({ valid: false, message: 'Team ID and event information are required.' });
+    }
+
+    const cleanTeamId = teamId.toString().trim().toUpperCase();
+    const eventId = explicitEventId || EVENT_ID_MAP[eventSlug] || eventSlug;
+
+    const event = await Event.findOne({ eventId, isActive: true });
+    if (!event) {
+      return res.status(404).json({ valid: false, message: 'Event not found in the fest catalogue.' });
+    }
+
+    const team = await Team.findOne({ teamId: cleanTeamId, eventId });
+    if (!team) {
+      return res.status(404).json({ 
+        valid: false, 
+        message: `Team "${cleanTeamId}" was not found for "${event.name}". Please ensure your Team Leader has registered and given you the correct code.` 
+      });
+    }
+
+    if (team.status === 'cancelled') {
+      return res.status(400).json({ valid: false, message: `Team "${cleanTeamId}" has been cancelled or disbanded.` });
+    }
+
+    if (team.memberCount >= event.maxMembers) {
+      return res.status(400).json({ 
+        valid: false, 
+        message: `Team "${cleanTeamId}" is already full (${team.memberCount}/${event.maxMembers} members joined).` 
+      });
+    }
+
+    const leader = await User.findOne({ registrationId: team.leaderId }).select('name institution');
+
+    res.json({
+      valid: true,
+      teamId: team.teamId,
+      teamName: team.teamName || `${leader ? leader.name : 'Leader'}'s Team`,
+      leaderName: leader ? leader.name : 'Team Leader',
+      currentMembers: team.memberCount,
+      maxMembers: event.maxMembers,
+      minMembers: event.minMembers,
+      message: `Verified! Leader: ${leader ? leader.name : 'Team Leader'} (${team.memberCount}/${event.maxMembers} slots filled)`
+    });
+  } catch (error) {
+    console.error('Validate team code error:', error.message);
+    res.status(500).json({ valid: false, message: 'Server error while validating team code.' });
+  }
+});
 
 // @route   POST /api/teams/create
 // @desc    Create a team for an event (Leader is added as member 1)

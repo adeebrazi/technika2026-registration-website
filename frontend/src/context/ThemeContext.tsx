@@ -11,12 +11,22 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = localStorage.getItem('technika_theme') as Theme;
+      if (saved === 'dark' || saved === 'light' || saved === 'main') {
+        return saved;
+      }
+    }
     return 'main';
   });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('technika_theme', newTheme);
+    try {
+      localStorage.setItem('technika_theme', newTheme);
+    } catch {
+      // ignore
+    }
   };
 
   useEffect(() => {

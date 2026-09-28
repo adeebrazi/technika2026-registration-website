@@ -9,6 +9,7 @@ const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const Team = require('../models/Team');
 const TeamMember = require('../models/TeamMember');
+const Notification = require('../models/Notification');
 const cloudinaryService = require('../services/cloudinaryService');
 const { compressImage } = require('../utils/imageCompressor');
 const { queueParticipantSync, queueRegistrationSync, appendVerificationRecord } = require('../services/sheetsService');
@@ -56,53 +57,7 @@ const generateTeamId = async () => {
   return teamId;
 };
 
-const EVENT_ID_MAP = {
-  "code-busters": "TECH_CB",
-  "red-tech": "TECH_RT",
-  "robo-wars": "TECH_RW",
-  "robo-race": "TECH_RR",
-  "robo-pick-n-place": "TECH_RP",
-  "intelliquest": "TECH_IQ",
-  "brainstorm-battle": "TECH_BS",
-  "circuit-crafter": "TECH_CC",
-  "electrofix-challenge": "TECH_EC",
-  "junkyard-wars": "TECH_JW",
-  "ai-quizathon": "TECH_AQ",
-  "ecoai-challenge": "TECH_EA",
-  "project-model-exhibition": "TECH_PM",
-  "coding-ladder": "TECH_CL",
-  "web-wizard": "TECH_WW",
-  "cyber-shield": "TECH_CS",
-  "app-attack": "TECH_AA",
-  "data-dash": "TECH_DD",
-  "design-dash": "TECH_DS",
-  "load-bridging": "TECH_LB",
-  "poster-presentation": "CRE_PP",
-  "face-painting": "CRE_FP",
-  "pot-painting": "CRE_PT",
-  "photography": "CRE_PH",
-  "greenearth-challenge": "CRE_GE",
-  "cricket": "CRE_CR",
-  "need-for-speed": "CRE_NF",
-  "bgmi": "CRE_BG",
-  "free-fire": "CRE_FF",
-  "technical-debate": "CRE_TD",
-  "group-ramp-walk": "CUL_GW",
-  "solo-ramp-walk": "CUL_SW",
-  "treasure-hunt": "CUL_TH",
-  "tug-of-war": "CUL_TW",
-  "sudoku": "CUL_SD",
-  "fire-free-cooking": "CUL_FC",
-  "solo-singing": "CUL_SS",
-  "solo-dance": "CUL_SDN",
-  "group-singing": "CUL_GS",
-  "group-dance": "CUL_GD",
-  "rap": "CUL_RP",
-  "beat-boxing": "CUL_BB",
-  "poetry": "CUL_PT",
-  "story-telling": "CUL_ST",
-  "art-attack": "CUL_AA"
-};
+const { EVENT_ID_MAP } = require('../utils/eventConstants');
 
 
 // @route   POST /api/register
@@ -229,23 +184,63 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
     }
 
     // Parse selected events first to calculate expectedAmount
-    let selectedEvents = [];
+    let parsedEventsInput = [];
     if (req.body.selectedEvents) {
       try {
-        selectedEvents = JSON.parse(req.body.selectedEvents);
+        parsedEventsInput = JSON.parse(req.body.selectedEvents);
       } catch (e) {
         console.warn('Failed to parse selectedEvents:', e.message);
       }
     }
 
+    // Normalize to array of objects: { slug, mode: 'solo'|'create_team'|'join_team', teamName, teamId }
+    const normalizedEvents = [];
+    for (const item of parsedEventsInput) {
+      if (typeof item === 'string') {
+        normalizedEvents.push({ slug: item, mode: 'auto', teamName: '', teamId: '' });
+      } else if (item && typeof item === 'object' && item.slug) {
+        normalizedEvents.push({
+          slug: item.slug,
+          mode: item.mode || 'auto',
+          teamName: item.teamName ? item.teamName.trim() : '',
+          teamId: item.teamId ? item.teamId.trim().toUpperCase() : ''
+        });
+      }
+    }
+
     // Calculate expected payment amount (Flat Rs. 150)
     let expectedAmount = 0;
-    if (selectedEvents.length > 0) {
+    if (normalizedEvents.length > 0) {
       expectedAmount = 150;
     }
 
     if (expectedAmount === 0) {
       return res.status(400).json({ message: 'You must select at least one event to register!' });
+    }
+
+    // Pre-validate join_team codes before processing payment verification
+    for (const item of normalizedEvents) {
+      if (item.mode === 'join_team') {
+        const eventId = EVENT_ID_MAP[item.slug] || item.slug;
+        const event = await Event.findOne({ eventId, isActive: true });
+        if (!event) continue;
+
+        if (!item.teamId) {
+          return res.status(400).json({ message: `Please enter a Team ID to join a team for "${event.name}".` });
+        }
+        const targetTeam = await Team.findOne({ teamId: item.teamId, eventId });
+        if (!targetTeam) {
+          return res.status(400).json({ 
+            message: `Team "${item.teamId}" was not found for "${event.name}". Please ensure your Team Leader has registered first and given you the correct code.` 
+          });
+        }
+        if (targetTeam.status === 'cancelled') {
+          return res.status(400).json({ message: `Team "${item.teamId}" has been cancelled or disbanded.` });
+        }
+        if (targetTeam.memberCount >= event.maxMembers) {
+          return res.status(400).json({ message: `Team "${item.teamId}" is already full (${targetTeam.memberCount}/${event.maxMembers} members).` });
+        }
+      }
     }
 
     // AI Screenshot Verification Pipeline
@@ -309,16 +304,27 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
     });
     await user.save();
 
-    if (selectedEvents && selectedEvents.length > 0) {
-      for (const slug of selectedEvents) {
-        const eventId = EVENT_ID_MAP[slug];
+    const createdTeams = [];
+
+    if (normalizedEvents && normalizedEvents.length > 0) {
+      for (const item of normalizedEvents) {
+        const eventId = EVENT_ID_MAP[item.slug] || item.slug;
         if (!eventId) continue;
 
         try {
           const event = await Event.findOne({ eventId, isActive: true });
           if (!event) continue;
 
-          if (event.individualAllowed) {
+          let mode = item.mode;
+          if (mode === 'auto') {
+            if (event.individualAllowed) {
+              mode = 'solo';
+            } else if (event.teamAllowed) {
+              mode = 'create_team';
+            }
+          }
+
+          if (mode === 'solo' && event.individualAllowed) {
             // Register individually
             const reg = new Registration({
               registrationId,
@@ -329,20 +335,24 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
             });
             await reg.save();
             queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
-          } else if (event.teamAllowed) {
-            // Register team
-            const teamId = await generateTeamId();
+          } else if (mode === 'create_team' && event.teamAllowed) {
+            // Register as Team Leader
+            const newTeamId = await generateTeamId();
+            const defaultName = item.teamName ? item.teamName : `${name}'s Team`;
+            const isFullTeam = 1 >= event.minMembers;
+
             const team = new Team({
-              teamId,
+              teamId: newTeamId,
+              teamName: defaultName,
               eventId,
               leaderId: registrationId,
-              status: 'forming',
+              status: isFullTeam ? 'ready' : 'forming',
               memberCount: 1
             });
             await team.save();
 
             const member = new TeamMember({
-              teamId,
+              teamId: newTeamId,
               userId: registrationId,
               role: 'Leader'
             });
@@ -351,11 +361,57 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
             const reg = new Registration({
               registrationId,
               eventId,
-              teamId,
+              teamId: newTeamId,
               registrationType: 'TEAM',
-              status: 'PENDING'
+              status: 'CONFIRMED'
             });
             await reg.save();
+            queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
+
+            createdTeams.push({
+              eventId,
+              eventName: event.name,
+              teamId: newTeamId,
+              teamName: defaultName,
+              minMembers: event.minMembers,
+              maxMembers: event.maxMembers
+            });
+          } else if (mode === 'join_team' && event.teamAllowed) {
+            // Join Friend's Team
+            const cleanTeamId = item.teamId;
+            const targetTeam = await Team.findOne({ teamId: cleanTeamId, eventId });
+            if (targetTeam) {
+              const member = new TeamMember({
+                teamId: cleanTeamId,
+                userId: registrationId,
+                role: 'Member'
+              });
+              await member.save();
+
+              targetTeam.memberCount += 1;
+              if (targetTeam.memberCount >= event.minMembers && targetTeam.status === 'forming') {
+                targetTeam.status = 'ready';
+              }
+              await targetTeam.save();
+
+              const reg = new Registration({
+                registrationId,
+                eventId,
+                teamId: cleanTeamId,
+                registrationType: 'TEAM',
+                status: 'CONFIRMED'
+              });
+              await reg.save();
+              queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
+
+              // Notify Team Leader
+              const leaderNotif = new Notification({
+                userId: targetTeam.leaderId,
+                type: 'SYSTEM',
+                message: `${name} (${registrationId}) has joined your team (${cleanTeamId}) for ${event.name}!`
+              });
+              await leaderNotif.save().catch(e => console.warn('Notif error:', e.message));
+            }
           }
         } catch (eventErr) {
           console.error(`Failed to register event ${eventId} on signup:`, eventErr.message);
@@ -367,7 +423,7 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
     appendVerificationRecord({
       name,
       email,
-      selectedEvents,
+      selectedEvents: normalizedEvents.map(e => e.slug),
       expectedAmount,
       verifiedAmount: aiResult.amount,
       utrEnteredManually: paymentUTR,
@@ -383,7 +439,8 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
     res.json({
       success: true,
       registrationId,
-      name: user.name
+      name: user.name,
+      createdTeams
     });
   } catch (error) {
     console.error('Registration processing error:', error);

@@ -8,6 +8,11 @@ const TeamSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    teamName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     eventId: {
       type: String,
       required: true,

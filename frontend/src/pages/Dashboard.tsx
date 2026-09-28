@@ -682,15 +682,60 @@ export const Dashboard: React.FC = () => {
                             {isTeam && userTeam && (
                               <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#FFE600' }}>
-                                    TEAM ID: {userTeam.teamId}
-                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.9rem', fontWeight: 900, color: '#FFE600', background: '#000000', padding: '2px 8px', border: '1.5px solid #FFE600' }}>
+                                      TEAM ID: {userTeam.teamId}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(userTeam.teamId);
+                                        setAlert({ message: `Copied Team ID ${userTeam.teamId} to clipboard!`, type: 'success' });
+                                      }}
+                                      style={{
+                                        background: '#ffffff',
+                                        color: '#000000',
+                                        border: '1.5px solid #000000',
+                                        padding: '2px 6px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 900,
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      📋 Copy Code
+                                    </button>
+                                    <a
+                                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! I am registered for ${event?.name || 'our event'} at Technika 6.0. Join our team by entering Team ID: *${userTeam.teamId}* when registering at: ${window.location.origin}/register`)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{
+                                        background: '#25D366',
+                                        color: '#ffffff',
+                                        border: '1.5px solid #000000',
+                                        padding: '2px 8px',
+                                        fontSize: '0.68rem',
+                                        fontWeight: 900,
+                                        textDecoration: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                      }}
+                                    >
+                                      <i className="fa-brands fa-whatsapp"></i> Share on WhatsApp
+                                    </a>
+                                  </div>
+
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    {userTeam.status === 'registered' ? (
-                                      <span style={{ background: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', border: '1px solid #000' }}>REGISTERED (LOCKED)</span>
+                                    {userTeam.memberCount >= userTeam.minMembers ? (
+                                      <span style={{ background: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', border: '1px solid #000' }}>
+                                        ✓ TEAM CONFIRMED ({userTeam.memberCount}/{userTeam.minMembers}+ JOINED)
+                                      </span>
                                     ) : (
-                                      <span style={{ background: '#FFE600', color: '#000', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', border: '1px solid #000' }}>FORMING</span>
+                                      <span style={{ background: '#FFE600', color: '#000', fontSize: '0.65rem', fontWeight: 900, padding: '2px 6px', border: '1px solid #000' }}>
+                                        🟡 WAITING FOR TEAMMATES ({userTeam.memberCount}/{userTeam.minMembers} JOINED)
+                                      </span>
                                     )}
+
                                     {userTeam.status === 'forming' && (
                                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                         {userTeam.isLeader && event?.individualAllowed && (
@@ -724,6 +769,19 @@ export const Dashboard: React.FC = () => {
                                     )}
                                   </div>
                                 </div>
+
+                                {userTeam.memberCount < userTeam.minMembers && (
+                                  <div style={{
+                                    background: 'rgba(255, 230, 0, 0.1)',
+                                    border: '1px dashed #FFE600',
+                                    color: '#ffffff',
+                                    padding: '6px 10px',
+                                    fontSize: '0.72rem',
+                                    marginBottom: '8px'
+                                  }}>
+                                    💡 <strong>Forming your team:</strong> Share your Team ID <code style={{ color: '#FFE600', fontWeight: 900 }}>{userTeam.teamId}</code> with friends so they can enter it on the registration page to automatically join your team!
+                                  </div>
+                                )}
 
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px' }}>Team Roster</div>
                                 {userTeam.members.map((member) => {

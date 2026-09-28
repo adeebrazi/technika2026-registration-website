@@ -77,28 +77,32 @@ export const Navbar: React.FC = () => {
                 gap: '2px',
               }}
             >
-              {(['main', 'dark', 'light'] as const).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTheme(t)}
-                  style={{
-                    padding: '2px 8px',
-                    fontSize: '10px',
-                    fontWeight: 900,
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    border: theme === t ? '1px solid var(--foreground, #000)' : '1px solid transparent',
-                    background: theme === t ? 'var(--brut-yellow, #facc15)' : 'transparent',
-                    color: theme === t ? 'var(--foreground, #000)' : 'var(--muted-foreground, #888)',
-                    cursor: 'pointer',
-                    transition: 'all 0.1s ease',
-                  }}
-                >
-                  {t.toUpperCase()}
-                </button>
-              ))}
+              {(['main', 'dark', 'light'] as const).map(t => {
+                const isActive = theme === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTheme(t)}
+                    style={{
+                      padding: '2px 8px',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      border: isActive ? '1px solid #000000' : '1px solid transparent',
+                      background: isActive ? 'var(--brut-yellow, #facc15)' : 'transparent',
+                      color: isActive ? '#000000' : 'var(--muted-foreground, #888)',
+                      boxShadow: isActive ? '1px 1px 0px 0px rgba(0,0,0,1)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.1s ease',
+                    }}
+                  >
+                    {t.toUpperCase()}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Brochure button */}

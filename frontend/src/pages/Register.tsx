@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
+import { CommonRulesModal } from '../components/CommonRulesModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
 import { DatePicker } from '../components/DatePicker';
@@ -157,13 +158,105 @@ export const Register: React.FC = () => {
   const [regId, setRegId] = useState('');
   const [participantName, setParticipantName] = useState('');
 
+  // Team Registration Configuration State
+  const [eventConfigs, setEventConfigs] = useState<Record<string, { mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string }>>({});
+  const [teamCheckStatus, setTeamCheckStatus] = useState<Record<string, { loading: boolean; valid?: boolean; message?: string; leaderName?: string }>>({});
+  const [createdTeams, setCreatedTeams] = useState<Array<{ eventId: string; eventName: string; teamId: string; teamName: string; minMembers: number; maxMembers: number }>>([]);
+
+  // Rules Acceptance State
+  const [acceptedRules, setAcceptedRules] = useState(false);
+  const [showCommonRulesModal, setShowCommonRulesModal] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { eventSlug } = useParams<{ eventSlug?: string }>();
 
-  const toggleEventSelection = (eventId: string) => {
-    setSelectedEvents((prev) =>
-      prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]
-    );
+  // Deep-linking: sync URL /register/:eventSlug with activeModalEvent
+  useEffect(() => {
+    if (eventSlug) {
+      const detail = getEventDetails(eventSlug);
+      if (detail) {
+        setActiveModalEvent(detail);
+      }
+    } else {
+      setActiveModalEvent(null);
+    }
+  }, [eventSlug]);
+
+  const handleOpenEventModal = (eventId: string) => {
+    const detail = getEventDetails(eventId);
+    setActiveModalEvent(detail || { id: eventId, title: eventId, category: 'Event', description: '' });
+    navigate(`/register/${eventId}`);
+  };
+
+  const handleCloseEventModal = () => {
+    setActiveModalEvent(null);
+    navigate('/register');
+  };
+
+  const toggleEventSelection = (eventId: string, minMembers?: number) => {
+    setSelectedEvents((prev) => {
+      const isSelected = prev.includes(eventId);
+      if (isSelected) {
+        return prev.filter((id) => id !== eventId);
+      } else {
+        if (!eventConfigs[eventId]) {
+          const detail = getEventDetails(eventId);
+          const resolvedMin = minMembers !== undefined ? minMembers : (detail?.minMembers ?? 1);
+          const isTeamOnly = resolvedMin > 1;
+          setEventConfigs((cPrev) => ({
+            ...cPrev,
+            [eventId]: {
+              mode: isTeamOnly ? 'create_team' : 'solo',
+              teamName: '',
+              teamId: ''
+            }
+          }));
+        }
+        return [...prev, eventId];
+      }
+    });
+  };
+
+  const updateEventConfig = (eventId: string, updates: Partial<{ mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string }>) => {
+    setEventConfigs((prev) => ({
+      ...prev,
+      [eventId]: {
+        ...(prev[eventId] || { mode: 'solo', teamName: '', teamId: '' }),
+        ...updates
+      }
+    }));
+  };
+
+  const handleValidateTeamCode = async (slug: string, teamId: string) => {
+    if (!teamId.trim()) return;
+    setTeamCheckStatus((prev) => ({ ...prev, [slug]: { loading: true } }));
+    try {
+      const res = await fetch('/api/teams/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: teamId.trim(), eventSlug: slug })
+      });
+      const data = await res.json();
+      setTeamCheckStatus((prev) => ({
+        ...prev,
+        [slug]: {
+          loading: false,
+          valid: data.valid,
+          message: data.message,
+          leaderName: data.leaderName
+        }
+      }));
+    } catch (err: any) {
+      setTeamCheckStatus((prev) => ({
+        ...prev,
+        [slug]: {
+          loading: false,
+          valid: false,
+          message: 'Server connection error during validation.'
+        }
+      }));
+    }
   };
 
   const toggleCategoryAll = (eventIds: string[]) => {
@@ -172,6 +265,21 @@ export const Register: React.FC = () => {
       setSelectedEvents((prev) => prev.filter((id) => !eventIds.includes(id)));
     } else {
       setSelectedEvents((prev) => Array.from(new Set([...prev, ...eventIds])));
+      setEventConfigs((cPrev) => {
+        const next = { ...cPrev };
+        eventIds.forEach((id) => {
+          if (!next[id]) {
+            const detail = getEventDetails(id);
+            const isTeamOnly = (detail?.minMembers ?? 1) > 1;
+            next[id] = {
+              mode: isTeamOnly ? 'create_team' : 'solo',
+              teamName: '',
+              teamId: ''
+            };
+          }
+        });
+        return next;
+      });
     }
   };
 
@@ -357,6 +465,32 @@ export const Register: React.FC = () => {
       return;
     }
 
+    if (!acceptedRules) {
+      setError('Please accept the Event Common Rules & Regulations and Disqualification Criteria before completing registration.');
+      return;
+    }
+
+    // Event selection validation
+    if (selectedEvents.length === 0) {
+      setError('Please select at least one event you wish to participate in.');
+      return;
+    }
+
+    // Validate team configs for join_team
+    for (const slug of selectedEvents) {
+      const config = eventConfigs[slug];
+      if (config && config.mode === 'join_team') {
+        if (!config.teamId || !config.teamId.trim()) {
+          setError(`Please enter the Team ID to join your friend's team, or select "Register as Leader".`);
+          return;
+        }
+        if (teamCheckStatus[slug] && teamCheckStatus[slug].valid === false) {
+          setError(teamCheckStatus[slug].message || `The Team ID entered for one of your selected events is invalid.`);
+          return;
+        }
+      }
+    }
+
     setLoading(true);
 
     const submissionData = new FormData();
@@ -370,7 +504,20 @@ export const Register: React.FC = () => {
       }
     });
     submissionData.append('paymentScreenshot', selectedFile);
-    submissionData.append('selectedEvents', JSON.stringify(selectedEvents));
+
+    const selectedEventsPayload = selectedEvents.map((slug) => {
+      const detail = getEventDetails(slug);
+      const isTeamOnly = (detail?.minMembers ?? 1) > 1;
+      const defaultMode = isTeamOnly ? 'create_team' : 'solo';
+      const config = eventConfigs[slug] || { mode: defaultMode, teamName: '', teamId: '' };
+      return {
+        slug,
+        mode: config.mode || defaultMode,
+        teamName: config.teamName || '',
+        teamId: config.teamId || ''
+      };
+    });
+    submissionData.append('selectedEvents', JSON.stringify(selectedEventsPayload));
 
     try {
       const response = await fetch('/api/register', {
@@ -396,6 +543,10 @@ export const Register: React.FC = () => {
 
       setRegId(registrationId);
       setParticipantName(nameVal);
+
+      if (result.createdTeams && Array.isArray(result.createdTeams)) {
+        setCreatedTeams(result.createdTeams);
+      }
 
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -780,9 +931,10 @@ export const Register: React.FC = () => {
                 </div>
               </div>
 
-              <p style={{ fontSize: '0.9rem', marginBottom: '20px', fontWeight: 700, opacity: 0.9 }}>
+              <p style={{ fontSize: '0.9rem', marginBottom: '16px', fontWeight: 700, opacity: 0.9 }}>
                 Select all the technical, creative, and cultural events you wish to participate in during Technika 6.0:
               </p>
+
 
               {EVENT_CATEGORIES.map((cat, catIdx) => {
                 const selectableEvents = cat.events.filter((e) => !(e as any).isComingSoon);
@@ -822,145 +974,165 @@ export const Register: React.FC = () => {
                     {cat.events.map((evt, evtIdx) => {
                       const isChecked = selectedEvents.includes(evt.id);
                       const evtDetail = getEventDetails(evt.id);
-                      const dateText = evtDetail?.date || 'Day 1';
-                      const timeText = evtDetail?.time || '10:30 AM';
-                      const venueText = evtDetail?.venue || 'Campus Arena';
                       const descText = evtDetail?.description || 'Fest competition arena event.';
 
+                      const minMembers = evtDetail?.minMembers ?? 1;
+                      const isTeamOnly = minMembers > 1;
+                      const currentMode = eventConfigs[evt.id]?.mode || (isTeamOnly ? 'create_team' : 'solo');
+
                         return (
-                         <div
-                           key={evt.id}
-                           onClick={() => !(evt as any).isComingSoon && toggleEventSelection(evt.id)}
-                           style={{
-                             position: 'relative',
-                             overflow: 'hidden',
-                             minHeight: '160px',
-                             padding: '10px 12px',
-                             display: 'flex',
-                             flexDirection: 'column',
-                             justifyContent: 'space-between',
-                             textAlign: 'left',
-                             color: '#ffffff',
-                             border: isChecked ? '3.5px solid #FFE600' : '3px solid #ffffff',
-                             boxShadow: isChecked ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff' : '5px 5px 0px 0px #ffffff',
-                             cursor: (evt as any).isComingSoon ? 'not-allowed' : 'pointer',
-                             userSelect: 'none',
-                             transition: 'all 0.15s ease',
-                             background: '#000000',
-                             opacity: (evt as any).isComingSoon ? 0.65 : 1,
-                           }}
-                         >
-                           {/* Event Photo Full Card Background */}
-                           <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                             <img
-                               src={getEventPhoto(evt.id, evtIdx)}
-                               alt={evt.title}
-                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                               loading="lazy"
-                             />
-                             {/* Dark Gradient Overlay for Maximum Legibility */}
-                             <div style={{
-                               position: 'absolute',
-                               inset: 0,
-                               background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 100%)'
-                             }} />
-                           </div>
+                          <div
+                            key={evt.id}
+                            onClick={() => !(evt as any).isComingSoon && handleOpenEventModal(evt.id)}
+                            style={{
+                              position: 'relative',
+                              overflow: 'hidden',
+                              minHeight: '175px',
+                              padding: '12px 14px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              textAlign: 'left',
+                              color: '#ffffff',
+                              border: isChecked ? '3.5px solid #FFE600' : '3px solid #ffffff',
+                              boxShadow: isChecked ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff' : '5px 5px 0px 0px #ffffff',
+                              cursor: (evt as any).isComingSoon ? 'not-allowed' : 'pointer',
+                              userSelect: 'none',
+                              transition: 'all 0.15s ease',
+                              background: '#000000',
+                              opacity: (evt as any).isComingSoon ? 0.65 : 1,
+                            }}
+                          >
+                            {/* Event Photo Full Card Background */}
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                              <img
+                                src={getEventPhoto(evt.id, evtIdx)}
+                                alt={evt.title}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                loading="lazy"
+                              />
+                              {/* Dark Gradient Overlay for Maximum Legibility */}
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 100%)'
+                              }} />
+                            </div>
 
-                           {/* Card Content Layer */}
-                           <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '6px' }}>
-                             <div>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                                 <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
-                                   {String(evtIdx + 1).padStart(2, '0')}
-                                 </span>
-                                 <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
-                                   {evt.title}
-                                 </h3>
-                               </div>
-                               <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.2 }}>
-                                 {descText}
-                               </p>
-                             </div>
+                            {/* Card Content Layer */}
+                            <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '8px' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
+                                    {String(evtIdx + 1).padStart(2, '0')}
+                                  </span>
+                                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
+                                    {evt.title}
+                                  </h3>
+                                </div>
+                                <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.25 }}>
+                                  {descText}
+                                </p>
+                              </div>
 
-                             <div>
-                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                 <button
-                                   type="button"
-                                   onClick={(e) => {
-                                     e.stopPropagation();
-                                     setActiveModalEvent(evtDetail || { ...evt, category: cat.category, description: descText, date: dateText, time: timeText, venue: venueText });
-                                   }}
-                                   style={{
-                                     fontSize: '0.65rem',
-                                     textTransform: 'uppercase',
-                                     fontWeight: 900,
-                                     background: '#8aebee',
-                                     color: '#000000',
-                                     border: '1.5px solid #000000',
-                                     boxShadow: '2px 2px 0px 0px #000000',
-                                     padding: '4px 8px',
-                                     cursor: 'pointer'
-                                   }}
-                                 >
-                                   View details →
-                                 </button>
+                              {/* Selected Status Tag (If Selected) */}
+                              {isChecked && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{
+                                    fontSize: '0.66rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    padding: '2px 7px',
+                                    background: 'rgba(0,0,0,0.85)',
+                                    color: currentMode === 'create_team' ? '#FFE600' : currentMode === 'join_team' ? '#3CE6FC' : '#10b981',
+                                    border: `1.5px solid ${currentMode === 'create_team' ? '#FFE600' : currentMode === 'join_team' ? '#3CE6FC' : '#10b981'}`
+                                  }}>
+                                    {currentMode === 'create_team'
+                                      ? `👑 Leader: ${eventConfigs[evt.id]?.teamName || 'Team'}`
+                                      : currentMode === 'join_team'
+                                      ? `🤝 Joining: ${eventConfigs[evt.id]?.teamId || 'Pending'}`
+                                      : '👤 Solo Entry'}
+                                  </span>
+                                </div>
+                              )}
 
-                                 {(evt as any).isComingSoon ? (
-                                   <div
-                                     style={{
-                                       display: 'inline-flex',
-                                       alignItems: 'center',
-                                       gap: '4px',
-                                       fontSize: '0.65rem',
-                                       textTransform: 'uppercase',
-                                       fontWeight: 900,
-                                       background: '#ef4444',
-                                       color: '#ffffff',
-                                       border: '1.5px solid #000000',
-                                       boxShadow: '2px 2px 0px 0px #000000',
-                                       padding: '4px 8px',
-                                       cursor: 'not-allowed'
-                                     }}
-                                   >
-                                     COMING SOON
-                                   </div>
-                                 ) : (
-                                   <div
-                                     style={{
-                                       display: 'inline-flex',
-                                       alignItems: 'center',
-                                       gap: '4px',
-                                       fontSize: '0.65rem',
-                                       textTransform: 'uppercase',
-                                       fontWeight: 900,
-                                       background: isChecked ? '#FFE600' : '#ffffff',
-                                       color: '#000000',
-                                       border: '1.5px solid #000000',
-                                       boxShadow: '2px 2px 0px 0px #000000',
-                                       padding: '4px 8px',
-                                       cursor: 'pointer'
-                                     }}
-                                   >
-                                     <span>{isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}</span>
-                                     {(evt as any).price && (
-                                       <span style={{
-                                         marginLeft: '4px',
-                                         background: '#000000',
-                                         color: '#FFE600',
-                                         padding: '1px 5px',
-                                         fontSize: '0.62rem',
-                                         border: '1px solid #000000'
-                                       }}>
-                                         ₹{(evt as any).price}
-                                       </span>
-                                     )}
-                                   </div>
-                                 )}
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenEventModal(evt.id);
+                                    }}
+                                    style={{
+                                      fontSize: '0.65rem',
+                                      textTransform: 'uppercase',
+                                      fontWeight: 900,
+                                      background: '#8aebee',
+                                      color: '#000000',
+                                      border: '1.5px solid #000000',
+                                      boxShadow: '2px 2px 0px 0px #000000',
+                                      padding: '5px 9px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {isChecked ? 'EDIT / DETAILS ⚙' : 'VIEW DETAILS →'}
+                                  </button>
+
+                                  {(evt as any).isComingSoon ? (
+                                    <div
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontSize: '0.65rem',
+                                        textTransform: 'uppercase',
+                                        fontWeight: 900,
+                                        background: '#ef4444',
+                                        color: '#ffffff',
+                                        border: '1.5px solid #000000',
+                                        boxShadow: '2px 2px 0px 0px #000000',
+                                        padding: '5px 9px',
+                                        cursor: 'not-allowed'
+                                      }}
+                                    >
+                                      COMING SOON
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isChecked) {
+                                          toggleEventSelection(evt.id, minMembers);
+                                        } else {
+                                          toggleEventSelection(evt.id, minMembers);
+                                          handleOpenEventModal(evt.id);
+                                        }
+                                      }}
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontSize: '0.65rem',
+                                        textTransform: 'uppercase',
+                                        fontWeight: 900,
+                                        background: isChecked ? '#FFE600' : '#ffffff',
+                                        color: '#000000',
+                                        border: '1.5px solid #000000',
+                                        boxShadow: '2px 2px 0px 0px #000000',
+                                        padding: '5px 9px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <span>{isChecked ? 'SELECTED ✓' : 'SELECT EVENT +'}</span>
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
+                        );
                     })}
                   </div>
                 </div>
@@ -1114,6 +1286,62 @@ export const Register: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Event Common Rules & Regulations Acceptance Section */}
+              <div style={{
+                marginTop: '20px',
+                background: 'rgba(0, 0, 0, 0.45)',
+                border: '2.5px solid var(--border, #8aebee)',
+                boxShadow: '4px 4px 0px 0px #000000',
+                padding: '16px 18px',
+              }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', cursor: 'pointer', margin: 0 }}>
+                  <input
+                    type="checkbox"
+                    id="acceptCommonRules"
+                    name="acceptCommonRules"
+                    checked={acceptedRules}
+                    onChange={(e) => setAcceptedRules(e.target.checked)}
+                    required
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      accentColor: '#FFE600',
+                      cursor: 'pointer',
+                      marginTop: '2px',
+                      flexShrink: 0
+                    }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: '0.92rem', color: 'var(--foreground, #ffffff)', lineHeight: 1.4 }}>
+                      I accept & agree to the{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowCommonRulesModal(true);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#FFE600',
+                          textDecoration: 'underline',
+                          fontWeight: 900,
+                          fontSize: '0.92rem',
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        Event Common Rules & Regulations
+                      </button>{' '}
+                      and Disqualification Criteria of Technika 6.0. <span style={{ color: '#ef4444' }}>*</span>
+                    </div>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem', color: 'var(--muted-foreground, #cbd5e1)', lineHeight: 1.45 }}>
+                      Participants must carry valid college/school ID cards, report at least 30 minutes before scheduled times, and follow fair play regulations.
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
 
             {error && (
@@ -1174,6 +1402,75 @@ export const Register: React.FC = () => {
             <p className="success-alert" style={{ background: 'rgba(255, 230, 0, 0.1)', borderColor: '#FFE600', color: '#ffffff' }}>
               <i className="fa-solid fa-key"></i> Please make sure to save your Registration ID. Use it along with your chosen password to log into the dashboard.
             </p>
+
+            {createdTeams && createdTeams.length > 0 && (
+              <div style={{
+                marginTop: '18px',
+                marginBottom: '18px',
+                background: '#000000',
+                border: '3px solid #FFE600',
+                boxShadow: '4px 4px 0px 0px #FFE600',
+                padding: '16px 20px',
+                color: '#ffffff',
+                textAlign: 'left'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <span style={{ background: '#FFE600', color: '#000000', fontWeight: 900, fontSize: '0.75rem', padding: '2px 8px', border: '1px solid #000' }}>
+                    👑 YOU ARE TEAM LEADER
+                  </span>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Share Team ID with Teammates:</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {createdTeams.map((t, idx) => (
+                    <div key={idx} style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid #ffffff', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#FFE600' }}>{t.eventName}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Team Name: <strong>{t.teamName}</strong> · Team ID: <code style={{ background: '#ffffff', color: '#000000', padding: '2px 6px', fontWeight: 900, fontSize: '0.88rem' }}>{t.teamId}</code></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(t.teamId);
+                            alert(`Copied Team ID ${t.teamId} to clipboard!`);
+                          }}
+                          style={{
+                            background: '#ffffff',
+                            color: '#000000',
+                            border: '1.5px solid #000',
+                            padding: '4px 10px',
+                            fontSize: '0.72rem',
+                            fontWeight: 900,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          📋 Copy Code
+                        </button>
+                        <a
+                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! I created our team for ${t.eventName} at Technika 6.0! Join our team by entering Team ID: *${t.teamId}* when registering at: ${window.location.origin}/register`)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            background: '#25D366',
+                            color: '#ffffff',
+                            border: '1.5px solid #000',
+                            padding: '4px 10px',
+                            fontSize: '0.72rem',
+                            fontWeight: 900,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fa-brands fa-whatsapp"></i> Share on WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="success-actions">
@@ -1188,7 +1485,26 @@ export const Register: React.FC = () => {
         <p>&copy; 2026 Technika Core Operations. All rights reserved.</p>
       </footer>
 
-      <EventDetailsModal event={activeModalEvent} onClose={() => setActiveModalEvent(null)} />
+      <EventDetailsModal
+        event={activeModalEvent}
+        onClose={handleCloseEventModal}
+        isSelected={activeModalEvent ? selectedEvents.includes(activeModalEvent.id) : false}
+        onToggleSelect={(eventId) => {
+          const detail = getEventDetails(eventId);
+          toggleEventSelection(eventId, detail?.minMembers);
+        }}
+        config={activeModalEvent ? eventConfigs[activeModalEvent.id] : undefined}
+        onUpdateConfig={(eventId, updates) => updateEventConfig(eventId, updates)}
+        teamCheckStatus={activeModalEvent ? teamCheckStatus[activeModalEvent.id] : undefined}
+        onValidateTeamCode={(eventId, teamId) => handleValidateTeamCode(eventId, teamId)}
+        formDataName={formData.name}
+      />
+
+      <CommonRulesModal
+        isOpen={showCommonRulesModal}
+        onClose={() => setShowCommonRulesModal(false)}
+        onAccept={() => setAcceptedRules(true)}
+      />
     </div>
   );
 };
