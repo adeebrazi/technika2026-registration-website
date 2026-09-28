@@ -154,6 +154,21 @@ export const Register: React.FC = () => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [topNotification, setTopNotification] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+
+  useEffect(() => {
+    if (topNotification) {
+      const timer = setTimeout(() => {
+        setTopNotification(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [topNotification]);
+
+  const triggerTopNotification = (message: string, type: 'error' | 'success' = 'error') => {
+    setTopNotification({ message, type });
+  };
+
   const [activeModalEvent, setActiveModalEvent] = useState<any>(null);
   const [regId, setRegId] = useState('');
   const [participantName, setParticipantName] = useState('');
@@ -390,11 +405,10 @@ export const Register: React.FC = () => {
 
   const handleSendOtp = async () => {
     if (!formData.email.trim().endsWith('@gmail.com')) {
-      setError('Please enter a valid Gmail address to send OTP.');
+      triggerTopNotification('Please enter a valid Gmail address to send OTP.', 'error');
       return;
     }
     setSendingOtp(true);
-    setError('');
     try {
       const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
@@ -404,28 +418,32 @@ export const Register: React.FC = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Failed to send OTP.');
       setIsOtpSent(true);
+      triggerTopNotification(data.message || 'OTP sent successfully to your Gmail.', 'success');
     } catch (err: any) {
-      setError(err.message);
+      triggerTopNotification(err.message || 'Failed to send OTP.', 'error');
     } finally {
       setSendingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp) return setError('Please enter the OTP.');
+    if (!otp || !otp.trim()) {
+      triggerTopNotification('Please enter the OTP.', 'error');
+      return;
+    }
     setVerifyingOtp(true);
-    setError('');
     try {
       const response = await fetch('/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email.trim(), otp })
+        body: JSON.stringify({ email: formData.email.trim(), otp: otp.trim() })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to verify OTP.');
+      if (!response.ok) throw new Error(data.message || 'Invalid OTP.');
       setIsEmailVerified(true);
+      triggerTopNotification(data.message || 'Email verified successfully!', 'success');
     } catch (err: any) {
-      setError(err.message);
+      triggerTopNotification(err.message || 'Invalid OTP.', 'error');
     } finally {
       setVerifyingOtp(false);
     }
@@ -560,6 +578,40 @@ export const Register: React.FC = () => {
 
   return (
     <div className="container" style={{ marginTop: '4.8vh' }}>
+      {/* Top-Right Notification Toast (Auto-vanishes in 2 seconds) */}
+      {topNotification && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 99999,
+            maxWidth: '380px',
+            minWidth: '260px',
+            background: topNotification.type === 'success' ? '#10b981' : '#ff2d55',
+            color: '#ffffff',
+            border: '3.5px solid #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontFamily: "var(--font-heading, 'Space Grotesk', sans-serif)",
+            fontWeight: 800,
+            fontSize: '0.92rem',
+            letterSpacing: '0.01em',
+            animation: 'toastPopIn 0.2s ease-out',
+          }}
+        >
+          <i
+            className={topNotification.type === 'success' ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-exclamation'}
+            style={{ fontSize: '1.25rem', flexShrink: 0 }}
+          ></i>
+          <span style={{ lineHeight: 1.3 }}>{topNotification.message}</span>
+        </div>
+      )}
+
       <header className="main-header">
         <div
           style={{
