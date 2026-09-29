@@ -165,10 +165,14 @@ router.post('/login', (req, res) => {
 });
 
 // @route   GET /api/admin/users
-// @desc    Get all users with their registrations
+// @desc    Get all users with their registrations (role-filtered)
 // @access  Private (All Admin Roles)
+// NOTE: Admin & Faculty see FULL details. Student Coordinators see limited data only.
 router.get('/users', verifyAdminToken, async (req, res) => {
   try {
+    const requestingRole = req.admin?.role; // 'admin' | 'faculty' | 'coordinator'
+    const isFullAccess = (requestingRole === 'admin' || requestingRole === 'faculty');
+
     const users = await User.find().select('-passwordHash').sort({ createdAt: -1 });
     
     // Fetch all events to construct an in-memory mapping
@@ -195,13 +199,28 @@ router.get('/users', verifyAdminToken, async (req, res) => {
         };
       });
 
+      // FULL ACCESS: Admin & Faculty — return everything
+      if (isFullAccess) {
+        return {
+          ...user.toObject(),
+          registeredEvents
+        };
+      }
+
+      // LIMITED ACCESS: Student Coordinator — only name, institution, events
       return {
-        ...user.toObject(),
-        registeredEvents
+        _id: user._id,
+        name: user.name,
+        institution: user.institution,
+        registeredEvents: registeredEvents.map(re => ({
+          _id: re._id,
+          event: re.event ? { name: re.event.name } : null
+        }))
       };
     }));
 
-    res.json(usersWithEvents);
+    // Include the access level in response so frontend knows what to render
+    res.json({ users: usersWithEvents, accessLevel: isFullAccess ? 'full' : 'limited' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -209,27 +228,64 @@ router.get('/users', verifyAdminToken, async (req, res) => {
 });
 
 // @route   GET /api/admin/teams
-// @desc    Get all teams
+// @desc    Get all teams with event and member details
 // @access  Private (All Admin Roles)
+// NOTE: Uses manual lookups because all refs are String-based (not ObjectId)
 router.get('/teams', verifyAdminToken, async (req, res) => {
   try {
-    const teams = await Team.find()
-      .populate('eventId', 'name category')
-      .populate('leaderId', 'name email whatsapp institution')
-      .sort({ createdAt: -1 });
-      
+    const teams = await Team.find().sort({ createdAt: -1 });
+    
+    // Build in-memory maps for events and users (string-keyed)
+    const events = await Event.find();
+    const eventMap = {};
+    events.forEach(e => { eventMap[e.eventId] = e; });
+
+    const allUsers = await User.find().select('-passwordHash');
+    const userMap = {};
+    allUsers.forEach(u => { userMap[u.registrationId] = u; });
+
     // Fetch members for each team
     const TeamMember = require('../models/TeamMember');
-    const teamsWithMembers = await Promise.all(teams.map(async (team) => {
-      const members = await TeamMember.find({ teamId: team.teamId })
-        .populate('userId', 'name email whatsapp institution');
-      return {
-        ...team.toObject(),
-        members
-      };
+    const teamsWithDetails = await Promise.all(teams.map(async (team) => {
+      const teamObj = team.toObject();
+      
+      // Resolve event details
+      const eventDoc = eventMap[teamObj.eventId];
+      teamObj.eventId = eventDoc ? {
+        name: eventDoc.name,
+        category: eventDoc.category,
+        eventId: eventDoc.eventId
+      } : { name: 'Unknown Event', category: '', eventId: teamObj.eventId };
+
+      // Resolve leader details
+      const leaderDoc = userMap[teamObj.leaderId];
+      teamObj.leaderId = leaderDoc ? {
+        name: leaderDoc.name,
+        email: leaderDoc.email,
+        whatsapp: leaderDoc.whatsapp,
+        institution: leaderDoc.institution
+      } : { name: 'Unknown', email: '', whatsapp: '', institution: '' };
+
+      // Fetch and resolve team members
+      const memberDocs = await TeamMember.find({ teamId: teamObj.teamId });
+      teamObj.members = memberDocs.map(m => {
+        const memberUser = userMap[m.userId];
+        return {
+          _id: m._id,
+          role: m.role,
+          userId: memberUser ? {
+            name: memberUser.name,
+            email: memberUser.email,
+            whatsapp: memberUser.whatsapp,
+            institution: memberUser.institution
+          } : { name: 'Unknown', email: '', whatsapp: '', institution: '' }
+        };
+      });
+
+      return teamObj;
     }));
 
-    res.json(teamsWithMembers);
+    res.json(teamsWithDetails);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
