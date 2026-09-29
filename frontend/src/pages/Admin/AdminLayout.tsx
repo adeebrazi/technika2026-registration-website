@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Navigate, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 
 export const AdminLayout: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -14,14 +13,6 @@ export const AdminLayout: React.FC = () => {
   if (!token) {
     return <Navigate to="/admin/login" replace />;
   }
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminRole');
-    localStorage.removeItem('adminName');
-    localStorage.removeItem('adminDesignation');
-    navigate('/admin/login');
-  };
 
   const getInitials = (fullName: string) => {
     return fullName
