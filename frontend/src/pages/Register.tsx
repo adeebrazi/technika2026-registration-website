@@ -363,7 +363,9 @@ export const Register: React.FC = () => {
     }
   }, [navigate]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | { target: { name: string; value: string } }
+  ) => {
     const { name, value } = e.target;
     if (name === 'paymentUTR') {
       // Strictly digits only, maximum 12 characters
