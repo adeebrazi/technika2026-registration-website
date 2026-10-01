@@ -63,9 +63,6 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   const isTeamOnly = minMembers > 1;
   const isHybrid = minMembers === 1 && maxMembers > 1;
   const currentMode = config?.mode || (isTeamOnly ? 'create_team' : 'solo');
-  const cleanCoordinator = event.coordinator
-    ? event.coordinator.replace(/\s*\(\s*\+?[\d\s-]+\s*\)/g, '').replace(/\s*\+?[\d\s-]{10,}/g, '').trim()
-    : '';
 
   return (
     <div
@@ -393,17 +390,6 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
           </p>
         </div>
 
-        {/* Coordinator */}
-        {cleanCoordinator && (
-          <div style={{ marginBottom: '20px', background: 'rgba(138, 235, 238, 0.12)', border: '1.5px solid var(--border, #8aebee)', padding: '12px 16px' }}>
-            <span style={{ fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--secondary, #8aebee)' }}>
-              Coordinators:{" "}
-            </span>
-            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#ffffff' }}>
-              {cleanCoordinator}
-            </span>
-          </div>
-        )}
 
         {/* Objective / Overview */}
         {event.objective && (

@@ -3363,8 +3363,7 @@ body.has-expanded-event #monument-viewport {
 
 .form-group input[type="text"],
 .form-group input[type="email"],
-.form-group input[type="tel"],
-.form-group select {
+.form-group input[type="tel"] {
   font-family: var(--font-title);
   font-size: 0.95rem;
   font-weight: 700;
@@ -3381,12 +3380,36 @@ body.has-expanded-event #monument-viewport {
 }
 
 .form-group select {
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #000000;
+  background-color: #FFFFFF;
+  border: 3px solid #000000;
+  padding: 11px 14px;
+  border-radius: 0;
+  outline: none;
+  box-shadow: 4px 4px 0px #000000;
+  width: 100%;
+  box-sizing: border-box;
+  cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   background-size: 16px;
   padding-right: 40px;
+  /* CRITICAL: Never apply CSS transforms or transitions to select elements on Windows Chromium as it desyncs the native popup buffer */
+  transition: none !important;
+  transform: none !important;
+}
+
+.form-group select option,
+select option {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  font-weight: 600;
+  padding: 8px 12px;
 }
 
 .form-group input::placeholder {
@@ -3394,11 +3417,17 @@ body.has-expanded-event #monument-viewport {
   font-weight: 500;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.form-group input:focus {
   background: var(--accent-neon-yellow);
   transform: translate(-2px, -2px);
   box-shadow: 6px 6px 0px #000000;
+}
+
+.form-group select:focus {
+  background-color: #FFFFFF !important;
+  transform: none !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+  outline: 2px solid #000000 !important;
 }
 
 /* Sub-member Cards */

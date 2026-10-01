@@ -36,6 +36,7 @@ export const Navbar: React.FC = () => {
         }}
       >
         <div
+          className="navbar-inner"
           style={{
             maxWidth: '1400px',
             margin: '0 auto',
@@ -61,7 +62,7 @@ export const Navbar: React.FC = () => {
             }}
             onClick={() => navigate('/')}
           >
-            <img src={logoPng} alt="ARKA JAIN University" style={{ height: '38px', width: 'auto', objectFit: 'contain' }} />
+            <img src={logoPng} alt="ARKA JAIN University" className="navbar-brand-logo" style={{ height: '38px', width: 'auto', objectFit: 'contain' }} />
             <div
               style={{
                 width: '2px',
@@ -87,10 +88,11 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* ── Right Actions ── */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {/* 3-Way Theme Switcher (Hidden on Admin pages) */}
             {!isAdminRoute && (
               <div
+                className="theme-switcher-group"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -107,6 +109,7 @@ export const Navbar: React.FC = () => {
                       key={t}
                       type="button"
                       onClick={() => setTheme(t)}
+                      className="theme-switch-btn"
                       style={{
                         padding: '2px 8px',
                         fontSize: '10px',
@@ -121,8 +124,9 @@ export const Navbar: React.FC = () => {
                         cursor: 'pointer',
                         transition: 'all 0.1s ease',
                       }}
+                      title={`Switch to ${t} theme`}
                     >
-                      {t.toUpperCase()}
+                      {t === 'main' ? 'THEME' : t.toUpperCase()}
                     </button>
                   );
                 })}
@@ -144,9 +148,9 @@ export const Navbar: React.FC = () => {
                   fontFamily: "'Space Grotesk', sans-serif",
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
-                  color: 'var(--foreground, #000)',
-                  background: 'var(--background, #fff)',
-                  border: '2px solid var(--foreground, #000)',
+                  color: '#000000',
+                  background: '#ffffff',
+                  border: '2px solid #000000',
                   boxShadow: '2px 2px 0px rgba(0,0,0,1)',
                   textDecoration: 'none',
                   transition: 'all 0.1s ease',
@@ -167,27 +171,27 @@ export const Navbar: React.FC = () => {
               </a>
             )}
 
-            {/* Home button */}
+            {/* Home button - Ultra-prominent Neo-Brutalism Home button */}
             <button
               onClick={handleHomeClick}
-              className={isAdminRoute ? 'clay-nav-btn' : 'nav-btn-register'}
+              className={isAdminRoute ? 'clay-nav-btn' : 'nav-btn-home'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: isAdminRoute ? '8px 18px' : '6px 16px',
-                fontSize: '0.75rem',
+                gap: '7px',
+                padding: isAdminRoute ? '8px 18px' : '7px 15px',
+                fontSize: '0.78rem',
                 fontWeight: 900,
                 fontFamily: "'Space Grotesk', sans-serif",
                 textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                color: '#ffffff',
-                background: isAdminRoute ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'var(--foreground, #000)',
+                letterSpacing: '0.06em',
+                color: isAdminRoute ? '#ffffff' : '#FFE600',
+                background: isAdminRoute ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#000000',
                 borderRadius: isAdminRoute ? '14px' : '0',
-                border: isAdminRoute ? '2px solid rgba(255, 255, 255, 0.7)' : '2px solid var(--foreground, #000)',
+                border: isAdminRoute ? '2px solid rgba(255, 255, 255, 0.7)' : '2.5px solid #000000',
                 boxShadow: isAdminRoute
                   ? '4px 6px 14px rgba(37, 99, 235, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.45), inset -2px -2px 4px rgba(15, 23, 42, 0.25)'
-                  : '2px 2px 0px rgba(0,0,0,1)',
+                  : '3px 3px 0px 0px rgba(0,0,0,1)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap',
@@ -198,8 +202,10 @@ export const Navbar: React.FC = () => {
                   el.style.transform = 'translateY(-1px)';
                   el.style.boxShadow = '5px 8px 18px rgba(37, 99, 235, 0.45), inset 2px 2px 4px rgba(255, 255, 255, 0.5), inset -2px -2px 4px rgba(15, 23, 42, 0.25)';
                 } else {
-                  el.style.transform = 'translate(1px, 1px)';
-                  el.style.boxShadow = 'none';
+                  el.style.transform = 'translate(2px, 2px)';
+                  el.style.boxShadow = '1px 1px 0px 0px rgba(0,0,0,1)';
+                  el.style.background = '#FFE600';
+                  el.style.color = '#000000';
                 }
               }}
               onMouseLeave={e => {
@@ -209,11 +215,28 @@ export const Navbar: React.FC = () => {
                   el.style.boxShadow = '4px 6px 14px rgba(37, 99, 235, 0.35), inset 2px 2px 4px rgba(255, 255, 255, 0.45), inset -2px -2px 4px rgba(15, 23, 42, 0.25)';
                 } else {
                   el.style.transform = 'none';
-                  el.style.boxShadow = '2px 2px 0px rgba(0,0,0,1)';
+                  el.style.boxShadow = '3px 3px 0px 0px rgba(0,0,0,1)';
+                  el.style.background = '#000000';
+                  el.style.color = '#FFE600';
                 }
               }}
             >
-              HOME →
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0 }}
+              >
+                <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <span className="nav-home-full-text">MAIN WEBSITE</span>
+              <span className="nav-home-mobile-text">HOME</span>
             </button>
 
             {/* Sign Out button (Only on Admin pages, next to Home) */}
@@ -269,10 +292,36 @@ export const Navbar: React.FC = () => {
       <div style={{ height: '64px' }} aria-hidden="true" />
 
       <style>{`
+        .nav-home-mobile-text { display: none !important; }
+        .nav-home-full-text { display: inline !important; }
+
         @media (max-width: 1024px) {
           .desktop-nav-links { display: none !important; }
           .hidden-mobile { display: none !important; }
           .nav-btn-brochure { display: none !important; }
+        }
+
+        @media (max-width: 640px) {
+          .navbar-inner {
+            padding: 8px 10px !important;
+          }
+          .navbar-brand-logo {
+            height: 28px !important;
+          }
+          .navbar-actions {
+            gap: 5px !important;
+          }
+          .theme-switch-btn {
+            padding: 2px 5px !important;
+            font-size: 8.5px !important;
+          }
+          .nav-btn-home {
+            padding: 5px 8px !important;
+            font-size: 0.72rem !important;
+            gap: 4px !important;
+          }
+          .nav-home-full-text { display: none !important; }
+          .nav-home-mobile-text { display: inline !important; }
         }
       `}</style>
     </>

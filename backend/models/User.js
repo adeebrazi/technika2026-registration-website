@@ -99,6 +99,18 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isAjuExempt: {
+      type: Boolean,
+      default: false,
+    },
+    noDuesSlipUrl: {
+      type: String,
+      default: null,
+    },
+    collegeIdCardUrl: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

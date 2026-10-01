@@ -49,6 +49,10 @@
   flex-direction: column;
 }
 
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-main);
@@ -61,13 +65,22 @@ body {
 
 /* Container */
 .container {
-  width: 90%;
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 14px;
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .container {
+    width: 90%;
+    padding: 0 20px;
+    gap: 30px;
+  }
 }
 
 /* Typography */
@@ -540,12 +553,21 @@ select {
   background-position: right 16px center;
   background-size: 16px;
   padding-right: 40px;
+  transition: none !important;
+  transform: none !important;
 }
 
-input:focus, select:focus {
+input:focus {
   border-color: var(--border-color);
   background-color: var(--input-bg);
   box-shadow: 3px 3px 0px var(--border-color);
+}
+
+select:focus {
+  border-color: var(--border-color);
+  background-color: var(--input-bg);
+  box-shadow: 3px 3px 0px var(--border-color);
+  transform: none !important;
 }
 
 input:focus + .input-icon, select:focus + .input-icon {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
+import { FestAnnouncement } from '../components/FestAnnouncement';
 
 export const Login: React.FC = () => {
   const [registrationIdOrEmail, setRegistrationIdOrEmail] = useState('');
@@ -172,7 +173,7 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '450px', marginTop: '4.8vh' }}>
+    <div className="container" style={{ maxWidth: '480px', marginTop: '2vh', width: '100%', padding: '0 12px', boxSizing: 'border-box' }}>
       <header className="main-header">
         <div
           style={{
@@ -227,6 +228,9 @@ export const Login: React.FC = () => {
         </div>
         <p className="tagline">Sign in to manage your registrations, create teams, and check invitations.</p>
       </header>
+
+      {/* 45 Events ₹150 Announcement in Neo-Brutalism */}
+      <FestAnnouncement />
 
       <div
         className="brut-card brut-login-card"

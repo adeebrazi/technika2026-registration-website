@@ -60,249 +60,347 @@ const generateTeamId = async () => {
 const { EVENT_ID_MAP } = require('../utils/eventConstants');
 
 
+// Helper: Upload file buffer to Cloudinary with local disk fallback
+const saveUploadedImage = async (buffer, customFileName, customFolder, localSubdir = 'general') => {
+  let fileUrl = '';
+  let uploadedToCloudinary = false;
+  if (cloudinaryService.isConfigured) {
+    try {
+      fileUrl = await cloudinaryService.uploadToCloudinary(buffer, customFileName, customFolder);
+      uploadedToCloudinary = true;
+      console.log(`[CLOUDINARY] Uploaded ${customFileName} to folder: ${customFolder}`);
+    } catch (err) {
+      console.warn(`[CLOUDINARY UPLOAD FAILED for ${customFolder}] falling back to local storage: ${err.message}`);
+    }
+  }
+
+  if (!uploadedToCloudinary) {
+    try {
+      if (process.env.VERCEL) {
+        console.warn('[VERCEL WARNING] Uploading to local folder in Vercel serverless context. This file will NOT persist!');
+      }
+      const uploadsDir = path.join(__dirname, '..', 'public', 'uploads', localSubdir);
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const localPath = path.join(uploadsDir, customFileName);
+      fs.writeFileSync(localPath, buffer);
+      fileUrl = `/uploads/${localSubdir}/${customFileName}`;
+      console.log(`Saved locally at: ${fileUrl}`);
+    } catch (writeError) {
+      console.error('[WRITE ERROR] Failed to write local file:', writeError.message);
+      fileUrl = `/uploads/${localSubdir}/failed_${customFileName}`;
+    }
+  }
+  return fileUrl;
+};
+
 // @route   POST /api/register
 // @desc    Register a participant, upload screenshot, generate ID, and download receipt (no events)
 // @access  Public
-router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
-  try {
-    const {
-      name,
-      age,
-      dob,
-      gender,
-      email,
-      whatsapp,
-      institution,
-      course,
-      semester,
-      password,
-      paymentUTR
-    } = req.body;
+router.post(
+  '/',
+  upload.fields([
+    { name: 'paymentScreenshot', maxCount: 1 },
+    { name: 'noDuesSlip', maxCount: 1 },
+    { name: 'collegeIdCard', maxCount: 1 }
+  ]),
+  async (req, res) => {
+    try {
+      const {
+        name,
+        age,
+        dob,
+        gender,
+        email,
+        whatsapp,
+        institution,
+        course,
+        semester,
+        password,
+        paymentUTR
+      } = req.body;
 
-    // 1. Validations
-    if (!req.file) {
-      return res.status(400).json({ message: 'Payment screenshot is required!' });
-    }
-
-    if (!email || !email.endsWith('@gmail.com')) {
-      return res.status(400).json({ message: 'A valid Gmail address is required!' });
-    }
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long!' });
-    }
-
-    const cleanUTR = (paymentUTR || '').toString().trim();
-    if (!cleanUTR) {
-      return res.status(400).json({ message: 'Payment UTR / Reference number is required!' });
-    }
-
-    if (!/^\d{12}$/.test(cleanUTR)) {
-      return res.status(400).json({ message: 'Payment UTR Number must be exactly 12 numeric digits!' });
-    }
-
-    // Check unique UTR
-    const existingUTR = await User.findOne({ paymentUTR: cleanUTR });
-    if (existingUTR) {
-      return res.status(400).json({ message: 'This Payment UTR (12-digit Ref No.) has already been used for registration!' });
-    }
-
-    // Check unique email
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({ message: 'This email is already registered!' });
-    }
-
-    // 2. Generate Unique Registration ID
-    const registrationId = await generateRegistrationId();
-
-    // 3. Image Compression
-    const compressedBuffer = await compressImage(req.file.buffer);
-
-    // 4. Upload to Cloudinary with local fallback on error
-    let paymentScreenshotUrl = '';
-    const fileName = `${Date.now()}_${registrationId}.jpg`;
-    
-    let uploadedToCloudinary = false;
-    if (cloudinaryService.isConfigured) {
-      try {
-        paymentScreenshotUrl = await cloudinaryService.uploadToCloudinary(compressedBuffer, fileName);
-        uploadedToCloudinary = true;
-        console.log('Payment screenshot successfully uploaded to Cloudinary.');
-      } catch (err) {
-        console.warn(`[CLOUDINARY UPLOAD FAILED] falling back to local storage: ${err.message}`);
+      // 1. Basic Account & Identity Validations
+      if (!email || !email.endsWith('@gmail.com')) {
+        return res.status(400).json({ message: 'A valid Gmail address is required!' });
       }
-    }
 
-    // Local Fallback: If not uploaded to Cloudinary, save locally in public/uploads/
-    if (!uploadedToCloudinary) {
-      try {
-        if (process.env.VERCEL) {
-          console.warn('[VERCEL WARNING] Uploading screenshot to local folder in Vercel serverless context. This file will NOT persist!');
-        }
-        const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
-        if (!fs.existsSync(uploadsDir)) {
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-        const localPath = path.join(uploadsDir, fileName);
-        fs.writeFileSync(localPath, compressedBuffer);
-        
-        // Set the path served by Express static
-        paymentScreenshotUrl = `/uploads/${fileName}`;
-        console.log(`Payment screenshot saved locally at: ${paymentScreenshotUrl}`);
-      } catch (writeError) {
-        console.error('[WRITE ERROR] Failed to write local screenshot file:', writeError.message);
-        // Fallback to a placeholder URL so registration doesn't fail
-        paymentScreenshotUrl = `/uploads/failed_local_write_${fileName}`;
-        if (process.env.VERCEL) {
-          console.warn('[VERCEL ERROR] Local write failed due to read-only filesystem. Configured CLOUDINARY credentials are highly recommended!');
+      if (!password || password.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long!' });
+      }
+
+      // Check unique email
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({ message: 'This email is already registered!' });
+      }
+
+      // 2. Parse selected events
+      let parsedEventsInput = [];
+      if (req.body.selectedEvents) {
+        try {
+          parsedEventsInput = JSON.parse(req.body.selectedEvents);
+        } catch (e) {
+          console.warn('Failed to parse selectedEvents:', e.message);
         }
       }
-    }
 
-    // 5. Hash Password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
-
-    // 6. Save Participant details in User collection
-    let finalAge = parseInt(age);
-    if (isNaN(finalAge) && dob) {
-      const birthDate = new Date(dob);
-      if (!isNaN(birthDate.getTime())) {
-        const today = new Date();
-        let computedAge = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          computedAge--;
-        }
-        finalAge = computedAge;
-      }
-    }
-
-    if (isNaN(finalAge) || finalAge < 0) {
-      return res.status(400).json({ message: 'A valid Date of Birth or Age is required!' });
-    }
-
-    // Parse selected events first to calculate expectedAmount
-    let parsedEventsInput = [];
-    if (req.body.selectedEvents) {
-      try {
-        parsedEventsInput = JSON.parse(req.body.selectedEvents);
-      } catch (e) {
-        console.warn('Failed to parse selectedEvents:', e.message);
-      }
-    }
-
-    // Normalize to array of objects: { slug, mode: 'solo'|'create_team'|'join_team', teamName, teamId }
-    const normalizedEvents = [];
-    for (const item of parsedEventsInput) {
-      if (typeof item === 'string') {
-        normalizedEvents.push({ slug: item, mode: 'auto', teamName: '', teamId: '' });
-      } else if (item && typeof item === 'object' && item.slug) {
-        normalizedEvents.push({
-          slug: item.slug,
-          mode: item.mode || 'auto',
-          teamName: item.teamName ? item.teamName.trim() : '',
-          teamId: item.teamId ? item.teamId.trim().toUpperCase() : ''
-        });
-      }
-    }
-
-    // Calculate expected payment amount (Flat Rs. 150)
-    let expectedAmount = 0;
-    if (normalizedEvents.length > 0) {
-      expectedAmount = 150;
-    }
-
-    if (expectedAmount === 0) {
-      return res.status(400).json({ message: 'You must select at least one event to register!' });
-    }
-
-    // Pre-validate join_team codes before processing payment verification
-    for (const item of normalizedEvents) {
-      if (item.mode === 'join_team') {
-        const eventId = EVENT_ID_MAP[item.slug] || item.slug;
-        const event = await Event.findOne({ eventId, isActive: true });
-        if (!event) continue;
-
-        if (!item.teamId) {
-          return res.status(400).json({ message: `Please enter a Team ID to join a team for "${event.name}".` });
-        }
-        const targetTeam = await Team.findOne({ teamId: item.teamId, eventId });
-        if (!targetTeam) {
-          return res.status(400).json({ 
-            message: `Team "${item.teamId}" was not found for "${event.name}". Please ensure your Team Leader has registered first and given you the correct code.` 
+      // Normalize to array of objects: { slug, mode: 'solo'|'create_team'|'join_team', teamName, teamId }
+      const normalizedEvents = [];
+      for (const item of parsedEventsInput) {
+        if (typeof item === 'string') {
+          normalizedEvents.push({ slug: item, mode: 'auto', teamName: '', teamId: '' });
+        } else if (item && typeof item === 'object' && item.slug) {
+          normalizedEvents.push({
+            slug: item.slug,
+            mode: item.mode || 'auto',
+            teamName: item.teamName ? item.teamName.trim() : '',
+            teamId: item.teamId ? item.teamId.trim().toUpperCase() : ''
           });
         }
-        if (targetTeam.status === 'cancelled') {
-          return res.status(400).json({ message: `Team "${item.teamId}" has been cancelled or disbanded.` });
-        }
-        if (targetTeam.memberCount >= event.maxMembers) {
-          return res.status(400).json({ message: `Team "${item.teamId}" is already full (${targetTeam.memberCount}/${event.maxMembers} members).` });
+      }
+
+      if (normalizedEvents.length === 0) {
+        return res.status(400).json({ message: 'You must select at least one event to register!' });
+      }
+
+      // 3. Institution & Course Rule Checks
+      const isArkaJain = (institution || '').toLowerCase().includes('arka jain');
+      const courseLower = (course || '').toLowerCase();
+      const isExemptCourse =
+        courseLower.includes('b.tech') ||
+        courseLower.includes('btech') ||
+        courseLower.includes('b.e.') ||
+        courseLower.includes('bca') ||
+        courseLower.includes('diploma') ||
+        courseLower.includes('polytechnic');
+      const isAjuExempt = isArkaJain && isExemptCourse;
+
+      // RULE: Treasure Hunt is disabled for ARKA JAIN University students
+      if (isArkaJain) {
+        for (const item of normalizedEvents) {
+          if (item.slug === 'treasure-hunt' || item.slug === 'CUL_TH') {
+            return res.status(400).json({
+              message: 'Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.'
+            });
+          }
         }
       }
-    }
 
-    // AI Screenshot Verification Pipeline
-    const aiResult = await verifyPaymentScreenshot(compressedBuffer, req.file.mimetype || 'image/jpeg', paymentScreenshotUrl);
-
-    if (aiResult.status !== 'SUCCESS') {
-      return res.status(400).json({ message: 'Payment verification failed: The screenshot does not show a successful completed transaction.' });
-    }
-
-    if (aiResult.isEdited) {
-      return res.status(400).json({ message: 'Payment verification failed: The screenshot shows signs of digital editing or tampering.' });
-    }
-
-    // Security Check: Payee must be ARKA JAIN UNIVERSITY
-    if (!aiResult.isPayeeArkaJain) {
-      const detectedPayee = aiResult.payeeName || aiResult.payeeUpi || 'an unauthorized recipient';
-      return res.status(400).json({ 
-        message: `Payment security check failed: Payment must be sent to ARKA JAIN UNIVERSITY (UPI: 3217855a@bandhan). The uploaded receipt shows payment sent to: ${detectedPayee}.` 
-      });
-    }
-
-    if (aiResult.amount !== expectedAmount) {
-      return res.status(400).json({ 
-        message: `Payment verification failed: Expected payment of ₹${expectedAmount} for your selected events, but the screenshot shows a payment of ₹${aiResult.amount}.` 
-      });
-    }
-
-    // Check unique UTR for manually entered UTR
-    const existingManualUTR = await User.findOne({ utrEnteredManually: cleanUTR });
-    if (existingManualUTR) {
-      return res.status(400).json({ message: 'This manually entered 12-digit UTR/Ref No. has already been used!' });
-    }
-
-    // Check unique UTR from AI extraction (only if it is a real UTR/Ref, not a fallback string)
-    const finalAiUtr = aiResult.finalAiUtr;
-    if (finalAiUtr && !finalAiUtr.startsWith('NO_UTR_FOUND')) {
-      const existingAiUTR = await User.findOne({ utrFetchedFromScreenshot: finalAiUtr });
-      if (existingAiUTR) {
-        return res.status(400).json({ message: `The UTR/Transaction ID (${finalAiUtr}) from your screenshot has already been used!` });
+      // 4. Age Calculation
+      let finalAge = parseInt(age);
+      if (isNaN(finalAge) && dob) {
+        const birthDate = new Date(dob);
+        if (!isNaN(birthDate.getTime())) {
+          const today = new Date();
+          let computedAge = today.getFullYear() - birthDate.getFullYear();
+          const m = today.getMonth() - birthDate.getMonth();
+          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            computedAge--;
+          }
+          finalAge = computedAge;
+        }
       }
-    }
 
-    const user = new User({
-      registrationId,
-      name,
-      age: finalAge,
-      gender,
-      email,
-      whatsapp,
-      institution,
-      course,
-      semester,
-      passwordHash,
-      paymentUTR: cleanUTR,
-      utrEnteredManually: cleanUTR,
-      utrFetchedFromScreenshot: finalAiUtr,
-      paymentScreenshotUrl,
-      expectedAmount,
-      verifiedAmount: aiResult.amount,
-      verificationStatus: aiResult.status
-    });
-    await user.save();
+      if (isNaN(finalAge) || finalAge < 0) {
+        return res.status(400).json({ message: 'A valid Date of Birth or Age is required!' });
+      }
+
+      // 5. Pre-validate join_team codes
+      for (const item of normalizedEvents) {
+        if (item.mode === 'join_team') {
+          const eventId = EVENT_ID_MAP[item.slug] || item.slug;
+          const event = await Event.findOne({ eventId, isActive: true });
+          if (!event) continue;
+
+          if (!item.teamId) {
+            return res.status(400).json({ message: `Please enter a Team ID to join a team for "${event.name}".` });
+          }
+          const targetTeam = await Team.findOne({ teamId: item.teamId, eventId });
+          if (!targetTeam) {
+            return res.status(400).json({
+              message: `Team "${item.teamId}" was not found for "${event.name}". Please ensure your Team Leader has registered first and given you the correct code.`
+            });
+          }
+          if (targetTeam.status === 'cancelled') {
+            return res.status(400).json({ message: `Team "${item.teamId}" has been cancelled or disbanded.` });
+          }
+          if (targetTeam.memberCount >= event.maxMembers) {
+            return res.status(400).json({ message: `Team "${item.teamId}" is already full (${targetTeam.memberCount}/${event.maxMembers} members).` });
+          }
+        }
+      }
+
+      // 6. Generate Unique Registration ID
+      const registrationId = await generateRegistrationId();
+
+      // 7. Hash Password
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(password, salt);
+
+      // 8. Payment & Document Verification
+      let cleanUTR = '';
+      let finalAiUtr = '';
+      let paymentScreenshotUrl = '';
+      let noDuesSlipUrl = null;
+      let collegeIdCardUrl = null;
+      let expectedAmount = 0;
+      let verifiedAmount = 0;
+      let verificationStatus = 'PENDING';
+
+      if (isAjuExempt) {
+        // --- ARKA JAIN UNIVERSITY (B.Tech / BCA / Diploma) EXEMPTION FLOW ---
+        const noDuesSlipFile = req.files && req.files['noDuesSlip'] ? req.files['noDuesSlip'][0] : null;
+        const collegeIdCardFile = req.files && req.files['collegeIdCard'] ? req.files['collegeIdCard'][0] : null;
+
+        if (!noDuesSlipFile) {
+          return res.status(400).json({
+            message: 'Please upload your ₹600 manual payment slip paid during No-Dues!'
+          });
+        }
+        if (!collegeIdCardFile) {
+          return res.status(400).json({
+            message: 'Please upload your College ID Card for student verification!'
+          });
+        }
+
+        // Compress and upload both documents
+        const compressedSlip = await compressImage(noDuesSlipFile.buffer);
+        const compressedId = await compressImage(collegeIdCardFile.buffer);
+
+        const slipFileName = `nodues_${Date.now()}_${registrationId}.jpg`;
+        const idFileName = `collegeid_${Date.now()}_${registrationId}.jpg`;
+
+        noDuesSlipUrl = await saveUploadedImage(
+          compressedSlip,
+          slipFileName,
+          'technika-no-dues-slips',
+          'no_dues_slips'
+        );
+        collegeIdCardUrl = await saveUploadedImage(
+          compressedId,
+          idFileName,
+          'technika-college-ids',
+          'college_ids'
+        );
+
+        // Auto-generate non-colliding UTR references for DB uniqueness constraints
+        cleanUTR = `NODUES-${registrationId}`;
+        finalAiUtr = `NODUES-${registrationId}`;
+        paymentScreenshotUrl = noDuesSlipUrl;
+        expectedAmount = 600;
+        verifiedAmount = 600;
+        verificationStatus = 'SUCCESS';
+      } else {
+        // --- STANDARD ONLINE UPI PAYMENT (₹150) FLOW ---
+        const paymentFile = req.files && req.files['paymentScreenshot'] ? req.files['paymentScreenshot'][0] : null;
+        if (!paymentFile) {
+          return res.status(400).json({ message: 'Payment screenshot is required!' });
+        }
+
+        cleanUTR = (paymentUTR || '').toString().trim();
+        if (!cleanUTR) {
+          return res.status(400).json({ message: 'Payment UTR / Reference number is required!' });
+        }
+
+        if (!/^\d{12}$/.test(cleanUTR)) {
+          return res.status(400).json({ message: 'Payment UTR Number must be exactly 12 numeric digits!' });
+        }
+
+        const existingUTR = await User.findOne({ paymentUTR: cleanUTR });
+        if (existingUTR) {
+          return res.status(400).json({ message: 'This Payment UTR (12-digit Ref No.) has already been used for registration!' });
+        }
+
+        const existingManualUTR = await User.findOne({ utrEnteredManually: cleanUTR });
+        if (existingManualUTR) {
+          return res.status(400).json({ message: 'This manually entered 12-digit UTR/Ref No. has already been used!' });
+        }
+
+        // Compress image and upload to Cloudinary or disk
+        const compressedBuffer = await compressImage(paymentFile.buffer);
+        const fileName = `${Date.now()}_${registrationId}.jpg`;
+        paymentScreenshotUrl = await saveUploadedImage(
+          compressedBuffer,
+          fileName,
+          'technika-payment-screenshots',
+          'payment_screenshots'
+        );
+
+        expectedAmount = 150;
+
+        // AI Screenshot Verification Pipeline
+        const aiResult = await verifyPaymentScreenshot(
+          compressedBuffer,
+          paymentFile.mimetype || 'image/jpeg',
+          paymentScreenshotUrl
+        );
+
+        if (aiResult.status !== 'SUCCESS') {
+          return res.status(400).json({
+            message: 'Payment verification failed: The screenshot does not show a successful completed transaction.'
+          });
+        }
+
+        if (aiResult.isEdited) {
+          return res.status(400).json({
+            message: 'Payment verification failed: The screenshot shows signs of digital editing or tampering.'
+          });
+        }
+
+        // Security Check: Payee must be ARKA JAIN UNIVERSITY
+        if (!aiResult.isPayeeArkaJain) {
+          const detectedPayee = aiResult.payeeName || aiResult.payeeUpi || 'an unauthorized recipient';
+          return res.status(400).json({
+            message: `Payment security check failed: Payment must be sent to ARKA JAIN UNIVERSITY (UPI: 3217855a@bandhan). The uploaded receipt shows payment sent to: ${detectedPayee}.`
+          });
+        }
+
+        if (aiResult.amount !== expectedAmount) {
+          return res.status(400).json({
+            message: `Payment verification failed: Expected payment of ₹${expectedAmount} for your selected events, but the screenshot shows a payment of ₹${aiResult.amount}.`
+          });
+        }
+
+        finalAiUtr = aiResult.finalAiUtr;
+        if (finalAiUtr && !finalAiUtr.startsWith('NO_UTR_FOUND')) {
+          const existingAiUTR = await User.findOne({ utrFetchedFromScreenshot: finalAiUtr });
+          if (existingAiUTR) {
+            return res.status(400).json({
+              message: `The UTR/Transaction ID (${finalAiUtr}) from your screenshot has already been used!`
+            });
+          }
+        }
+
+        verifiedAmount = aiResult.amount;
+        verificationStatus = aiResult.status;
+      }
+
+      // 9. Save Participant details in User collection
+      const user = new User({
+        registrationId,
+        name,
+        age: finalAge,
+        gender,
+        email,
+        whatsapp,
+        institution,
+        course,
+        semester,
+        passwordHash,
+        paymentUTR: cleanUTR,
+        utrEnteredManually: cleanUTR,
+        utrFetchedFromScreenshot: finalAiUtr,
+        paymentScreenshotUrl,
+        expectedAmount,
+        verifiedAmount,
+        verificationStatus,
+        isAjuExempt,
+        noDuesSlipUrl,
+        collegeIdCardUrl
+      });
+      await user.save();
 
     const createdTeams = [];
 
@@ -425,11 +523,11 @@ router.post('/', upload.single('paymentScreenshot'), async (req, res) => {
       email,
       selectedEvents: normalizedEvents.map(e => e.slug),
       expectedAmount,
-      verifiedAmount: aiResult.amount,
-      utrEnteredManually: paymentUTR,
+      verifiedAmount,
+      utrEnteredManually: cleanUTR,
       utrFetchedFromScreenshot: finalAiUtr,
       screenshotUrl: paymentScreenshotUrl,
-      status: aiResult.status
+      status: verificationStatus
     }).catch(err => console.error('[SHEETS AUDIT ERROR]', err.message));
 
     // Sync Google Sheets Synchronization (in background)

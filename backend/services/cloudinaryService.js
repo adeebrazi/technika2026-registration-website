@@ -30,9 +30,10 @@ if (isConfigured) {
  * Upload compressed buffer to Cloudinary
  * @param {Buffer} buffer 
  * @param {string} fileName
+ * @param {string} [customFolder] Optional folder override
  * @returns {Promise<string>} public URL of the uploaded image
  */
-const uploadToCloudinary = (buffer, fileName) => {
+const uploadToCloudinary = (buffer, fileName, customFolder = null) => {
   return new Promise((resolve, reject) => {
     if (!isConfigured) {
       return reject(new Error('Cloudinary is not configured.'));
@@ -42,7 +43,7 @@ const uploadToCloudinary = (buffer, fileName) => {
 
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: folder,
+        folder: customFolder || folder,
         public_id: publicId,
         resource_type: 'image'
       },
@@ -63,3 +64,4 @@ module.exports = {
   uploadToCloudinary,
   isConfigured
 };
+

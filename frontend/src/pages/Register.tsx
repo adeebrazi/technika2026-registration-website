@@ -4,7 +4,16 @@ import { EventDetailsModal } from '../components/EventDetailsModal';
 import { CommonRulesModal } from '../components/CommonRulesModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
+import { FestAnnouncement } from '../components/FestAnnouncement';
 import { DatePicker } from '../components/DatePicker';
+import { CustomSelect } from '../components/CustomSelect';
+import { INSTITUTIONS } from '../data/institutions';
+import {
+  COURSE_OPTIONS,
+  getSemestersForCourse,
+  isArkaJainUniversity,
+  isAjuExemptEngineeringCourse
+} from '../data/courses';
 import QRCode from 'qrcode';
 
 // 45 Non-Special Events Grouped By Category
@@ -74,16 +83,6 @@ const EVENT_CATEGORIES = [
   }
 ];
 
-const INSTITUTIONS = [
-  "19.Maharishi Mahesh Yogi Ramayan University, Ayodhya", "AIIMS Deoghar", "Ambalika Institute Of Management And Technology Campus, Lucknow, Uttar Pradesh", "Amity International School – Noida", "Amity University Patna", "Amity University Raipur", "Amity University – Noida", "Amity University, Ranchi", "Arpa River Valley International School Bilaspur, Chhattisgarh", "Aryabhatta Knowledge University, Patna", "BIT Sindri", "Babasaheb Bhimrao Ambedkar Bihar University", "Babasaheb Bhimrao Ambedkar University, Lucknow", "Babu Banarasi Das University, lucknow", "Banaras Hindu University", "Bankura University", "Bhilai Institute of Technology", "Bihar Engineering University, Patna", "Biju Patnaik University of Technology ,Rourkela, Odisha", "Birla Institute of Technology (BIT) Mesra, Ranchi", "Cambridge institute of technology, Ranchi", "Chaibasa Engineering College", "Chanakya National Law University, Patna", "Chinmaya Vidyalaya, Bokaro", "City Montessori School – Lucknow", "Deepika English Medium School (CBSE), Rourkela", "Delhi Public School (DPS) Kalinga, Bhubaneswar", "Delhi Public School (DPS), Ranchi", "Delhi Public School Bhilai", "Delhi Public School Bokaro", "Delhi Public School Noida", "Delhi Public School Patna", "Delhi Public School Ruby Park, Kolkata", "Delhi Public School, Bilaspur", "Delhi Public School, Raipur(DPS)", "Delhi Public School, Rourkela", "Dr. A.P.J. Abdul Kalam Technical University – Lucknow", "Dr. C.V. Raman University (Bilaspur)", "Gangadhar Meher University Sambalpur", "Government Polytechnic Adityapur, Jamshedpur", "Guru Ghasidas Vishwavidyalaya, Bilaspur", "Guru Nanak Public School, Rourkela", "IEM Kolkata", "IERT Prayagraj", "IIEST (Indian Institute of Engineering Science and Technology) ,Shibpur", "Indian Institute of Information Technology Allahabad – Prayagraj", "Indian Institute of Information Technology Bhagalpur", "Indian Institute of Information Technology Kalyani", "Indian Institute of Information Technology Lucknow", "Indian Institute of Management Calcutta (IIM)", "Indian Institute of Technology (IIT) Dhanbad (ISM)", "Indian Institute of Technology Bhilai", "Indian Institute of Technology Bhubaneswar (IIT Bhubaneswar)", "Indian Institute of Technology Kharagpur", "Indian Institute of Technology Patna", "Indian institute of technology,  Varanasi", "Indira Gandhi National Open University, Patna", "Indo Danish Tool Room, Jamshedpur", "International Institute of Information Technology Naya Raipur", "J.K. Institute of Applied Physics and Technology, prayagraj", "Jadavpur University, Kolkata", "Jamshedpur Women's University", "Jaypee Institute of Information Technology – Noida", "Kalinga Institute of Industrial Technology (KIIT)", "Kalinga University (Naya Raipur)", "Kameshwar Singh Darbhanga Sanskrit University (KSDSU)", "Karim City College, Jamshedpur", "Khallikote Unitary University (KUU)", "Kolhan University", "Krishnarpit Institute, prayagraj", "La Martiniere College – Lucknow", "La Martiniere for Boys, Kolkata", "La Martiniere for Girls, Kolkata", "Lalit Narayan Mithila University (LNMU), Darbhanga", "Loyola High School, Patna", "Loyola School Jamshedpur", "Magadh University, Gaya", "Maharaja Sriram Chandra Bhanja Deo University", "Maharishi University of Management and Technology, Bilaspur", "Maulana Mazharul Haque Arabic & Persian University, Patna", "Motilal Nehru National Institute of Technology Allahabad – Prayagraj", "Muzaffarpur Institute of Technology", "Narula Institute of Technology (JIS)", "National Institute of Technology (NIT) Jamshedpur", "National Institute of Technology Durgapur", "National Institute of Technology Patna", "National Institute of Technology Raipur", "National Institute of Technology Rourkela (NIT Rourkela)", "Netaji Subhas University, Jamshedpur", "ODM Public School , Bhubaneswar", "ODM Sapphire Global School, Ranchi", "Odisha University of Technology and Research, Bhubaneshwar", "Podar International School Raipur (CBSE)", "Presidency University, Kolkata", "Pt. Ravishankar Shukla University, Raipur", "RVS College Of Engineering And Technology, Jamshedpur", "Rajendra University,Balangir", "Rani Rashmoni Green University,Singur, West Bengal 712409", "Sam Higginbottom University of Agriculture, Technology and Sciences, prayagraj", "Sambalpur University", "Sampurnanand Sanskrit University, Varanasi", "Seth Anandram Jaipuria School – Lucknow", "Shri Davara University, Raipur", "Sidho-Kanho-Birsha University, Purulia", "Sona Devi University , Jamshedpur", "South Point School, Kolkata", "Srinath Public School, Jamshedpur", "Srinath university", "St. Karen's High School, Patna", "St. Michael's High School,Digha Ghat, Patna", "St. Xavier's College, Kolkata", "St. Xavier's Collegiate School, Kolkata, West Bengal", "Subhash Institute of Technology, Deoghar", "Techno India University, Kolkata", "UCER Allahabad", "University of Allahabad", "University of Gour Banga, Mokdumpur, Malda, West Bengal 732103", "University of Kalyani", "Usha Martin University, Ranchi", "Utkal University, Bhubaneshwar", "Utkalmani Gopabandhu Institute of Engineering, Rourkela", "Veer Surendra Sai University of Technology, Burla", "Vikash Residential School - Bhubaneshwar", "Women's Polytechnic , Gamaharia", "XLRI - Xavier School of Management, Jamshedpur", "Others"
-];
-
-const SEMESTERS = [
-  ...Array.from({ length: 10 }, (_, i) => `Class ${i + 3}`),
-  ...Array.from({ length: 8 }, (_, i) => `Semester ${i + 1}`),
-  "Others"
-];
-
 export const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
@@ -96,6 +95,7 @@ export const Register: React.FC = () => {
     institution: '',
     otherInstitution: '',
     course: '',
+    otherCourse: '',
     semester: '',
     otherSemester: '',
     password: '',
@@ -109,6 +109,13 @@ export const Register: React.FC = () => {
   const UPI_ID = '3217855a@bandhan';
   const PAYEE_NAME = 'ARKA JAIN UNIVERSITY';
   const NOTE = 'Technika 6.0 Registration';
+
+  // Derived values for ARKA JAIN University and engineering course exemption
+  const effectiveInstitution = formData.institution === 'Others' ? formData.otherInstitution : formData.institution;
+  const effectiveCourse = formData.course === 'Others' ? formData.otherCourse : formData.course;
+  const isAju = isArkaJainUniversity(effectiveInstitution);
+  const isAjuExempt = isAju && isAjuExemptEngineeringCourse(effectiveCourse);
+  const availableSemesters = getSemestersForCourse(formData.course);
 
   // Calculate dynamic registration fee total (Rs. 150 flat fee)
   const calculateTotalAmount = () => {
@@ -144,6 +151,14 @@ export const Register: React.FC = () => {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+
+  // Additional file upload states for ARKA JAIN University No-Dues exemption
+  const [noDuesSlipFile, setNoDuesSlipFile] = useState<File | null>(null);
+  const [collegeIdCardFile, setCollegeIdCardFile] = useState<File | null>(null);
+  const [noDuesDragActive, setNoDuesDragActive] = useState(false);
+  const [collegeIdDragActive, setCollegeIdDragActive] = useState(false);
+  const noDuesInputRef = useRef<HTMLInputElement>(null);
+  const collegeIdInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -198,6 +213,17 @@ export const Register: React.FC = () => {
     }
   }, [eventSlug]);
 
+  // Purge Treasure Hunt if user selects ARKA JAIN University
+  useEffect(() => {
+    if (isAju && selectedEvents.includes('treasure-hunt')) {
+      setSelectedEvents((prev) => prev.filter((id) => id !== 'treasure-hunt'));
+      triggerTopNotification(
+        'Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.',
+        'error'
+      );
+    }
+  }, [isAju, selectedEvents]);
+
   const handleOpenEventModal = (eventId: string) => {
     const detail = getEventDetails(eventId);
     setActiveModalEvent(detail || { id: eventId, title: eventId, category: 'Event', description: '' });
@@ -210,6 +236,14 @@ export const Register: React.FC = () => {
   };
 
   const toggleEventSelection = (eventId: string, minMembers?: number) => {
+    if (eventId === 'treasure-hunt' && isAju) {
+      triggerTopNotification(
+        'Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.',
+        'error'
+      );
+      return;
+    }
+
     setSelectedEvents((prev) => {
       const isSelected = prev.includes(eventId);
       if (isSelected) {
@@ -275,14 +309,15 @@ export const Register: React.FC = () => {
   };
 
   const toggleCategoryAll = (eventIds: string[]) => {
-    const allSelected = eventIds.every((id) => selectedEvents.includes(id));
+    const selectableIds = isAju ? eventIds.filter((id) => id !== 'treasure-hunt') : eventIds;
+    const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedEvents.includes(id));
     if (allSelected) {
-      setSelectedEvents((prev) => prev.filter((id) => !eventIds.includes(id)));
+      setSelectedEvents((prev) => prev.filter((id) => !selectableIds.includes(id)));
     } else {
-      setSelectedEvents((prev) => Array.from(new Set([...prev, ...eventIds])));
+      setSelectedEvents((prev) => Array.from(new Set([...prev, ...selectableIds])));
       setEventConfigs((cPrev) => {
         const next = { ...cPrev };
-        eventIds.forEach((id) => {
+        selectableIds.forEach((id) => {
           if (!next[id]) {
             const detail = getEventDetails(id);
             const isTeamOnly = (detail?.minMembers ?? 1) > 1;
@@ -394,6 +429,34 @@ export const Register: React.FC = () => {
     }
   };
 
+  const handleNoDuesFile = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Invalid file type! Please upload an image file (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File is too large! Maximum allowed size before upload is 5MB.');
+      return;
+    }
+    setNoDuesSlipFile(file);
+    setError('');
+  };
+
+  const handleCollegeIdFile = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Invalid file type! Please upload an image file (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File is too large! Maximum allowed size before upload is 5MB.');
+      return;
+    }
+    setCollegeIdCardFile(file);
+    setError('');
+  };
+
   const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -468,19 +531,30 @@ export const Register: React.FC = () => {
       return;
     }
 
-    if (!selectedFile) {
-      setError('Please upload your payment verification screenshot.');
-      return;
-    }
+    if (isAjuExempt) {
+      if (!noDuesSlipFile) {
+        setError('Please upload your ₹600 manual payment slip paid during No-Dues.');
+        return;
+      }
+      if (!collegeIdCardFile) {
+        setError('Please upload your College ID Card for student verification.');
+        return;
+      }
+    } else {
+      if (!selectedFile) {
+        setError('Please upload your payment verification screenshot.');
+        return;
+      }
 
-    if (!formData.paymentUTR.trim()) {
-      setError('Please enter your 12-digit Transaction UTR / UPI Reference Number.');
-      return;
-    }
+      if (!formData.paymentUTR.trim()) {
+        setError('Please enter your 12-digit Transaction UTR / UPI Reference Number.');
+        return;
+      }
 
-    if (!/^\d{12}$/.test(formData.paymentUTR.trim())) {
-      setError('Transaction UTR Number must be exactly 12 numeric digits (check your UPI payment receipt).');
-      return;
+      if (!/^\d{12}$/.test(formData.paymentUTR.trim())) {
+        setError('Transaction UTR Number must be exactly 12 numeric digits (check your UPI payment receipt).');
+        return;
+      }
     }
 
     if (!acceptedRules) {
@@ -515,13 +589,27 @@ export const Register: React.FC = () => {
     Object.entries(formData).forEach(([key, val]) => {
       if (key === 'institution' && formData.institution === 'Others') {
         submissionData.append(key, formData.otherInstitution);
+      } else if (key === 'course' && formData.course === 'Others') {
+        submissionData.append(key, formData.otherCourse);
       } else if (key === 'semester' && formData.semester === 'Others') {
         submissionData.append(key, formData.otherSemester);
-      } else if (key !== 'otherInstitution' && key !== 'otherSemester') {
+      } else if (
+        key !== 'otherInstitution' &&
+        key !== 'otherCourse' &&
+        key !== 'otherSemester' &&
+        !(isAjuExempt && key === 'paymentUTR')
+      ) {
         submissionData.append(key, val as string);
       }
     });
-    submissionData.append('paymentScreenshot', selectedFile);
+
+    if (isAjuExempt) {
+      submissionData.append('noDuesSlip', noDuesSlipFile!);
+      submissionData.append('collegeIdCard', collegeIdCardFile!);
+      submissionData.append('isAjuExempt', 'true');
+    } else {
+      submissionData.append('paymentScreenshot', selectedFile!);
+    }
 
     const selectedEventsPayload = selectedEvents.map((slug) => {
       const detail = getEventDetails(slug);
@@ -631,7 +719,7 @@ export const Register: React.FC = () => {
             <span style={{
               fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
               fontWeight: 900,
-              fontSize: '3rem',
+              fontSize: 'clamp(2.1rem, 7vw, 3rem)',
               color: 'var(--foreground)',
               letterSpacing: '-0.03em',
               textTransform: 'uppercase',
@@ -639,7 +727,7 @@ export const Register: React.FC = () => {
             <span style={{
               fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
               fontWeight: 900,
-              fontSize: '3rem',
+              fontSize: 'clamp(2.1rem, 7vw, 3rem)',
               letterSpacing: '-0.03em',
               textTransform: 'uppercase',
               color: '#000000',
@@ -656,7 +744,7 @@ export const Register: React.FC = () => {
             <span style={{
               fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
               fontWeight: 900,
-              fontSize: '1.8rem',
+              fontSize: 'clamp(1.3rem, 4.5vw, 1.8rem)',
               letterSpacing: '-0.02em',
               color: 'var(--background)',
               background: 'var(--foreground)',
@@ -669,15 +757,43 @@ export const Register: React.FC = () => {
         <p className="tagline">Create an account, verify payment, and gain access to event registrations and team management.</p>
       </header>
 
+      {/* 45 Events ₹150 Announcement in Neo-Brutalism */}
+      <FestAnnouncement />
 
       {!success ? (
         <>
           <form onSubmit={handleSubmit} className="form-data-collection" style={{ marginTop: '20px' }}>
             {/* Section 1: Personal Profile (Yellow Box) */}
             <div className="brut-section brut-section-yellow">
-              <div className="brut-section-title">
-                <span className="brut-badge brut-badge-pink"></span>
-                1. PERSONAL PROFILE
+              <div
+                className="brut-section-title"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span className="brut-badge brut-badge-pink"></span>
+                  1. PERSONAL PROFILE
+                </div>
+
+                <Link
+                  to="/login"
+                  className="btn-forgot-password"
+                  style={{
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.74rem',
+                    padding: '4px 10px',
+                  }}
+                >
+                  ALREADY REGISTERED? LOG IN →
+                </Link>
               </div>
 
               <div className="form-grid">
@@ -827,20 +943,15 @@ export const Register: React.FC = () => {
                   <label htmlFor="gender">
                     GENDER <span className="required">*</span>
                   </label>
-                  <select
-                    name="gender"
+                  <CustomSelect
                     id="gender"
+                    name="gender"
                     required
                     value={formData.gender}
                     onChange={handleInputChange}
-                  >
-                    <option value="" disabled>
-                      Select
-                    </option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                    options={['Male', 'Female', 'Other']}
+                    placeholder="Select gender"
+                  />
                 </div>
               </div>
             </div>
@@ -857,18 +968,16 @@ export const Register: React.FC = () => {
                   <label htmlFor="institution">
                     ACADEMIC INSTITUTION <span className="required">*</span>
                   </label>
-                  <select
-                    name="institution"
+                  <CustomSelect
                     id="institution"
+                    name="institution"
                     required
                     value={formData.institution}
                     onChange={handleInputChange}
-                  >
-                    <option value="" disabled>Select your institution</option>
-                    {INSTITUTIONS.map((inst, idx) => (
-                      <option key={idx} value={inst}>{inst}</option>
-                    ))}
-                  </select>
+                    options={INSTITUTIONS}
+                    placeholder="Select or search your institution"
+                    searchable
+                  />
                   {formData.institution === 'Others' && (
                     <input
                       type="text"
@@ -887,33 +996,50 @@ export const Register: React.FC = () => {
                   <label htmlFor="course">
                     COURSE / STREAM <span className="required">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="course"
+                  <CustomSelect
                     id="course"
+                    name="course"
                     required
-                    placeholder="e.g. B.Tech CSE"
                     value={formData.course}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      const newSems = getSemestersForCourse(e.target.value);
+                      if (!newSems.includes(formData.semester)) {
+                        setFormData((prev) => ({ ...prev, course: e.target.value, semester: '' }));
+                      }
+                    }}
+                    options={COURSE_OPTIONS}
+                    placeholder="Select or search course / stream"
+                    searchable
                   />
+                  {formData.course === 'Others' && (
+                    <input
+                      type="text"
+                      name="otherCourse"
+                      id="otherCourse"
+                      required
+                      placeholder="Enter your course / stream name"
+                      value={formData.otherCourse}
+                      onChange={handleInputChange}
+                      style={{ marginTop: '10px' }}
+                    />
+                  )}
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="semester">
                     SEMESTER / STANDARD <span className="required">*</span>
                   </label>
-                  <select
-                    name="semester"
+                  <CustomSelect
                     id="semester"
+                    name="semester"
                     required
                     value={formData.semester}
                     onChange={handleInputChange}
-                  >
-                    <option value="" disabled>Select semester or standard</option>
-                    {SEMESTERS.map((sem, idx) => (
-                      <option key={idx} value={sem}>{sem}</option>
-                    ))}
-                  </select>
+                    options={availableSemesters}
+                    placeholder={formData.course ? "Select semester or standard" : "Select course first"}
+                    disabled={!formData.course}
+                  />
                   {formData.semester === 'Others' && (
                     <input
                       type="text"
@@ -1031,11 +1157,21 @@ export const Register: React.FC = () => {
                       const minMembers = evtDetail?.minMembers ?? 1;
                       const isTeamOnly = minMembers > 1;
                       const currentMode = eventConfigs[evt.id]?.mode || (isTeamOnly ? 'create_team' : 'solo');
+                      const isTreasureHunt = evt.id === 'treasure-hunt';
+                      const isTreasureHuntDisabled = isTreasureHunt && isAju;
 
                         return (
                           <div
                             key={evt.id}
-                            onClick={() => !(evt as any).isComingSoon && handleOpenEventModal(evt.id)}
+                            onClick={() => {
+                              if (isTreasureHuntDisabled) {
+                                triggerTopNotification('Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.', 'error');
+                                return;
+                              }
+                              if (!(evt as any).isComingSoon) {
+                                handleOpenEventModal(evt.id);
+                              }
+                            }}
                             style={{
                               position: 'relative',
                               overflow: 'hidden',
@@ -1046,13 +1182,21 @@ export const Register: React.FC = () => {
                               justifyContent: 'space-between',
                               textAlign: 'left',
                               color: '#ffffff',
-                              border: isChecked ? '3.5px solid #FFE600' : '3px solid #ffffff',
-                              boxShadow: isChecked ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff' : '5px 5px 0px 0px #ffffff',
-                              cursor: (evt as any).isComingSoon ? 'not-allowed' : 'pointer',
+                              border: isTreasureHuntDisabled
+                                ? '3px solid #ef4444'
+                                : isChecked
+                                ? '3.5px solid #FFE600'
+                                : '3px solid #ffffff',
+                              boxShadow: isTreasureHuntDisabled
+                                ? '5px 5px 0px 0px #ef4444'
+                                : isChecked
+                                ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff'
+                                : '5px 5px 0px 0px #ffffff',
+                              cursor: (evt as any).isComingSoon || isTreasureHuntDisabled ? 'not-allowed' : 'pointer',
                               userSelect: 'none',
                               transition: 'all 0.15s ease',
                               background: '#000000',
-                              opacity: (evt as any).isComingSoon ? 0.65 : 1,
+                              opacity: (evt as any).isComingSoon || isTreasureHuntDisabled ? 0.65 : 1,
                             }}
                           >
                             {/* Event Photo Full Card Background */}
@@ -1074,13 +1218,30 @@ export const Register: React.FC = () => {
                             {/* Card Content Layer */}
                             <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', gap: '8px' }}>
                               <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                                  <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
-                                    {String(evtIdx + 1).padStart(2, '0')}
-                                  </span>
-                                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
-                                    {evt.title}
-                                  </h3>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: 900, color: '#ffffff', textShadow: '2px 2px 0px #000000', lineHeight: 1 }}>
+                                      {String(evtIdx + 1).padStart(2, '0')}
+                                    </span>
+                                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', color: '#ffffff', margin: 0, textShadow: '2px 2px 0px #000000', lineHeight: 1.1 }}>
+                                      {evt.title}
+                                    </h3>
+                                  </div>
+                                  {isTreasureHuntDisabled && (
+                                    <span style={{
+                                      fontSize: '0.62rem',
+                                      fontWeight: 900,
+                                      textTransform: 'uppercase',
+                                      padding: '2px 6px',
+                                      background: '#ef4444',
+                                      color: '#ffffff',
+                                      border: '1.5px solid #000000',
+                                      boxShadow: '2px 2px 0px 0px #000000',
+                                      letterSpacing: '0.03em'
+                                    }}>
+                                      NOT FOR AJU STUDENTS
+                                    </span>
+                                  )}
                                 </div>
                                 <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.25 }}>
                                   {descText}
@@ -1150,6 +1311,25 @@ export const Register: React.FC = () => {
                                     >
                                       COMING SOON
                                     </div>
+                                  ) : isTreasureHuntDisabled ? (
+                                    <div
+                                      style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontSize: '0.65rem',
+                                        textTransform: 'uppercase',
+                                        fontWeight: 900,
+                                        background: '#ef4444',
+                                        color: '#ffffff',
+                                        border: '1.5px solid #000000',
+                                        boxShadow: '2px 2px 0px 0px #000000',
+                                        padding: '5px 9px',
+                                        cursor: 'not-allowed'
+                                      }}
+                                    >
+                                      🚫 OUTSIDE ONLY
+                                    </div>
                                   ) : (
                                     <button
                                       type="button"
@@ -1192,152 +1372,339 @@ export const Register: React.FC = () => {
             })}
             </div>
 
-            {/* Section 5: Payment Details (Neon Yellow/Pink Box) */}
+            {/* Section 5: Payment Details / AJU Exemption */}
             <div className="brut-section brut-section-yellow">
               <div className="brut-section-title">
                 <span className="brut-badge brut-badge-pink"></span>
-                5. PAYMENT VERIFICATION
+                5. {isAjuExempt ? 'NO-DUES & STUDENT VERIFICATION' : 'PAYMENT VERIFICATION'}
               </div>
 
-              {/* QR Code Scan Section */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '14px',
-                padding: '24px',
-                background: '#000000',
-                border: '3px solid #ffffff',
-                boxShadow: '4px 4px 0px 0px #ffffff',
-                marginBottom: '24px',
-                textAlign: 'center',
-                color: '#ffffff'
-              }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 900, background: '#FFE600', border: '2px solid #000000', color: '#000000', padding: '4px 12px', textTransform: 'uppercase', boxShadow: '2px 2px 0px 0px #ffffff' }}>
-                  Scan to Pay (Total: ₹{totalAmount})
-                </div>
-                {totalAmount > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                    <img 
-                      src={qrCodeDataUrl || qrCodeUrl} 
-                      alt={`ARKA JAIN UNIVERSITY Payment QR Code - ₹${totalAmount}`} 
-                      style={{ 
-                        width: '210px', 
-                        height: '210px', 
-                        border: '3px solid #ffffff',
-                        boxShadow: '3px 3px 0px 0px #ffffff',
-                        objectFit: 'contain',
+              {isAjuExempt ? (
+                <div>
+                  {/* AJU Exemption Callout Banner */}
+                  <div style={{
+                    background: '#FFE600',
+                    border: '3.5px solid #000000',
+                    boxShadow: '4px 4px 0px 0px #000000',
+                    padding: '18px 22px',
+                    marginBottom: '24px',
+                    color: '#000000'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: '#000000',
+                        color: '#FFE600',
+                        padding: '3px 10px',
+                        fontSize: '0.75rem',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em'
+                      }}>
+                        AJU EXEMPTION ACTIVE
+                      </span>
+                      <span style={{
                         background: '#ffffff',
-                        padding: '6px'
-                      }} 
-                    />
-                    <div style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 800,
-                      background: 'rgba(255,255,255,0.15)',
-                      padding: '4px 10px',
-                      border: '1px solid #ffffff',
-                      color: '#ffffff',
-                      marginTop: '4px'
-                    }}>
-                      Payee: <strong>ARKA JAIN UNIVERSITY</strong> (UPI: <code style={{ color: '#FFE600' }}>3217855a@bandhan</code>)
+                        border: '2px solid #000000',
+                        padding: '2px 8px',
+                        fontSize: '0.72rem',
+                        fontWeight: 900,
+                        textTransform: 'uppercase'
+                      }}>
+                        FEE: ₹600 (PAID IN NO-DUES)
+                      </span>
+                    </div>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 900, fontFamily: 'var(--font-heading)' }}>
+                      NO ONLINE PAYMENT REQUIRED!
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.45 }}>
+                      As an ARKA JAIN University student enrolled in <strong>{effectiveCourse}</strong>, your fest registration fee of ₹600 was collected during your departmental No-Dues clearance.
+                    </p>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '0.82rem', fontWeight: 800, color: '#000000' }}>
+                      📁 Please upload your <strong>₹600 Manual Payment Slip</strong> and your <strong>College ID Card</strong> below for administrative verification.
+                    </p>
+                  </div>
+
+                  <div className="form-grid">
+                    {/* Dropzone 1: ₹600 Manual Payment Slip */}
+                    <div className="form-group">
+                      <label htmlFor="noDuesSlip">
+                        MANUAL PAYMENT SLIP (₹600 NO-DUES) <span className="required">*</span>
+                      </label>
+                      <div
+                        className={`brut-dropzone ${noDuesDragActive ? 'dragover' : ''}`}
+                        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setNoDuesDragActive(true); }}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setNoDuesDragActive(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setNoDuesDragActive(false); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setNoDuesDragActive(false);
+                          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                            handleNoDuesFile(e.dataTransfer.files[0]);
+                          }
+                        }}
+                        onClick={() => noDuesInputRef.current?.click()}
+                      >
+                        <input
+                          type="file"
+                          id="noDuesSlip"
+                          name="noDuesSlip"
+                          accept="image/*"
+                          className="hidden-file-input"
+                          ref={noDuesInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleNoDuesFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+                        {!noDuesSlipFile ? (
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#000000' }}>
+                              DROP OR BROWSE ₹600 SLIP
+                            </div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#444444', marginTop: '4px' }}>
+                              Manual No-Dues Receipt · JPG, PNG, WEBP · Max 5MB
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="file-preview" style={{ color: '#000000' }}>
+                            <div className="file-preview-info">
+                              <i className="fa-solid fa-receipt file-icon" style={{ color: '#000000' }}></i>
+                              <div>
+                                <p className="file-name" style={{ color: '#000000', fontWeight: 800 }}>{noDuesSlipFile.name}</p>
+                                <p className="file-size" style={{ color: '#444444' }}>{formatBytes(noDuesSlipFile.size)}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="remove-file-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNoDuesSlipFile(null);
+                                if (noDuesInputRef.current) noDuesInputRef.current.value = '';
+                              }}
+                              style={{ color: '#000000' }}
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Dropzone 2: College ID Card */}
+                    <div className="form-group">
+                      <label htmlFor="collegeIdCard">
+                        COLLEGE ID CARD <span className="required">*</span>
+                      </label>
+                      <div
+                        className={`brut-dropzone ${collegeIdDragActive ? 'dragover' : ''}`}
+                        onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setCollegeIdDragActive(true); }}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setCollegeIdDragActive(true); }}
+                        onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setCollegeIdDragActive(false); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setCollegeIdDragActive(false);
+                          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                            handleCollegeIdFile(e.dataTransfer.files[0]);
+                          }
+                        }}
+                        onClick={() => collegeIdInputRef.current?.click()}
+                      >
+                        <input
+                          type="file"
+                          id="collegeIdCard"
+                          name="collegeIdCard"
+                          accept="image/*"
+                          className="hidden-file-input"
+                          ref={collegeIdInputRef}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              handleCollegeIdFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+                        {!collegeIdCardFile ? (
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#000000' }}>
+                              DROP OR BROWSE COLLEGE ID
+                            </div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#444444', marginTop: '4px' }}>
+                              Student ID Card · JPG, PNG, WEBP · Max 5MB
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="file-preview" style={{ color: '#000000' }}>
+                            <div className="file-preview-info">
+                              <i className="fa-solid fa-id-card file-icon" style={{ color: '#000000' }}></i>
+                              <div>
+                                <p className="file-name" style={{ color: '#000000', fontWeight: 800 }}>{collegeIdCardFile.name}</p>
+                                <p className="file-size" style={{ color: '#444444' }}>{formatBytes(collegeIdCardFile.size)}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="remove-file-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCollegeIdCardFile(null);
+                                if (collegeIdInputRef.current) collegeIdInputRef.current.value = '';
+                              }}
+                              style={{ color: '#000000' }}
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                ) : (
+                </div>
+              ) : (
+                <>
+                  {/* QR Code Scan Section */}
                   <div style={{
-                    width: '200px',
-                    height: '200px',
-                    border: '3px dashed #ffffff',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    padding: '16px',
-                    boxSizing: 'border-box',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: '#ffffff',
-                    textAlign: 'center'
+                    gap: '14px',
+                    padding: '24px',
+                    background: '#000000',
+                    border: '3px solid #ffffff',
+                    boxShadow: '4px 4px 0px 0px #ffffff',
+                    marginBottom: '24px',
+                    textAlign: 'center',
+                    color: '#ffffff'
                   }}>
-                    Select events above to display ARKA JAIN UNIVERSITY QR Code
-                  </div>
-                )}
-              </div>
-
-              <div className="form-grid">
-                <div className="form-group">
-                  <label htmlFor="paymentUTR">
-                    TRANSACTION UTR (12 DIGITS) <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="paymentUTR"
-                    id="paymentUTR"
-                    required
-                    maxLength={12}
-                    pattern="\d{12}"
-                    inputMode="numeric"
-                    placeholder="e.g. 425612348901"
-                    value={formData.paymentUTR}
-                    onChange={handleInputChange}
-                  />
-                  <small style={{ color: 'var(--foreground, #000000)', fontWeight: 700, fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
-                    {formData.paymentUTR.length === 12 ? (
-                      <span style={{ color: '#16a34a', fontWeight: 900 }}>✓ Valid 12-digit UTR</span>
-                    ) : (
-                      <span>Must be exactly 12 numeric digits ({formData.paymentUTR.length}/12)</span>
-                    )}
-                  </small>
-                </div>
-
-                <div className="form-group">
-                  <label>
-                    PAYMENT SCREENSHOT <span className="required">*</span>
-                  </label>
-                  <div
-                    className={`brut-dropzone ${dragActive ? 'dragover' : ''}`}
-                    id="drop-zone"
-                    onDragEnter={handleDrag}
-                    onDragOver={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={triggerFileSelect}
-                  >
-                    <input
-                      type="file"
-                      id="paymentScreenshot"
-                      name="paymentScreenshot"
-                      accept="image/*"
-                      className="hidden-file-input"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                    />
-                    {!selectedFile ? (
-                      <div>
-                        <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#000000' }}>
-                          DROP OR BROWSE
-                        </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#444444', marginTop: '4px' }}>
-                          JPG · PNG · WEBP · Max 5MB
+                    <div style={{ fontSize: '0.85rem', fontWeight: 900, background: '#FFE600', border: '2px solid #000000', color: '#000000', padding: '4px 12px', textTransform: 'uppercase', boxShadow: '2px 2px 0px 0px #ffffff' }}>
+                      Scan to Pay (Total: ₹{totalAmount})
+                    </div>
+                    {totalAmount > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <img 
+                          src={qrCodeDataUrl || qrCodeUrl} 
+                          alt={`ARKA JAIN UNIVERSITY Payment QR Code - ₹${totalAmount}`} 
+                          style={{ 
+                            width: '210px', 
+                            height: '210px', 
+                            border: '3px solid #ffffff',
+                            boxShadow: '3px 3px 0px 0px #ffffff',
+                            objectFit: 'contain',
+                            background: '#ffffff',
+                            padding: '6px'
+                          }} 
+                        />
+                        <div style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          background: 'rgba(255,255,255,0.15)',
+                          padding: '4px 10px',
+                          border: '1px solid #ffffff',
+                          color: '#ffffff',
+                          marginTop: '4px'
+                        }}>
+                          Payee: <strong>ARKA JAIN UNIVERSITY</strong> (UPI: <code style={{ color: '#FFE600' }}>3217855a@bandhan</code>)
                         </div>
                       </div>
                     ) : (
-                      <div className="file-preview" style={{ color: '#000000' }}>
-                        <div className="file-preview-info">
-                          <i className="fa-solid fa-image file-icon" style={{ color: '#000000' }}></i>
+                      <div style={{
+                        width: '200px',
+                        height: '200px',
+                        border: '3px dashed #ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '16px',
+                        boxSizing: 'border-box',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        textAlign: 'center'
+                      }}>
+                        Select events above to display ARKA JAIN UNIVERSITY QR Code
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label htmlFor="paymentUTR">
+                        TRANSACTION UTR (12 DIGITS) <span className="required">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="paymentUTR"
+                        id="paymentUTR"
+                        required
+                        maxLength={12}
+                        pattern="\d{12}"
+                        inputMode="numeric"
+                        placeholder="e.g. 425612348901"
+                        value={formData.paymentUTR}
+                        onChange={handleInputChange}
+                      />
+                      <small style={{ color: 'var(--foreground, #000000)', fontWeight: 700, fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                        {formData.paymentUTR.length === 12 ? (
+                          <span style={{ color: '#16a34a', fontWeight: 900 }}>✓ Valid 12-digit UTR</span>
+                        ) : (
+                          <span>Must be exactly 12 numeric digits ({formData.paymentUTR.length}/12)</span>
+                        )}
+                      </small>
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        PAYMENT SCREENSHOT <span className="required">*</span>
+                      </label>
+                      <div
+                        className={`brut-dropzone ${dragActive ? 'dragover' : ''}`}
+                        id="drop-zone"
+                        onDragEnter={handleDrag}
+                        onDragOver={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDrop={handleDrop}
+                        onClick={triggerFileSelect}
+                      >
+                        <input
+                          type="file"
+                          id="paymentScreenshot"
+                          name="paymentScreenshot"
+                          accept="image/*"
+                          className="hidden-file-input"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                        />
+                        {!selectedFile ? (
                           <div>
-                            <p className="file-name" style={{ color: '#000000', fontWeight: 800 }}>{selectedFile.name}</p>
-                            <p className="file-size" style={{ color: '#444444' }}>{formatBytes(selectedFile.size)}</p>
+                            <div style={{ fontWeight: 900, fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#000000' }}>
+                              DROP OR BROWSE
+                            </div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#444444', marginTop: '4px' }}>
+                              JPG · PNG · WEBP · Max 5MB
+                            </div>
                           </div>
-                        </div>
-                        <button type="button" className="remove-file-btn" onClick={removeFile} style={{ color: '#000000' }}>
-                          <i className="fa-solid fa-xmark"></i>
-                        </button>
+                        ) : (
+                          <div className="file-preview" style={{ color: '#000000' }}>
+                            <div className="file-preview-info">
+                              <i className="fa-solid fa-image file-icon" style={{ color: '#000000' }}></i>
+                              <div>
+                                <p className="file-name" style={{ color: '#000000', fontWeight: 800 }}>{selectedFile.name}</p>
+                                <p className="file-size" style={{ color: '#444444' }}>{formatBytes(selectedFile.size)}</p>
+                              </div>
+                            </div>
+                            <button type="button" className="remove-file-btn" onClick={removeFile} style={{ color: '#000000' }}>
+                              <i className="fa-solid fa-xmark"></i>
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               {/* Event Common Rules & Regulations Acceptance Section */}
               <div style={{
