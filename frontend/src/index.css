@@ -238,6 +238,40 @@ h1, h2, h3, h4, .logo {
   color: #8aebee !important;
 }
 
+/* AJU No-Dues Exemption Banner Styling (Force high contrast black text across all themes) */
+.aju-exemption-callout,
+.theme-main .aju-exemption-callout,
+.theme-light .aju-exemption-callout,
+.dark .aju-exemption-callout {
+  background-color: #FFE600 !important;
+  color: #000000 !important;
+  border: 3.5px solid #000000 !important;
+  box-shadow: 5px 5px 0px 0px #000000 !important;
+  padding: 18px 22px !important;
+  margin-bottom: 24px !important;
+}
+
+.aju-exemption-callout h4,
+.theme-main .aju-exemption-callout h4,
+.theme-light .aju-exemption-callout h4,
+.dark .aju-exemption-callout h4,
+.aju-exemption-callout p,
+.theme-main .aju-exemption-callout p,
+.theme-light .aju-exemption-callout p,
+.dark .aju-exemption-callout p,
+.aju-exemption-callout span,
+.theme-main .aju-exemption-callout span,
+.theme-light .aju-exemption-callout span,
+.dark .aju-exemption-callout span,
+.aju-exemption-callout div,
+.theme-main .aju-exemption-callout div,
+.theme-light .aju-exemption-callout div,
+.dark .aju-exemption-callout div,
+.aju-exemption-callout strong,
+.theme-main .aju-exemption-callout strong {
+  color: #000000 !important;
+}
+
 /* LIGHT Theme (.theme-light) - Clean Light Mode Cards */
 .theme-light .brut-login-card {
   background-color: #ffffff !important;
@@ -459,6 +493,18 @@ html.dark .brut-section small {
   box-shadow: 2px 2px 0px 0px #000000 !important;
 }
 
+.brut-btn-pink:disabled,
+.brut-btn-pink[disabled] {
+  background-color: #64748b !important;
+  color: #cbd5e1 !important;
+  border: 3px solid #334155 !important;
+  box-shadow: 2px 2px 0px 0px #000000 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  opacity: 0.55 !important;
+  pointer-events: auto !important;
+}
+
 .section-title {
   font-size: 1.25rem;
   font-weight: 600;
@@ -482,7 +528,7 @@ html.dark .brut-section small {
 /* Grids */
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
 
@@ -497,6 +543,8 @@ html.dark .brut-section small {
   flex-direction: column;
   gap: 8px;
   position: relative;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Inputs & Selection Styling */
@@ -1969,4 +2017,220 @@ input.event-team-input-cyan[type="text"],
 * {
   scrollbar-width: thin;
   scrollbar-color: #3b82f6 #e2eaf4;
+}
+
+/* =============================================================
+ * MOBILE OPTIMIZATIONS (Smartphones & Small Screens <= 640px)
+ * Designed specifically for Technika 6.0 Mobile Registrations
+ * ============================================================= */
+@media (max-width: 640px) {
+  /* Prevent horizontal layout shifts or scroll */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  /* Page Container */
+  .container {
+    padding: 0 10px !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Header Branding */
+  .main-header {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .main-header .tagline {
+    font-size: 0.82rem !important;
+    line-height: 1.4 !important;
+    padding: 0 4px !important;
+  }
+
+  /* Neo-Brutalist Form Sections */
+  .form-section {
+    margin-bottom: 16px !important;
+  }
+
+  .brut-section {
+    padding: 16px 14px !important;
+    margin-bottom: 16px !important;
+    border: 2.5px solid #000000 !important;
+    box-shadow: 4px 4px 0px 0px #000000 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .brut-login-card,
+  .theme-main .brut-login-card,
+  .brut-section-yellow,
+  .theme-main .brut-section-yellow,
+  .brut-section-blue,
+  .theme-main .brut-section-blue,
+  .brut-section-lime,
+  .theme-main .brut-section-lime,
+  .brut-section-orange,
+  .theme-main .brut-section-orange {
+    border-width: 2.5px !important;
+    box-shadow: 4px 4px 0px 0px #000000 !important;
+  }
+
+  /* Section Titles */
+  .brut-section-title {
+    font-size: clamp(1rem, 4.2vw, 1.15rem) !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+    letter-spacing: -0.01em !important;
+    flex-wrap: wrap !important;
+  }
+
+  .brut-badge {
+    width: 14px !important;
+    height: 14px !important;
+    border-width: 1.5px !important;
+  }
+
+  /* Grids and Inputs */
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .form-grid-inner {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .form-group {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    gap: 5px !important;
+  }
+
+  /* Form Labels */
+  .brut-section label,
+  .brut-card label,
+  label {
+    font-size: 0.75rem !important;
+    margin-bottom: 4px !important;
+    letter-spacing: 0.03em !important;
+  }
+
+  /* Text & Select Inputs */
+  .brut-section input[type="text"],
+  .brut-section input[type="email"],
+  .brut-section input[type="tel"],
+  .brut-section input[type="number"],
+  .brut-section input[type="password"],
+  .brut-section input[type="date"],
+  .brut-section select,
+  .brut-card input[type="text"],
+  .brut-card input[type="email"],
+  .brut-card input[type="password"],
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="password"],
+  select {
+    padding: 10px 12px !important;
+    font-size: 0.86rem !important;
+    border: 2.5px solid #000000 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .input-wrapper input {
+    padding-left: 36px !important;
+  }
+
+  .input-icon {
+    left: 11px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* CustomSelect Trigger Box & Dropdown */
+  .custom-select-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .custom-select-trigger {
+    padding: 9px 11px !important;
+    font-size: 0.84rem !important;
+    border-width: 2.5px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* File Dropzone */
+  .brut-dropzone {
+    padding: 16px 12px !important;
+    border-width: 2.5px !important;
+  }
+
+  /* Submit Button & Actions */
+  .submit-action-container {
+    width: 100% !important;
+  }
+
+  .submit-action-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  .brut-btn-pink {
+    width: 100% !important;
+    padding: 12px 14px !important;
+    font-size: 0.88rem !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+    justify-content: center !important;
+    box-shadow: 3px 3px 0px 0px #000000 !important;
+    border-width: 2.5px !important;
+  }
+
+  /* Rules Acceptance Box */
+  .rules-acceptance-box {
+    padding: 12px 12px !important;
+    border-width: 2.5px !important;
+    box-shadow: 3px 3px 0px 0px #000000 !important;
+    margin-top: 14px !important;
+  }
+
+  .rules-heading-text {
+    font-size: 0.78rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .rules-sub-text {
+    font-size: 0.7rem !important;
+    line-height: 1.35 !important;
+    margin-top: 5px !important;
+  }
+
+  /* Events Grid inside Selection Modal or Card */
+  .events-catalog-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .brut-section {
+    padding: 14px 10px !important;
+  }
+  .brut-section-title {
+    font-size: 0.98rem !important;
+  }
+  .brut-btn-pink {
+    font-size: 0.82rem !important;
+    padding: 10px 10px !important;
+  }
 }

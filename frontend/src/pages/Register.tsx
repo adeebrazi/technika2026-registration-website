@@ -1384,46 +1384,52 @@ export const Register: React.FC = () => {
               {isAjuExempt ? (
                 <div>
                   {/* AJU Exemption Callout Banner */}
-                  <div style={{
-                    background: '#FFE600',
-                    border: '3.5px solid #000000',
-                    boxShadow: '4px 4px 0px 0px #000000',
-                    padding: '18px 22px',
-                    marginBottom: '24px',
-                    color: '#000000'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  <div className="aju-exemption-callout">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
                       <span style={{
                         background: '#000000',
                         color: '#FFE600',
-                        padding: '3px 10px',
-                        fontSize: '0.75rem',
+                        padding: '4px 10px',
+                        fontSize: '0.78rem',
                         fontWeight: 900,
                         textTransform: 'uppercase',
-                        letterSpacing: '0.04em'
+                        letterSpacing: '0.04em',
+                        border: '2px solid #000000',
+                        boxShadow: '2px 2px 0px 0px #000000'
                       }}>
-                        AJU EXEMPTION ACTIVE
+                        ⚡ AJU EXEMPTION ACTIVE
                       </span>
                       <span style={{
                         background: '#ffffff',
                         border: '2px solid #000000',
-                        padding: '2px 8px',
-                        fontSize: '0.72rem',
+                        padding: '4px 10px',
+                        fontSize: '0.76rem',
                         fontWeight: 900,
-                        textTransform: 'uppercase'
+                        color: '#000000',
+                        textTransform: 'uppercase',
+                        boxShadow: '2px 2px 0px 0px #000000'
                       }}>
                         FEE: ₹600 (PAID IN NO-DUES)
                       </span>
                     </div>
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', fontWeight: 900, fontFamily: 'var(--font-heading)' }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 900, fontFamily: 'var(--font-heading)', color: '#000000', letterSpacing: '-0.01em' }}>
                       NO ONLINE PAYMENT REQUIRED!
                     </h4>
-                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, lineHeight: 1.45 }}>
+                    <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, lineHeight: 1.45, color: '#111111' }}>
                       As an ARKA JAIN University student enrolled in <strong>{effectiveCourse}</strong>, your fest registration fee of ₹600 was collected during your departmental No-Dues clearance.
                     </p>
-                    <p style={{ margin: '8px 0 0 0', fontSize: '0.82rem', fontWeight: 800, color: '#000000' }}>
-                      📁 Please upload your <strong>₹600 Manual Payment Slip</strong> and your <strong>College ID Card</strong> below for administrative verification.
-                    </p>
+                    <div style={{
+                      background: '#ffffff',
+                      border: '2.5px solid #000000',
+                      boxShadow: '3px 3px 0px 0px #000000',
+                      padding: '10px 14px',
+                      marginTop: '12px',
+                      color: '#000000',
+                      fontSize: '0.82rem',
+                      fontWeight: 800
+                    }}>
+                      📁 <strong>MANDATORY:</strong> Please upload your <strong>₹600 Manual Payment Slip</strong> and your <strong>College ID Card</strong> below for administrative verification.
+                    </div>
                   </div>
 
                   <div className="form-grid">
@@ -1709,14 +1715,22 @@ export const Register: React.FC = () => {
               )}
 
               {/* Event Common Rules & Regulations Acceptance Section */}
-              <div style={{
-                marginTop: '20px',
-                background: 'rgba(0, 0, 0, 0.45)',
-                border: '2.5px solid var(--border, #8aebee)',
-                boxShadow: '4px 4px 0px 0px #000000',
-                padding: '16px 18px',
-              }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', cursor: 'pointer', margin: 0 }}>
+              {/* Event Common Rules & Regulations Acceptance Section */}
+              <div
+                className="rules-acceptance-box"
+                style={{
+                  marginTop: '18px',
+                  background: acceptedRules ? '#052e16' : '#081726',
+                  border: acceptedRules ? '3px solid #22c55e' : '3px solid #FFE600',
+                  boxShadow: acceptedRules ? '4px 4px 0px 0px #22c55e' : '4px 4px 0px 0px #000000',
+                  padding: '14px 16px',
+                  transition: 'all 0.15s ease',
+                  boxSizing: 'border-box',
+                  width: '100%',
+                  maxWidth: '100%',
+                }}
+              >
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', margin: 0 }}>
                   <input
                     type="checkbox"
                     id="acceptCommonRules"
@@ -1725,16 +1739,16 @@ export const Register: React.FC = () => {
                     onChange={(e) => setAcceptedRules(e.target.checked)}
                     required
                     style={{
-                      width: '22px',
-                      height: '22px',
+                      width: '20px',
+                      height: '20px',
                       accentColor: '#FFE600',
                       cursor: 'pointer',
                       marginTop: '2px',
                       flexShrink: 0
                     }}
                   />
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: '0.92rem', color: 'var(--foreground, #ffffff)', lineHeight: 1.4 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="rules-heading-text" style={{ fontWeight: 900, fontSize: '0.86rem', color: '#ffffff', lineHeight: 1.4 }}>
                       I accept & agree to the{' '}
                       <button
                         type="button"
@@ -1743,21 +1757,24 @@ export const Register: React.FC = () => {
                           setShowCommonRulesModal(true);
                         }}
                         style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#FFE600',
-                          textDecoration: 'underline',
+                          background: '#FFE600',
+                          border: '2px solid #000000',
+                          color: '#000000',
+                          padding: '2px 6px',
                           fontWeight: 900,
-                          fontSize: '0.92rem',
+                          fontSize: '0.78rem',
                           cursor: 'pointer',
-                          padding: 0
+                          boxShadow: '1.5px 1.5px 0px 0px #000000',
+                          display: 'inline-block',
+                          margin: '0 2px',
+                          textTransform: 'uppercase'
                         }}
                       >
-                        Event Common Rules & Regulations
+                        Event Common Rules & Regulations ↗
                       </button>{' '}
                       and Disqualification Criteria of Technika 6.0. <span style={{ color: '#ef4444' }}>*</span>
                     </div>
-                    <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem', color: 'var(--muted-foreground, #cbd5e1)', lineHeight: 1.45 }}>
+                    <p className="rules-sub-text" style={{ margin: '6px 0 0 0', fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.4 }}>
                       Participants must carry valid college/school ID cards, report at least 30 minutes before scheduled times, and follow fair play regulations.
                     </p>
                   </div>
@@ -1772,31 +1789,39 @@ export const Register: React.FC = () => {
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', marginTop: '10px' }}>
-              <button type="submit" className="brut-btn-pink" disabled={loading}>
-                {!loading ? (
-                  <span>COMPLETE REGISTRATION →</span>
-                ) : (
-                  <span>
-                    <i className="fa-solid fa-circle-notch fa-spin"></i> PROCESSING...
-                  </span>
-                )}
-              </button>
+            <div className="submit-action-container" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px', width: '100%' }}>
+              <div className="submit-action-row" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', width: '100%' }}>
+                <button
+                  type="submit"
+                  className="brut-btn-pink"
+                  disabled={loading || !acceptedRules}
+                  title={!acceptedRules ? 'Please accept the Event Rules & Regulations above to enable submission' : ''}
+                >
+                  {!loading ? (
+                    <span>COMPLETE REGISTRATION →</span>
+                  ) : (
+                    <span>
+                      <i className="fa-solid fa-circle-notch fa-spin"></i> PROCESSING...
+                    </span>
+                  )}
+                </button>
 
-              <Link
-                to="/login"
-                style={{
-                  fontFamily: "var(--font-heading)",
-                  fontWeight: 900,
-                  fontSize: '0.88rem',
-                  textTransform: 'uppercase',
-                  color: 'var(--foreground)',
-                  textDecoration: 'underline',
-                  letterSpacing: '0.05em',
-                }}
-              >
-                HAVE AN ACCOUNT? LOG IN
-              </Link>
+                <Link
+                  to="/login"
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontWeight: 900,
+                    fontSize: '0.84rem',
+                    textTransform: 'uppercase',
+                    color: 'var(--foreground)',
+                    textDecoration: 'underline',
+                    letterSpacing: '0.04em',
+                    textAlign: 'center',
+                  }}
+                >
+                  HAVE AN ACCOUNT? LOG IN
+                </Link>
+              </div>
             </div>
           </form>
         </>

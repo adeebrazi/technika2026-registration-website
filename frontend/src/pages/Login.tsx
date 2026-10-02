@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
-import { FestAnnouncement } from '../components/FestAnnouncement';
 
 export const Login: React.FC = () => {
   const [registrationIdOrEmail, setRegistrationIdOrEmail] = useState('');
@@ -229,9 +228,6 @@ export const Login: React.FC = () => {
         <p className="tagline">Sign in to manage your registrations, create teams, and check invitations.</p>
       </header>
 
-      {/* 45 Events ₹150 Announcement in Neo-Brutalism */}
-      <FestAnnouncement />
-
       <div
         className="brut-card brut-login-card"
         style={{
@@ -326,13 +322,54 @@ export const Login: React.FC = () => {
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '22px' }}>
-          <p style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>
-            No account?{' '}
-            <Link to="/register" style={{ textDecoration: 'underline', fontWeight: 900 }}>
-              Register now
-            </Link>
-          </p>
+        <div style={{ marginTop: '26px' }}>
+          <Link
+            to="/register"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '13px 16px',
+              background: '#FFE600',
+              color: '#000000',
+              border: '3px solid #000000',
+              boxShadow: '4px 4px 0px 0px #000000',
+              fontFamily: "'Space Grotesk', 'Outfit', sans-serif",
+              fontWeight: 900,
+              fontSize: '0.92rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+              cursor: 'pointer',
+              flexWrap: 'wrap'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translate(-2px, -2px)';
+              e.currentTarget.style.boxShadow = '6px 6px 0px 0px #000000';
+              e.currentTarget.style.background = '#3ce6fc';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translate(0px, 0px)';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #000000';
+              e.currentTarget.style.background = '#FFE600';
+            }}
+          >
+            <span>DON'T HAVE AN ACCOUNT?</span>
+            <span style={{
+              background: '#000000',
+              color: '#FFE600',
+              padding: '3px 10px',
+              border: '2px solid #000000',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 900
+            }}>
+              REGISTER NOW →
+            </span>
+          </Link>
         </div>
       </div>
 

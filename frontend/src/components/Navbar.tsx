@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import logoPng from '@/assets/logo.png';
 import technikaLogoJpg from '@/assets/technika_logo.jpg';
+import { Sparkles, Moon, Sun } from 'lucide-react';
 
 export const MAIN_WEBSITE_URL = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -111,7 +112,7 @@ export const Navbar: React.FC = () => {
                       onClick={() => setTheme(t)}
                       className="theme-switch-btn"
                       style={{
-                        padding: '2px 8px',
+                        padding: '3px 8px',
                         fontSize: '10px',
                         fontWeight: 900,
                         fontFamily: "'Space Grotesk', sans-serif",
@@ -123,10 +124,18 @@ export const Navbar: React.FC = () => {
                         boxShadow: isActive ? '1px 1px 0px 0px rgba(0,0,0,1)' : 'none',
                         cursor: 'pointer',
                         transition: 'all 0.1s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
                       }}
-                      title={`Switch to ${t} theme`}
+                      title={`Switch to ${t.toUpperCase()} theme`}
+                      aria-label={`${t} theme`}
                     >
-                      {t === 'main' ? 'THEME' : t.toUpperCase()}
+                      {t === 'main' && <Sparkles size={13} className="shrink-0" />}
+                      {t === 'dark' && <Moon size={13} className="shrink-0" />}
+                      {t === 'light' && <Sun size={13} className="shrink-0" />}
+                      <span className="theme-text-label">{t.toUpperCase()}</span>
                     </button>
                   );
                 })}
@@ -302,26 +311,52 @@ export const Navbar: React.FC = () => {
         }
 
         @media (max-width: 640px) {
+          .theme-text-label {
+            display: none !important;
+          }
           .navbar-inner {
-            padding: 8px 10px !important;
+            padding: 6px 10px !important;
           }
           .navbar-brand-logo {
-            height: 28px !important;
+            height: 25px !important;
+            max-width: 105px !important;
           }
           .navbar-actions {
-            gap: 5px !important;
+            gap: 4px !important;
+            flex-shrink: 0 !important;
           }
           .theme-switch-btn {
-            padding: 2px 5px !important;
-            font-size: 8.5px !important;
+            padding: 3px 5px !important;
           }
           .nav-btn-home {
             padding: 5px 8px !important;
-            font-size: 0.72rem !important;
-            gap: 4px !important;
+            font-size: 0.7rem !important;
+            gap: 3px !important;
+            flex-shrink: 0 !important;
           }
           .nav-home-full-text { display: none !important; }
           .nav-home-mobile-text { display: inline !important; }
+        }
+
+        @media (max-width: 380px) {
+          .navbar-inner {
+            padding: 5px 6px !important;
+          }
+          .navbar-brand-logo {
+            height: 22px !important;
+            max-width: 90px !important;
+          }
+          .navbar-actions {
+            gap: 3px !important;
+          }
+          .theme-switch-btn {
+            padding: 2px 3.5px !important;
+            font-size: 7.5px !important;
+          }
+          .nav-btn-home {
+            padding: 4px 6px !important;
+            font-size: 0.65rem !important;
+          }
         }
       `}</style>
     </>

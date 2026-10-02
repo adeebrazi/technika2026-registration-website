@@ -89,25 +89,15 @@ export const ALL_SEMESTERS_DEFAULT: string[] = [
   "Others"
 ];
 
-// Clean, relevant Course & Branch list for Technika 6.0 participating universities and colleges
+// Single form of every course without specializations
 export const COURSE_OPTIONS: string[] = [
   "School Student (Class 3-12)",
   "B.Tech",
-  "B.Tech - Computer Science & Engineering",
-  "B.Tech - Mechanical Engineering",
-  "B.Tech - Electrical & Electronics Engineering",
-  "B.Tech - Electronics & Communication Engineering",
-  "B.Tech - Civil Engineering",
   "BCA",
   "Diploma",
-  "Diploma - Computer Science & Engineering",
-  "Diploma - Mechanical Engineering",
-  "Diploma - Electrical Engineering",
-  "Diploma - Civil Engineering",
   "MCA",
   "M.Tech",
-  "B.Sc (IT / Computer Science)",
-  "B.Sc (General)",
+  "B.Sc",
   "M.Sc",
   "BBA",
   "MBA",
@@ -117,9 +107,9 @@ export const COURSE_OPTIONS: string[] = [
   "MA",
   "B.Pharm",
   "D.Pharm",
-  "LLB / Law",
-  "B.Des / Fashion / Interior",
-  "Ph.D / Research Scholar",
+  "LLB",
+  "B.Des",
+  "Ph.D",
   "Others"
 ];
 

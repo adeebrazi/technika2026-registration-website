@@ -135,8 +135,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`custom-select-container relative w-full ${className}`}
-      style={{ userSelect: 'none' }}
+      className={`custom-select-container relative w-full min-w-0 ${className}`}
+      style={{ userSelect: 'none', boxSizing: 'border-box', width: '100%', maxWidth: '100%' }}
     >
       {/* Hidden input to support native HTML5 form validation */}
       <input
@@ -167,39 +167,45 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         tabIndex={disabled ? -1 : 0}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className="w-full flex items-center justify-between cursor-pointer transition-all duration-100"
+        className="custom-select-trigger w-full min-w-0 flex items-center justify-between cursor-pointer transition-all duration-100"
         style={{
+          boxSizing: 'border-box',
+          width: '100%',
+          maxWidth: '100%',
           backgroundColor: '#FFFFFF',
           border: '3px solid #000000',
-          padding: '12px 14px',
-          boxShadow: isOpen ? '2px 2px 0px #000000' : '4px 4px 0px #000000',
+          padding: '10px 12px',
+          boxShadow: isOpen ? '2px 2px 0px #000000' : '3px 3px 0px #000000',
           transform: isOpen ? 'translate(2px, 2px)' : 'none',
           color: '#000000',
           fontFamily: "var(--font-title, 'Space Grotesk', sans-serif)",
-          fontSize: '0.92rem',
+          fontSize: '0.88rem',
           fontWeight: 700,
           opacity: disabled ? 0.6 : 1,
         }}
       >
         <span
-          className="truncate pr-2"
+          className="truncate pr-2 min-w-0 flex-1"
           style={{
             color: selectedOption ? '#000000' : '#64748b',
             fontWeight: selectedOption ? 800 : 600,
             letterSpacing: '0.01em',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0 ml-1">
           <div
-            className="w-6 h-6 flex items-center justify-center border-2 border-black bg-[#FFE600] transition-transform duration-150"
+            className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center border-2 border-black bg-[#FFE600] transition-transform duration-150 shrink-0"
             style={{
               transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
               boxShadow: '1px 1px 0px #000000',
             }}
           >
-            <ChevronDown size={14} className="text-black font-black" />
+            <ChevronDown size={13} className="text-black font-black" />
           </div>
         </div>
       </div>
@@ -208,11 +214,14 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute left-0 top-full mt-2 w-full z-50 bg-white"
+          className="absolute left-0 top-full mt-1.5 w-full z-50 bg-white"
           style={{
-            border: '3.5px solid #000000',
-            boxShadow: '6px 6px 0px 0px #000000',
-            maxHeight: '380px',
+            boxSizing: 'border-box',
+            width: '100%',
+            maxWidth: '100%',
+            border: '3px solid #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
+            maxHeight: '340px',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
