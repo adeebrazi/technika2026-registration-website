@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import logoPng from '@/assets/logo.png';
 import technikaLogoJpg from '@/assets/technika_logo.jpg';
-import { Sparkles, Moon, Sun } from 'lucide-react';
+import { Sparkles, Sun, RotateCw } from 'lucide-react';
 
 export const MAIN_WEBSITE_URL = typeof window !== 'undefined' && 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -11,7 +11,7 @@ export const MAIN_WEBSITE_URL = typeof window !== 'undefined' &&
     : 'https://technika2026.online';
 
 export const Navbar: React.FC = () => {
-  const { theme, setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -90,56 +90,113 @@ export const Navbar: React.FC = () => {
 
           {/* ── Right Actions ── */}
           <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* 3-Way Theme Switcher (Hidden on Admin pages) */}
+            {/* Rotary Style Theme Switcher (Theme 1 / Theme 2) */}
             {!isAdminRoute && (
-              <div
-                className="theme-switcher-group"
+              <button
+                type="button"
+                onClick={toggleTheme}
+                title={`Current: ${theme === 'main' ? 'Theme 1' : 'Theme 2'} — Click to rotate theme`}
+                aria-label={`Switch theme, currently ${theme === 'main' ? 'Theme 1' : 'Theme 2'}`}
+                className="theme-rotary-btn"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
+                  gap: '6px',
+                  padding: '3px 8px',
                   background: 'var(--background, #fff)',
                   border: '2px solid var(--foreground, #000)',
-                  padding: '2px',
-                  gap: '2px',
+                  boxShadow: '2px 2px 0px 0px rgba(0,0,0,1)',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  transition: 'all 0.1s ease',
+                  flexShrink: 0,
                 }}
               >
-                {(['main', 'dark', 'light'] as const).map(t => {
-                  const isActive = theme === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTheme(t)}
-                      className="theme-switch-btn"
+                {/* Rotary Dial Knob */}
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    border: '2px solid var(--foreground, #000)',
+                    background: 'var(--brut-yellow, #facc15)',
+                    boxShadow: '1px 1px 0px 0px rgba(0,0,0,1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {/* Rotating pointer ring */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      transform: theme === 'main' ? 'rotate(0deg)' : 'rotate(180deg)',
+                    }}
+                  >
+                    <span
                       style={{
-                        padding: '3px 8px',
-                        fontSize: '10px',
-                        fontWeight: 900,
-                        fontFamily: "'Space Grotesk', sans-serif",
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        border: isActive ? '1px solid #000000' : '1px solid transparent',
-                        background: isActive ? 'var(--brut-yellow, #facc15)' : 'transparent',
-                        color: isActive ? '#000000' : 'var(--muted-foreground, #888)',
-                        boxShadow: isActive ? '1px 1px 0px 0px rgba(0,0,0,1)' : 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.1s ease',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
+                        position: 'absolute',
+                        top: '-2px',
+                        width: '3.5px',
+                        height: '5px',
+                        background: '#000',
+                        borderRadius: '999px',
                       }}
-                      title={`Switch to ${t.toUpperCase()} theme`}
-                      aria-label={`${t} theme`}
-                    >
-                      {t === 'main' && <Sparkles size={13} className="shrink-0" />}
-                      {t === 'dark' && <Moon size={13} className="shrink-0" />}
-                      {t === 'light' && <Sun size={13} className="shrink-0" />}
-                      <span className="theme-text-label">{t.toUpperCase()}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '-2px',
+                        width: '2.5px',
+                        height: '2.5px',
+                        background: 'rgba(0,0,0,0.4)',
+                        borderRadius: '999px',
+                      }}
+                    />
+                  </div>
+
+                  {/* Center Theme Icon */}
+                  <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {theme === 'main' ? (
+                      <Sparkles size={11} color="#000" />
+                    ) : (
+                      <Sun size={11} color="#000" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Theme Label */}
+                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1, paddingRight: '2px' }}>
+                  <span className="hidden-mobile" style={{ fontSize: '7px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7, color: 'var(--muted-foreground, #666)' }}>
+                    ROTARY
+                  </span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', color: 'var(--foreground, #000)' }}>
+                    {theme === 'main' ? 'THEME 1' : 'THEME 2'}
+                  </span>
+                </div>
+
+                {/* Mini Rotating Indicator Arrow */}
+                <div
+                  className="hidden-mobile"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: 0.6,
+                    color: 'var(--foreground, #000)',
+                    transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    transform: theme === 'main' ? 'rotate(0deg)' : 'rotate(180deg)',
+                  }}
+                >
+                  <RotateCw size={11} />
+                </div>
+              </button>
             )}
 
             {/* Brochure button (Hidden on Admin pages) */}
