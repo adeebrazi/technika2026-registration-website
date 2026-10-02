@@ -1188,12 +1188,12 @@ export const Register: React.FC = () => {
                                 ? '3px solid #ef4444'
                                 : isChecked
                                 ? '3.5px solid #FFE600'
-                                : '3px solid #ffffff',
+                                : '3px solid var(--border, #000000)',
                               boxShadow: isTreasureHuntDisabled
                                 ? '5px 5px 0px 0px #ef4444'
                                 : isChecked
-                                ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px #ffffff'
-                                : '5px 5px 0px 0px #ffffff',
+                                ? '6px 6px 0px 0px #FFE600, 8px 8px 0px 0px var(--border, #000000)'
+                                : '5px 5px 0px 0px var(--border, #000000)',
                               cursor: (evt as any).isComingSoon || isTreasureHuntDisabled ? 'not-allowed' : 'pointer',
                               userSelect: 'none',
                               transition: 'all 0.15s ease',
@@ -1213,7 +1213,7 @@ export const Register: React.FC = () => {
                               <div style={{
                                 position: 'absolute',
                                 inset: 0,
-                                background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, rgba(0,0,0,0.4) 100%)'
+                                background: 'linear-gradient(to top, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.80) 55%, rgba(0,0,0,0.52) 100%)'
                               }} />
                             </div>
 
@@ -1245,7 +1245,18 @@ export const Register: React.FC = () => {
                                     </span>
                                   )}
                                 </div>
-                                <p style={{ fontSize: '0.72rem', fontWeight: 500, color: '#cbd5e1', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.25 }}>
+                                <p style={{
+                                  fontSize: '0.74rem',
+                                  fontWeight: 600,
+                                  color: '#FFFFFF',
+                                  textShadow: '1px 1px 2px rgba(0,0,0,0.95), 0px 0px 5px rgba(0,0,0,0.9)',
+                                  margin: 0,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  lineHeight: 1.3
+                                }}>
                                   {descText}
                                 </p>
                               </div>

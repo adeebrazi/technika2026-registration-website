@@ -14,11 +14,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== 'undefined' && window.localStorage) {
       const saved = localStorage.getItem('technika_theme');
+      if (saved === 'main') {
+        return 'main';
+      }
       if (saved === 'light') {
         return 'light';
       }
     }
-    return 'main';
+    return 'light';
   });
 
   const setTheme = (newTheme: Theme) => {
