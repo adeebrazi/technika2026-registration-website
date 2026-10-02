@@ -1788,7 +1788,7 @@ export const Register: React.FC = () => {
                       </button>{' '}
                       and Disqualification Criteria of Technika 6.0. <span style={{ color: '#ef4444' }}>*</span>
                     </div>
-                    <p className="rules-sub-text" style={{ margin: '6px 0 0 0', fontSize: '0.74rem', color: '#cbd5e1', lineHeight: 1.4 }}>
+                    <p className="rules-sub-text" style={{ margin: '6px 0 0 0', fontSize: '0.74rem', color: '#e2e8f0', lineHeight: 1.4 }}>
                       Participants must carry valid college/school ID cards, report at least 30 minutes before scheduled times, and follow fair play regulations.
                     </p>
                   </div>
@@ -1859,7 +1859,7 @@ export const Register: React.FC = () => {
               <span className="success-label">Registration ID:</span>
               <span className="success-value reg-id-badge">{regId}</span>
             </div>
-            <p className="success-alert" style={{ background: 'rgba(255, 230, 0, 0.1)', borderColor: '#FFE600', color: '#ffffff' }}>
+            <p className="success-alert" style={{ background: '#FFE600', borderColor: '#000000', color: '#000000', fontWeight: 800 }}>
               <i className="fa-solid fa-key"></i> Please make sure to save your Registration ID. Use it along with your chosen password to log into the dashboard.
             </p>
 

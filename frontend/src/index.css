@@ -316,7 +316,7 @@ h1, h2, h3, h4, .logo {
 
 .theme-light .brut-section-title,
 .theme-light .brut-section label,
-.theme-light .brut-section p:not(.event-card-desc),
+.theme-light .brut-section p:not(.event-card-desc):not(.rules-sub-text),
 .theme-light .brut-section h4 {
   color: #000000 !important;
 }
@@ -327,6 +327,21 @@ h1, h2, h3, h4, .logo {
 .theme-light .brut-section p.event-card-desc {
   color: #FFFFFF !important;
   text-shadow: 1px 1px 2px #000000, 0px 0px 5px #000000 !important;
+}
+
+.rules-heading-text,
+.rules-acceptance-box .rules-heading-text,
+.theme-light .rules-acceptance-box .rules-heading-text {
+  color: #FFFFFF !important;
+}
+
+.rules-sub-text,
+.rules-acceptance-box .rules-sub-text,
+.theme-light .rules-acceptance-box .rules-sub-text,
+.theme-light .brut-section .rules-acceptance-box .rules-sub-text,
+.theme-light .brut-section p.rules-sub-text {
+  color: #e2e8f0 !important;
+  opacity: 1 !important;
 }
 
 .theme-light .brut-section small {
