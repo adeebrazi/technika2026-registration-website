@@ -156,7 +156,10 @@ router.post(
             slug: item.slug,
             mode: item.mode || 'auto',
             teamName: item.teamName ? item.teamName.trim() : '',
-            teamId: item.teamId ? item.teamId.trim().toUpperCase() : ''
+            teamId: item.teamId ? item.teamId.trim().toUpperCase() : '',
+            teamMembers: Array.isArray(item.teamMembers)
+              ? item.teamMembers.map(m => (typeof m === 'string' ? m.trim().toUpperCase() : '')).filter(Boolean)
+              : []
           });
         }
       }
@@ -466,13 +469,65 @@ router.post(
             await reg.save();
             queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
 
+            // Automatically register teammates entered by the Team Leader
+            const addedTeammates = [];
+            if (Array.isArray(item.teamMembers) && item.teamMembers.length > 0) {
+              const uniqueTeammateIds = Array.from(new Set(item.teamMembers));
+              for (const memberId of uniqueTeammateIds) {
+                if (!memberId || memberId === registrationId) continue;
+                if (team.memberCount >= event.maxMembers) break;
+
+                const teammateUser = await User.findOne({ registrationId: memberId });
+                if (!teammateUser) continue;
+
+                // Check if already registered for this event
+                const existingTeammateReg = await Registration.findOne({ registrationId: memberId, eventId });
+                if (existingTeammateReg) continue;
+
+                const tm = new TeamMember({
+                  teamId: newTeamId,
+                  userId: memberId,
+                  role: 'Member'
+                });
+                await tm.save();
+
+                const teammateReg = new Registration({
+                  registrationId: memberId,
+                  eventId,
+                  teamId: newTeamId,
+                  registrationType: 'TEAM',
+                  status: 'CONFIRMED'
+                });
+                await teammateReg.save();
+                queueRegistrationSync(teammateReg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
+
+                team.memberCount += 1;
+                addedTeammates.push(teammateUser.name);
+
+                // Notify teammate
+                const teammateNotif = new Notification({
+                  userId: memberId,
+                  type: 'SYSTEM',
+                  message: `${name} has added you to team "${defaultName}" (${newTeamId}) for ${event.name}!`
+                });
+                await teammateNotif.save().catch(e => console.warn('Notif error:', e.message));
+              }
+
+              if (team.memberCount >= event.minMembers) {
+                team.status = 'ready';
+              }
+              await team.save();
+            }
+
             createdTeams.push({
               eventId,
               eventName: event.name,
               teamId: newTeamId,
               teamName: defaultName,
               minMembers: event.minMembers,
-              maxMembers: event.maxMembers
+              maxMembers: event.maxMembers,
+              memberCount: team.memberCount,
+              addedTeammates
             });
           } else if (mode === 'join_team' && event.teamAllowed) {
             // Join Friend's Team

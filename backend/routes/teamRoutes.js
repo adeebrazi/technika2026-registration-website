@@ -80,6 +80,58 @@ router.post('/validate-code', async (req, res) => {
   }
 });
 
+// @route   POST /api/teams/verify-member
+// @desc    Verify a teammate's unique registration ID (Public)
+// @access  Public
+router.post('/verify-member', async (req, res) => {
+  const { uniqueId, eventId, eventSlug } = req.body;
+
+  try {
+    if (!uniqueId) {
+      return res.status(400).json({ valid: false, message: 'Unique ID is required.' });
+    }
+
+    const cleanId = uniqueId.toString().trim().toUpperCase();
+    const user = await User.findOne({ registrationId: cleanId }).select('name institution registrationId');
+
+    if (!user) {
+      return res.status(404).json({
+        valid: false,
+        message: `No participant found with Unique ID "${cleanId}". Ensure they registered on Technika first.`
+      });
+    }
+
+    const targetEventId = eventId || EVENT_ID_MAP[eventSlug] || eventSlug;
+    if (targetEventId) {
+      const existingReg = await Registration.findOne({ registrationId: cleanId, eventId: targetEventId });
+      if (existingReg) {
+        return res.status(400).json({
+          valid: false,
+          user: {
+            registrationId: user.registrationId,
+            name: user.name,
+            institution: user.institution
+          },
+          message: `${user.name} (${user.registrationId}) is already registered for this event.`
+        });
+      }
+    }
+
+    res.json({
+      valid: true,
+      user: {
+        registrationId: user.registrationId,
+        name: user.name,
+        institution: user.institution
+      },
+      message: `Verified: ${user.name} (${user.institution || 'Participant'})`
+    });
+  } catch (error) {
+    console.error('Verify teammate error:', error.message);
+    res.status(500).json({ valid: false, message: 'Server error while verifying teammate ID.' });
+  }
+});
+
 // @route   POST /api/teams/create
 // @desc    Create a team for an event (Leader is added as member 1)
 // @access  Private

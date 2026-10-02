@@ -22,6 +22,7 @@ export interface EventConfigState {
   mode: 'solo' | 'create_team' | 'join_team';
   teamName: string;
   teamId: string;
+  teamMembers?: string[];
 }
 
 export interface TeamCheckStatusState {
@@ -63,6 +64,82 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   const isTeamOnly = minMembers > 1;
   const isHybrid = minMembers === 1 && maxMembers > 1;
   const currentMode = config?.mode || (isTeamOnly ? 'create_team' : 'solo');
+
+  // Teammates Verification State: { [uniqueId]: { loading: boolean, valid?: boolean, name?: string, institution?: string, message?: string } }
+  const [teammateStatus, setTeammateStatus] = React.useState<
+    Record<string, { loading: boolean; valid?: boolean; name?: string; institution?: string; message?: string }>
+  >({});
+
+  const maxTeammates = Math.max(1, (maxMembers ?? 2) - 1);
+  const currentTeammates = config?.teamMembers && config.teamMembers.length > 0 ? config.teamMembers : [''];
+
+  const handleTeammateChange = (index: number, val: string) => {
+    const cleanVal = val.toUpperCase().trim().slice(0, 6);
+    const updated = [...currentTeammates];
+    updated[index] = cleanVal;
+    if (onUpdateConfig) {
+      onUpdateConfig(event.id, { mode: 'create_team', teamMembers: updated });
+    }
+    if (cleanVal.length === 6) {
+      verifyTeammateId(cleanVal);
+    }
+  };
+
+  const handleAddTeammateSlot = () => {
+    if (currentTeammates.length < maxTeammates) {
+      const updated = [...currentTeammates, ''];
+      if (onUpdateConfig) {
+        onUpdateConfig(event.id, { mode: 'create_team', teamMembers: updated });
+      }
+    }
+  };
+
+  const handleRemoveTeammateSlot = (index: number) => {
+    const updated = currentTeammates.filter((_, i) => i !== index);
+    if (onUpdateConfig) {
+      onUpdateConfig(event.id, { mode: 'create_team', teamMembers: updated.length > 0 ? updated : [''] });
+    }
+  };
+
+  const verifyTeammateId = async (id: string) => {
+    const cleanId = id.trim().toUpperCase();
+    if (!cleanId || cleanId.length < 4) return;
+    setTeammateStatus((prev) => ({ ...prev, [cleanId]: { loading: true } }));
+    try {
+      const res = await fetch('/api/teams/verify-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uniqueId: cleanId, eventId: event.id })
+      });
+      const data = await res.json();
+      if (res.ok && data.valid) {
+        setTeammateStatus((prev) => ({
+          ...prev,
+          [cleanId]: {
+            loading: false,
+            valid: true,
+            name: data.user.name,
+            institution: data.user.institution,
+            message: `✓ Verified: ${data.user.name} (${data.user.institution || 'Registered'})`
+          }
+        }));
+      } else {
+        setTeammateStatus((prev) => ({
+          ...prev,
+          [cleanId]: {
+            loading: false,
+            valid: false,
+            message: data.message || `No participant found with ID "${cleanId}".`
+          }
+        }));
+      }
+    } catch {
+      setTeammateStatus((prev) => ({
+        ...prev,
+        [cleanId]: { loading: false, valid: false, message: 'Could not connect to server to verify.' }
+      }));
+    }
+  };
 
   return (
     <div
@@ -262,29 +339,156 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 
             {/* Create Team Configuration */}
             {currentMode === 'create_team' && (
-              <div style={{ background: 'var(--card, #ffffff)', padding: '12px', border: '2px solid var(--border, #000000)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <label style={{ fontSize: '0.74rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--foreground, #000000)' }}>
-                  Team Name:
-                </label>
-                <input
-                  type="text"
-                  placeholder={formDataName ? `${formDataName}'s Team` : "e.g. CyberKnights"}
-                  value={config?.teamName || ''}
-                  onChange={(e) => onUpdateConfig && onUpdateConfig(event.id, { mode: 'create_team', teamName: e.target.value })}
-                  style={{
-                    background: 'var(--card, #ffffff)',
-                    border: '2px solid var(--border, #000000)',
-                    color: 'var(--foreground, #000000)',
-                    padding: '8px 12px',
-                    fontSize: '0.9rem',
-                    fontWeight: 800,
-                    outline: 'none',
-                    width: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                />
+              <div style={{ background: 'var(--card, #ffffff)', padding: '12px', border: '2px solid var(--border, #000000)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--foreground, #000000)' }}>
+                    Team Name:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={formDataName ? `${formDataName}'s Team` : "e.g. CyberKnights"}
+                    value={config?.teamName || ''}
+                    onChange={(e) => onUpdateConfig && onUpdateConfig(event.id, { mode: 'create_team', teamName: e.target.value })}
+                    style={{
+                      background: 'var(--card, #ffffff)',
+                      border: '2px solid var(--border, #000000)',
+                      color: 'var(--foreground, #000000)',
+                      padding: '8px 12px',
+                      fontSize: '0.9rem',
+                      fontWeight: 800,
+                      outline: 'none',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                {/* Teammates Unique ID Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '6px', borderTop: '1.5px dashed var(--border, #000000)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 900, textTransform: 'uppercase', color: 'var(--foreground, #000000)' }}>
+                      Teammate Unique ID(s):
+                    </label>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#FFE600', color: '#000000', padding: '1px 6px', border: '1.5px solid #000000' }}>
+                      Leader + up to {maxTeammates} Teammate{maxTeammates > 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {currentTeammates.map((memberId, idx) => {
+                      const status = teammateStatus[memberId];
+                      return (
+                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <div style={{ flex: 1, position: 'relative' }}>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                placeholder={`Teammate #${idx + 1} Unique ID (e.g. T48291)`}
+                                value={memberId}
+                                onChange={(e) => handleTeammateChange(idx, e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  background: 'var(--card, #ffffff)',
+                                  border: '2px solid var(--border, #000000)',
+                                  color: 'var(--foreground, #000000)',
+                                  padding: '7px 10px',
+                                  fontSize: '0.85rem',
+                                  fontWeight: 900,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.06em',
+                                  fontFamily: 'monospace',
+                                  outline: 'none'
+                                }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => verifyTeammateId(memberId)}
+                              disabled={memberId.length < 4 || status?.loading}
+                              style={{
+                                padding: '7px 10px',
+                                fontSize: '0.72rem',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                background: memberId.length >= 4 ? '#000000' : '#e2e8f0',
+                                color: memberId.length >= 4 ? '#ffffff' : '#94a3b8',
+                                border: '2px solid var(--border, #000000)',
+                                cursor: memberId.length >= 4 ? 'pointer' : 'default',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              {status?.loading ? 'Checking...' : 'Verify'}
+                            </button>
+                            {currentTeammates.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveTeammateSlot(idx)}
+                                title="Remove teammate"
+                                style={{
+                                  padding: '7px 9px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 900,
+                                  background: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '2px solid #000000',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Verification Feedback Banner */}
+                          {memberId && status && !status.loading && (
+                            <div
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '4px 8px',
+                                border: '1.5px solid #000000',
+                                background: status.valid ? '#dcfce7' : '#fee2e2',
+                                color: status.valid ? '#166534' : '#991b1b',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <span>{status.message}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Add another teammate slot button */}
+                    {currentTeammates.length < maxTeammates && (
+                      <button
+                        type="button"
+                        onClick={handleAddTeammateSlot}
+                        style={{
+                          alignSelf: 'flex-start',
+                          padding: '5px 10px',
+                          fontSize: '0.72rem',
+                          fontWeight: 900,
+                          background: 'var(--brut-cyan, #1cabb0)',
+                          color: '#ffffff',
+                          border: '2px solid #000000',
+                          boxShadow: '1.5px 1.5px 0px 0px #000000',
+                          cursor: 'pointer',
+                          textTransform: 'uppercase'
+                        }}
+                      >
+                        + Add Another Teammate ({currentTeammates.length}/{maxTeammates})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ fontSize: '0.74rem', color: 'var(--foreground, #000000)', lineHeight: 1.4, opacity: 0.9 }}>
-                  💡 <strong>How it works:</strong> As Team Leader, upon submitting your registration, a unique <strong>6-character Team ID</strong> (e.g. <code>T49201</code>) will be created. Share it with your teammates so they can select "Join Team" during their registration!
+                  💡 <strong>How it works:</strong> Enter your teammates' <strong>6-character Unique ID</strong> (e.g. <code>T49201</code>) that they received upon registering. Teammates who haven't registered yet can also join your team later using your generated <strong>Team ID</strong>!
                 </div>
               </div>
             )}

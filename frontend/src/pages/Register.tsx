@@ -189,9 +189,9 @@ export const Register: React.FC = () => {
   const [participantName, setParticipantName] = useState('');
 
   // Team Registration Configuration State
-  const [eventConfigs, setEventConfigs] = useState<Record<string, { mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string }>>({});
+  const [eventConfigs, setEventConfigs] = useState<Record<string, { mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string; teamMembers?: string[] }>>({});
   const [teamCheckStatus, setTeamCheckStatus] = useState<Record<string, { loading: boolean; valid?: boolean; message?: string; leaderName?: string }>>({});
-  const [createdTeams, setCreatedTeams] = useState<Array<{ eventId: string; eventName: string; teamId: string; teamName: string; minMembers: number; maxMembers: number }>>([]);
+  const [createdTeams, setCreatedTeams] = useState<Array<{ eventId: string; eventName: string; teamId: string; teamName: string; minMembers: number; maxMembers: number; memberCount?: number; addedTeammates?: string[] }>>([]);
 
   // Rules Acceptance State
   const [acceptedRules, setAcceptedRules] = useState(false);
@@ -267,7 +267,7 @@ export const Register: React.FC = () => {
     });
   };
 
-  const updateEventConfig = (eventId: string, updates: Partial<{ mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string }>) => {
+  const updateEventConfig = (eventId: string, updates: Partial<{ mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string; teamMembers?: string[] }>) => {
     setEventConfigs((prev) => ({
       ...prev,
       [eventId]: {
@@ -617,12 +617,13 @@ export const Register: React.FC = () => {
       const detail = getEventDetails(slug);
       const isTeamOnly = (detail?.minMembers ?? 1) > 1;
       const defaultMode = isTeamOnly ? 'create_team' : 'solo';
-      const config = eventConfigs[slug] || { mode: defaultMode, teamName: '', teamId: '' };
+      const config = eventConfigs[slug] || { mode: defaultMode, teamName: '', teamId: '', teamMembers: [] };
       return {
         slug,
         mode: config.mode || defaultMode,
         teamName: config.teamName || '',
-        teamId: config.teamId || ''
+        teamId: config.teamId || '',
+        teamMembers: config.teamMembers || []
       };
     });
     submissionData.append('selectedEvents', JSON.stringify(selectedEventsPayload));
@@ -1885,7 +1886,14 @@ export const Register: React.FC = () => {
                     <div key={idx} style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid #ffffff', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
                         <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#FFE600' }}>{t.eventName}</div>
-                        <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Team Name: <strong>{t.teamName}</strong> · Team ID: <code style={{ background: '#ffffff', color: '#000000', padding: '2px 6px', fontWeight: 900, fontSize: '0.88rem' }}>{t.teamId}</code></div>
+                        <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
+                          Team Name: <strong>{t.teamName}</strong> · Team ID: <code style={{ background: '#ffffff', color: '#000000', padding: '2px 6px', fontWeight: 900, fontSize: '0.88rem' }}>{t.teamId}</code>
+                          {t.addedTeammates && t.addedTeammates.length > 0 && (
+                            <div style={{ marginTop: '4px', color: '#86efac', fontWeight: 700 }}>
+                              ✓ Linked Teammate(s): {t.addedTeammates.join(', ')}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <button
