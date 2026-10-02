@@ -1245,18 +1245,21 @@ export const Register: React.FC = () => {
                                     </span>
                                   )}
                                 </div>
-                                <p style={{
-                                  fontSize: '0.74rem',
-                                  fontWeight: 600,
-                                  color: '#FFFFFF',
-                                  textShadow: '1px 1px 2px rgba(0,0,0,0.95), 0px 0px 5px rgba(0,0,0,0.9)',
-                                  margin: 0,
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                  lineHeight: 1.3
-                                }}>
+                                <p
+                                  className="event-card-desc"
+                                  style={{
+                                    fontSize: '0.74rem',
+                                    fontWeight: 600,
+                                    color: '#FFFFFF !important',
+                                    textShadow: '1px 1px 2px rgba(0,0,0,0.95), 0px 0px 5px rgba(0,0,0,0.9)',
+                                    margin: 0,
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    lineHeight: 1.3
+                                  }}
+                                >
                                   {descText}
                                 </p>
                               </div>
