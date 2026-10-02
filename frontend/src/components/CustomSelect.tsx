@@ -77,18 +77,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     };
   }, [isOpen]);
 
-  // Focus search input when opened
+  // Reset search query and highlighted index when dropdown closes (do not autofocus input on open)
   useEffect(() => {
-    if (isOpen && searchable && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    }
     if (!isOpen) {
       setSearchQuery('');
       setHighlightedIndex(-1);
     }
-  }, [isOpen, searchable]);
+  }, [isOpen]);
 
   // Scroll active item into view when opened
   useEffect(() => {
@@ -234,25 +229,32 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
               onClick={(e) => e.stopPropagation()}
               style={{ borderBottom: '3px solid #000000' }}
             >
-              <div className="flex items-center gap-2 bg-white px-3 py-1.5 border-2 border-black">
-                <Search size={15} className="text-black shrink-0" />
+              <div
+                className="flex items-center gap-2 bg-white px-3 py-2 border-2 border-black cursor-text"
+                onClick={() => searchInputRef.current?.focus()}
+              >
+                <Search size={16} className="text-black shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Type to filter..."
-                  className="w-full text-xs font-bold outline-none bg-transparent py-0.5 text-black placeholder-gray-500"
+                  className="w-full text-xs sm:text-sm font-bold outline-none bg-transparent py-0.5 text-black placeholder-gray-500"
                   style={{ fontFamily: 'inherit' }}
                 />
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="p-0.5 hover:bg-black hover:text-white rounded transition-colors text-black cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchQuery('');
+                      searchInputRef.current?.focus();
+                    }}
+                    className="p-1 hover:bg-black hover:text-white rounded transition-colors text-black cursor-pointer"
                     title="Clear search"
                   >
-                    <X size={13} />
+                    <X size={14} />
                   </button>
                 )}
               </div>
@@ -270,7 +272,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             ref={optionsListRef}
             className="overflow-y-auto"
             style={{
-              maxHeight: searchable ? '300px' : '330px',
+              maxHeight: searchable ? '280px' : '340px',
             }}
           >
             {filteredOptions.length === 0 ? (
@@ -291,7 +293,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     data-selected={isSelected}
                     onClick={() => handleSelect(opt.value)}
                     onMouseEnter={() => setHighlightedIndex(idx)}
-                    className="px-3.5 py-2.5 text-xs sm:text-[0.85rem] font-bold cursor-pointer transition-colors flex items-center justify-between border-b-2 border-black last:border-b-0"
+                    className="px-4 py-3 sm:py-2.5 min-h-[48px] sm:min-h-[42px] text-xs sm:text-[0.88rem] font-bold cursor-pointer transition-colors flex items-center justify-between border-b-2 border-black last:border-b-0 touch-manipulation active:bg-[#FFE600]"
                     style={{
                       backgroundColor: isSelected
                         ? '#FFE600'
@@ -305,13 +307,13 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     <div className="flex flex-col gap-0.5 pr-2 truncate">
                       <span className="truncate">{opt.label}</span>
                       {opt.category && (
-                        <span className="text-[0.65rem] font-black text-gray-500 uppercase tracking-wider">
+                        <span className="text-[0.68rem] font-black text-gray-500 uppercase tracking-wider">
                           {opt.category}
                         </span>
                       )}
                     </div>
                     {isSelected && (
-                      <div className="flex items-center gap-1 shrink-0 bg-black text-[#FFE600] px-1.5 py-0.5 text-[0.7rem] font-black border border-black">
+                      <div className="flex items-center gap-1 shrink-0 bg-black text-[#FFE600] px-2 py-0.5 text-[0.7rem] font-black border border-black">
                         <Check size={12} className="stroke-[3]" />
                         <span>SELECTED</span>
                       </div>
