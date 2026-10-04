@@ -45,7 +45,7 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
         position: 'fixed',
         inset: 0,
         zIndex: 10000,
-        background: 'rgba(0, 0, 0, 0.88)',
+        background: 'rgba(0, 0, 0, 0.82)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
@@ -59,20 +59,20 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: '750px',
-          maxHeight: '88vh',
+          maxWidth: '760px',
+          maxHeight: '90vh',
           overflowY: 'auto',
-          background: 'var(--card, #00364d)',
-          color: 'var(--foreground, #ffffff)',
-          border: '3.5px solid var(--border, #8aebee)',
+          background: '#ffffff',
+          color: '#000000',
+          border: '3.5px solid #000000',
           boxShadow: '10px 10px 0px 0px #000000',
-          padding: '24px',
+          padding: '26px 24px',
           boxSizing: 'border-box'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '18px', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
           <div>
             <span
               style={{
@@ -80,8 +80,8 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
                 background: '#FFE600',
                 color: '#000000',
                 border: '2px solid #000000',
-                padding: '2px 10px',
-                fontSize: '0.72rem',
+                padding: '3px 10px',
+                fontSize: '0.74rem',
                 fontWeight: 900,
                 textTransform: 'uppercase',
                 marginBottom: '8px',
@@ -90,8 +90,19 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
             >
               OFFICIAL BROCHURE · TECHNIKA 6.0
             </span>
-            <h2 style={{ fontFamily: 'var(--font-heading, "Space Grotesk", sans-serif)', fontSize: '1.65rem', fontWeight: 900, textTransform: 'uppercase', margin: 0, lineHeight: 1.1, color: 'var(--foreground, #ffffff)' }}>
-              Event Common Rules & Regulations
+            <h2
+              style={{
+                fontFamily: 'var(--font-heading, "Space Grotesk", sans-serif)',
+                fontSize: '1.65rem',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                margin: 0,
+                lineHeight: 1.15,
+                color: '#000000',
+                letterSpacing: '-0.02em'
+              }}
+            >
+              Event Common Rules &amp; Regulations
             </h2>
           </div>
           <button
@@ -101,10 +112,10 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
             style={{
               background: '#ef4444',
               color: '#ffffff',
-              border: '2px solid #ffffff',
+              border: '2.5px solid #000000',
               boxShadow: '3px 3px 0px 0px #000000',
               fontWeight: 900,
-              fontSize: '1.1rem',
+              fontSize: '1.15rem',
               width: '38px',
               height: '38px',
               cursor: 'pointer',
@@ -119,13 +130,36 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
         </div>
 
         {/* Section 1: General Event Rules */}
-        <div style={{ marginBottom: '22px', background: 'rgba(0, 0, 0, 0.35)', border: '2px solid var(--border, #8aebee)', padding: '16px 18px' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', fontWeight: 900, textTransform: 'uppercase', color: '#FFE600', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>📜</span> General Event Rules
-          </h4>
-          <ol style={{ margin: 0, paddingLeft: '22px', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.92)', lineHeight: 1.6 }}>
+        <div
+          style={{
+            marginBottom: '20px',
+            background: '#f8fafc',
+            border: '2.5px solid #000000',
+            boxShadow: '4px 4px 0px 0px #000000',
+            padding: '18px 20px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#FFE600',
+              color: '#000000',
+              border: '2px solid #000000',
+              padding: '4px 10px',
+              marginBottom: '14px',
+              boxShadow: '2px 2px 0px 0px #000000'
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>📜</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              General Event Rules
+            </span>
+          </div>
+          <ol style={{ margin: 0, paddingLeft: '22px', fontSize: '0.88rem', color: '#0f172a', lineHeight: 1.65 }}>
             {eventRules.map((rule, idx) => (
-              <li key={idx} style={{ marginBottom: '6px', fontWeight: 500 }}>
+              <li key={idx} style={{ marginBottom: '8px', fontWeight: 600 }}>
                 {rule}
               </li>
             ))}
@@ -133,13 +167,36 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
         </div>
 
         {/* Section 2: Disqualification Criteria */}
-        <div style={{ marginBottom: '22px', background: 'rgba(239, 68, 68, 0.08)', border: '2px solid rgba(239, 68, 68, 0.6)', padding: '16px 18px' }}>
-          <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', fontWeight: 900, textTransform: 'uppercase', color: '#f87171', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>⚠️</span> Disqualification Criteria
-          </h4>
-          <ol style={{ margin: 0, paddingLeft: '22px', fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.92)', lineHeight: 1.6 }}>
+        <div
+          style={{
+            marginBottom: '20px',
+            background: '#fff1f2',
+            border: '3px solid #dc2626',
+            boxShadow: '4px 4px 0px 0px #dc2626',
+            padding: '18px 20px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#dc2626',
+              color: '#ffffff',
+              border: '2px solid #000000',
+              padding: '4px 10px',
+              marginBottom: '14px',
+              boxShadow: '2px 2px 0px 0px #000000'
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>⚠️</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Disqualification Criteria
+            </span>
+          </div>
+          <ol style={{ margin: 0, paddingLeft: '22px', fontSize: '0.88rem', color: '#881337', lineHeight: 1.65 }}>
             {disqualificationCriteria.map((item, idx) => (
-              <li key={idx} style={{ marginBottom: '6px', fontWeight: 500 }}>
+              <li key={idx} style={{ marginBottom: '8px', fontWeight: 600 }}>
                 {item}
               </li>
             ))}
@@ -147,28 +204,52 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
         </div>
 
         {/* Section 3: Necessary Documents Required */}
-        <div style={{ marginBottom: '24px', background: 'rgba(60, 230, 252, 0.08)', border: '1.5px solid #3CE6FC', padding: '14px 18px' }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '0.88rem', fontWeight: 900, textTransform: 'uppercase', color: '#3CE6FC' }}>
-            🪪 Necessary Documents Required at Venue:
-          </h4>
-          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.84rem', color: '#e2e8f0', lineHeight: 1.5 }}>
-            <li style={{ marginBottom: '4px' }}>Original / Valid College or School ID Card.</li>
+        <div
+          style={{
+            marginBottom: '24px',
+            background: '#f0f9ff',
+            border: '2.5px solid #0284c7',
+            boxShadow: '4px 4px 0px 0px #0284c7',
+            padding: '16px 20px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#0284c7',
+              color: '#ffffff',
+              border: '2px solid #000000',
+              padding: '4px 10px',
+              marginBottom: '10px',
+              boxShadow: '2px 2px 0px 0px #000000'
+            }}
+          >
+            <span style={{ fontSize: '1rem' }}>🪪</span>
+            <span style={{ fontSize: '0.82rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Necessary Documents Required at Venue
+            </span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.86rem', color: '#0c4a6e', lineHeight: 1.6, fontWeight: 600 }}>
+            <li style={{ marginBottom: '6px' }}>Original / Valid College or School ID Card.</li>
             <li>Copy of payment receipt / transaction slip with matching 12-digit UTR.</li>
           </ul>
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap', paddingTop: '4px' }}>
           <button
             type="button"
             onClick={onClose}
             style={{
-              background: '#000000',
-              color: '#ffffff',
-              border: '2px solid var(--border, #8aebee)',
-              padding: '10px 20px',
-              fontWeight: 800,
-              fontSize: '0.85rem',
+              background: '#ffffff',
+              color: '#000000',
+              border: '2.5px solid #000000',
+              boxShadow: '3px 3px 0px 0px #000000',
+              padding: '10px 22px',
+              fontWeight: 900,
+              fontSize: '0.88rem',
               textTransform: 'uppercase',
               cursor: 'pointer'
             }}
@@ -186,15 +267,15 @@ export const CommonRulesModal: React.FC<CommonRulesModalProps> = ({
                 background: '#FFE600',
                 color: '#000000',
                 border: '2.5px solid #000000',
-                boxShadow: '3px 3px 0px 0px #000000',
-                padding: '10px 24px',
+                boxShadow: '4px 4px 0px 0px #000000',
+                padding: '10px 26px',
                 fontWeight: 900,
                 fontSize: '0.88rem',
                 textTransform: 'uppercase',
                 cursor: 'pointer'
               }}
             >
-              ✓ I Understand & Accept
+              ✓ I Understand &amp; Accept
             </button>
           )}
         </div>
