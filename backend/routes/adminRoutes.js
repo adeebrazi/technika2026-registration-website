@@ -6,6 +6,8 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
+const cloudinaryService = require('../services/cloudinaryService');
+const vercelService = require('../services/vercelService');
 
 // Parse env users string: supports both "Name:email:password" and "email:password"
 const parseEnvUsers = (envStr) => {
@@ -519,11 +521,13 @@ router.get('/developer-status', async (req, res) => {
       }
     }
 
-    const [userCount, teamCount, regCount, eventCount] = await Promise.all([
+    const [userCount, teamCount, regCount, eventCount, cloudinaryUsage, vercelMetrics] = await Promise.all([
       User.countDocuments().catch(() => 0),
       Team.countDocuments().catch(() => 0),
       Registration.countDocuments().catch(() => 0),
-      Event.countDocuments().catch(() => 0)
+      Event.countDocuments().catch(() => 0),
+      cloudinaryService.getUsage().catch(err => ({ configured: false, error: err.message })),
+      vercelService.getVercelMetrics().catch(err => ({ error: err.message }))
     ]);
 
     const memory = process.memoryUsage();
@@ -533,6 +537,8 @@ router.get('/developer-status', async (req, res) => {
       uptimeSeconds: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV || 'production',
       nodeVersion: process.version,
+      cloudinary: cloudinaryUsage,
+      vercel: vercelMetrics,
       memory: {
         rssMB: Math.round(memory.rss / (1024 * 1024)),
         heapUsedMB: Math.round(memory.heapUsed / (1024 * 1024)),
