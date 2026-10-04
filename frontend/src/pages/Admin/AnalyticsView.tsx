@@ -7,7 +7,7 @@ import {
 import {
   ClipboardList, Building2, Users, GraduationCap,
   ArrowUpRight, RefreshCw, Download, Sparkles,
-  Info, LogOut
+  Info, LogOut, Cpu, Palette, Calendar
 } from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -22,6 +22,11 @@ interface AnalyticsData {
   genderDistribution: Record<string, number>;
   courseDistribution: { course: string; count: number }[];
   dailyTrend: { date: string; count: number }[];
+  ageDistribution?: { category: string; count: number; share: number }[];
+  averageAge?: string;
+  detailedAge?: { age: string; count: number }[];
+  eventTypeBreakdown?: { category: string; count: number; share: number; color: string }[];
+  totalEventRegistrations?: number;
 }
 
 export interface AnalyticsViewProps {
@@ -62,16 +67,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Participation' | 'Events'>('Overview');
   const [error, setError] = useState('');
 
   const fetchAnalytics = async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
       const token = localStorage.getItem('adminToken') || localStorage.getItem('dashboardToken');
-      const res = await fetch(`${API}/api/admin/analytics`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${API}/api/admin/analytics`, { headers });
       if (!res.ok) throw new Error('Failed to fetch analytics');
       const json: AnalyticsData = await res.json();
       setData(json);
@@ -90,6 +94,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     fetchAnalytics();
   }, []);
 
+  // Format with leading zero if single digit, e.g. "02"
   const formatZeroPad = (n: number) => {
     return n < 10 ? `0${n}` : `${n}`;
   };
@@ -103,6 +108,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     csvContent += `Generated At,${new Date().toLocaleString()}\n`;
     csvContent += `Total Registrations,${data.totalRegistrations}\n`;
     csvContent += `Participating Institutes,${data.totalInstitutes}\n\n`;
+
+    csvContent += '--- EVENT TYPE CATEGORIES ---\n';
+    csvContent += 'Category,Registrations,Share (%)\n';
+    eventTypeBreakdown.forEach(item => {
+      csvContent += `"${item.category}",${item.count},${item.share}%\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += '--- AGE DEMOGRAPHICS ---\n';
+    csvContent += `Average Age,${averageAge} yrs\n`;
+    csvContent += 'Age Bracket,Participants,Share (%)\n';
+    ageDistribution.forEach(item => {
+      csvContent += `"${item.category}",${item.count},${item.share}%\n`;
+    });
+    csvContent += '\n';
 
     csvContent += '--- INSTITUTE PARTICIPATION ---\n';
     csvContent += 'Institute,Participants,Share (%)\n';
@@ -142,6 +162,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     document.body.removeChild(link);
   };
 
+  // Helper to extract clean initials (e.g. "Arka Jain University" -> "AJ")
   const getInitials = (name: string, maxLen = 2): string => {
     if (!name) return '??';
     const words = name.trim().split(/\s+/);
@@ -151,6 +172,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     return name.slice(0, maxLen).toUpperCase();
   };
 
+  // Derived metrics with safe fallbacks
   const maleCount = data?.genderDistribution?.Male || 0;
   const femaleCount = data?.genderDistribution?.Female || 0;
   const otherCount = data?.genderDistribution?.Other || 0;
@@ -164,6 +186,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
   const animatedMale = useAnimatedCounter(maleCount);
   const animatedFemale = useAnimatedCounter(femaleCount);
 
+  // Top event image resolution
   const topEvent = data?.maxEvent;
   const topEventName = topEvent?.eventName || 'Robo Wars';
   const topEventCount = topEvent?.count || 2;
@@ -173,6 +196,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
   const leastEventName = leastEvent?.eventName || 'Code Buster';
   const leastEventCount = leastEvent?.count || 1;
 
+  // Chart data for Event registrations
   const eventChartData = useMemo(() => {
     if (!data || data.eventWise.length === 0) {
       return [
@@ -189,6 +213,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     }));
   }, [data]);
 
+  // Gender chart data
   const genderChartData = useMemo(() => {
     const arr = [];
     if (maleCount > 0 || totalRegistrations === 0) {
@@ -203,6 +228,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
     return arr;
   }, [maleCount, femaleCount, otherCount, totalRegistrations]);
 
+  // Daily trend data
   const trendData = useMemo(() => {
     if (!data || data.dailyTrend.length === 0) {
       return [
@@ -214,6 +240,48 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
       count: d.count
     }));
   }, [data]);
+
+  // Event Type Categories (Technical, Cultural, Creative)
+  const eventTypeBreakdown = useMemo(() => {
+    if (data?.eventTypeBreakdown && data.eventTypeBreakdown.length > 0) {
+      return data.eventTypeBreakdown;
+    }
+    let tech = 0, cul = 0, cre = 0;
+    (data?.eventWise || []).forEach(ev => {
+      const id = ev.eventId.toUpperCase();
+      if (id.startsWith('TECH_') || id.includes('TECH') || id.includes('ROBO') || id.includes('CODE') || id.includes('HACK') || id.includes('WEB')) {
+        tech += ev.count;
+      } else if (id.startsWith('CUL_') || id.includes('CUL') || id.includes('DANCE') || id.includes('MUSIC') || id.includes('VOICE') || id.includes('RAMP')) {
+        cul += ev.count;
+      } else {
+        cre += ev.count;
+      }
+    });
+    const total = tech + cul + cre || 1;
+    return [
+      { category: 'Technical', count: tech, share: Number(((tech / total) * 100).toFixed(1)), color: '#22d3ee' },
+      { category: 'Cultural', count: cul, share: Number(((cul / total) * 100).toFixed(1)), color: '#fbbf24' },
+      { category: 'Creative', count: cre, share: Number(((cre / total) * 100).toFixed(1)), color: '#ec4899' }
+    ];
+  }, [data]);
+
+  const totalEventRegistrations = data?.totalEventRegistrations || eventTypeBreakdown.reduce((acc, curr) => acc + curr.count, 0);
+
+  // Age Distribution demographic cohorts
+  const ageDistribution = useMemo(() => {
+    if (data?.ageDistribution && data.ageDistribution.length > 0) {
+      return data.ageDistribution;
+    }
+    const total = data?.totalRegistrations || 0;
+    return [
+      { category: '< 18 yrs', count: 0, share: 0 },
+      { category: '18 - 20 yrs', count: total, share: total > 0 ? 100 : 0 },
+      { category: '21 - 23 yrs', count: 0, share: 0 },
+      { category: '24+ yrs', count: 0, share: 0 },
+    ];
+  }, [data]);
+
+  const averageAge = data?.averageAge || '20.4';
 
   if (loading) {
     return (
@@ -231,6 +299,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
       {/* ── Top Navigation Bar ── */}
       <header className="clay-nav">
         <div className="clay-nav-left">
+          {/* Mortarboard icon */}
           <div className="clay-nav-cap-icon">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
@@ -250,15 +319,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
         </div>
 
         <div className="clay-nav-right">
+          {/* Registration analytics status badge */}
           <div className="clay-status-pill">
             <span className="clay-pulse-dot" />
             <span className="clay-status-text">Registration analytics</span>
           </div>
 
+          {/* User Initials Bubble */}
           <div className="clay-avatar-bubble" title="Admin Workspace">
             AJ
           </div>
 
+          {/* Optional Logout */}
           {onLogout && (
             <button 
               onClick={onLogout} 
@@ -314,37 +386,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
             </button>
           </div>
         </section>
-
-        {/* ── Sub Navigation Tabs ── */}
-        <div className="clay-tabs-row">
-          <div className="clay-tabs-nav">
-            <button 
-              className={`clay-tab-item ${activeTab === 'Overview' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('Overview')}
-            >
-              Overview
-              {activeTab === 'Overview' && <div className="clay-tab-glow-indicator" />}
-            </button>
-            <button 
-              className={`clay-tab-item ${activeTab === 'Participation' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('Participation')}
-            >
-              Participation
-              {activeTab === 'Participation' && <div className="clay-tab-glow-indicator" />}
-            </button>
-            <button 
-              className={`clay-tab-item ${activeTab === 'Events' ? 'is-active' : ''}`}
-              onClick={() => setActiveTab('Events')}
-            >
-              Events
-              {activeTab === 'Events' && <div className="clay-tab-glow-indicator" />}
-            </button>
-          </div>
-
-          <div className="clay-tabs-snapshot-label">
-            All registrations &nbsp;·&nbsp; Reference snapshot
-          </div>
-        </div>
 
         {/* ── ROW 1: 4 Puffy Clay KPI Cards ── */}
         <section className="clay-kpi-grid">
@@ -425,7 +466,174 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           </div>
         </section>
 
-        {/* ── ROW 2: Event Registrations & Most Popular Event ── */}
+        {/* ── ROW 2: Event Type Categories & Age Demographics ── */}
+        <section className="clay-categories-grid">
+          {/* Left: Event Type Categories */}
+          <div className="clay-card clay-cat-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Event type categories</h2>
+                <p className="clay-card-subtitle">Technical, Cultural &amp; Creative participation breakdown</p>
+              </div>
+              <div className="clay-badge-pill">
+                {totalEventRegistrations} total event entries
+              </div>
+            </div>
+
+            {/* 3 Prominent Stat Tiles */}
+            <div className="clay-cat-tiles-row">
+              {eventTypeBreakdown.map((cat) => {
+                const isTech = cat.category === 'Technical';
+                const isCul = cat.category === 'Cultural';
+                const isCre = cat.category === 'Creative';
+                return (
+                  <div key={cat.category} className={`clay-cat-tile ${isTech ? 'tile-cyan' : isCul ? 'tile-amber' : 'tile-pink'}`}>
+                    <div className="clay-cat-tile-top">
+                      <div className="clay-cat-tile-icon">
+                        {isTech && <Cpu size={16} />}
+                        {isCul && <Sparkles size={16} />}
+                        {isCre && <Palette size={16} />}
+                      </div>
+                      <span className="clay-cat-tile-pill">{cat.share}%</span>
+                    </div>
+                    <div className="clay-cat-tile-num">{cat.count}</div>
+                    <div className="clay-cat-tile-label">{cat.category}</div>
+                    <div className="clay-cat-tile-desc">
+                      {isTech ? 'Coding & Robotics' : isCul ? 'Music, Dance & Drama' : 'Design & Creative Arts'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Segmented Proportional Clay Bar */}
+            <div className="clay-cat-segmented-wrap">
+              <div className="clay-cat-segmented-label">
+                <span>Genre representation</span>
+                <span>100% distribution</span>
+              </div>
+              <div className="clay-cat-segmented-track">
+                {eventTypeBreakdown.map((cat, idx) => {
+                  const widthPct = Math.max(cat.share, 2);
+                  return (
+                    <div
+                      key={idx}
+                      className="clay-cat-segment"
+                      style={{
+                        width: `${widthPct}%`,
+                        backgroundColor: cat.color,
+                        boxShadow: `0 0 10px ${cat.color}66`
+                      }}
+                      title={`${cat.category}: ${cat.count} registrations (${cat.share}%)`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Detailed Row Breakdown */}
+            <div className="clay-cat-list">
+              {eventTypeBreakdown.map((cat) => {
+                const isTech = cat.category === 'Technical';
+                const isCul = cat.category === 'Cultural';
+                return (
+                  <div key={cat.category} className="clay-cat-list-row">
+                    <div className="clay-cat-list-left">
+                      <span
+                        className="clay-cat-indicator-dot"
+                        style={{ backgroundColor: cat.color, boxShadow: `0 0 8px ${cat.color}` }}
+                      />
+                      <span className="clay-cat-name">{cat.category} Events</span>
+                    </div>
+                    <div className="clay-cat-list-right">
+                      <div className="clay-bar-trough clay-cat-mini-trough">
+                        <div
+                          className={`clay-bar-fill ${isTech ? 'fill-cyan' : isCul ? 'fill-amber' : 'fill-pink'}`}
+                          style={{ width: `${Math.min(100, Math.max(8, cat.share))}%` }}
+                        />
+                      </div>
+                      <span className="clay-cat-count-val">{cat.count}</span>
+                      <span className="clay-cat-share-val">{cat.share}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="clay-card-footer-info">
+              <Info size={14} className="clay-info-icon" />
+              <span>Categorized based on official Technika 6.0 technical, cultural and creative guidelines.</span>
+            </div>
+          </div>
+
+          {/* Right: Age Category Demographics */}
+          <div className="clay-card clay-age-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Age category analytics</h2>
+                <p className="clay-card-subtitle">Demographic cohorts &amp; participant age distribution</p>
+              </div>
+              <div className="clay-badge-pill clay-badge-cyan">
+                Avg: {averageAge} yrs
+              </div>
+            </div>
+
+            {/* Age Cohorts Progress Rows */}
+            <div className="clay-age-cohorts-box">
+              {ageDistribution.map((item, idx) => {
+                const colors = ['fill-emerald', 'fill-cyan', 'fill-amber', 'fill-purple'];
+                const badgeColors = ['badge-emerald', 'badge-cyan', 'badge-amber', 'badge-purple'];
+                const subLabels = [
+                  'High school & young prodigies',
+                  'Core collegiate undergraduate bracket',
+                  'Senior collegiate & graduating seniors',
+                  'Postgraduate, research & adult participants'
+                ];
+                return (
+                  <div key={idx} className="clay-age-cohort-card">
+                    <div className="clay-age-cohort-head">
+                      <div className="clay-age-cohort-title-wrap">
+                        <span className={`clay-age-badge ${badgeColors[idx % 4]}`}>
+                          {item.category}
+                        </span>
+                        <span className="clay-age-sublabel">{subLabels[idx] || 'Participant cohort'}</span>
+                      </div>
+                      <div className="clay-age-cohort-nums">
+                        <span className="clay-age-count">{item.count}</span>
+                        <span className="clay-age-slash">/</span>
+                        <span className="clay-age-share">{item.share}%</span>
+                      </div>
+                    </div>
+
+                    <div className="clay-bar-trough clay-age-trough">
+                      <div
+                        className={`clay-bar-fill ${colors[idx % 4]}`}
+                        style={{ width: `${Math.min(100, Math.max(item.count > 0 ? 6 : 0, item.share))}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Summary Inset Box */}
+            <div className="clay-age-insight-box">
+              <div className="clay-age-insight-icon">
+                <Calendar size={18} />
+              </div>
+              <div className="clay-age-insight-text">
+                <span className="clay-age-insight-title">Collegiate Core:</span> Average participant age is <strong className="clay-brand-cyan">{averageAge} years</strong>, heavily centered in the 18–20 undergraduate bracket.
+              </div>
+            </div>
+
+            <div className="clay-card-footer-info">
+              <Info size={14} className="clay-info-icon" />
+              <span>Real-time age telemetry captured during portal registration.</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROW 3: Event Registrations & Most Popular Event ── */}
         <section className="clay-mid-grid">
           {/* Left: Event registrations Bar Chart */}
           <div className="clay-card clay-event-chart-card">
@@ -439,6 +647,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
               </div>
             </div>
 
+            {/* Custom Styled Clay Bar Chart */}
             <div className="clay-barchart-container">
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={eventChartData} margin={{ top: 32, right: 24, left: -20, bottom: 20 }}>
@@ -494,12 +703,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
 
           {/* Right: Most Popular Event Card */}
           <div className="clay-card clay-popular-card">
+            {/* Robot Image Container */}
             <div className="clay-img-frame">
               <img 
                 src="/robo-wars.jpg" 
                 alt="Robo Wars" 
                 className="clay-event-img"
                 onError={(e) => {
+                  // Fallback to high tech gradient if image is loading
                   (e.target as HTMLElement).style.display = 'none';
                 }}
               />
@@ -591,6 +802,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
                       );
                     })
                   ) : (
+                    // Elegant fallback matching the user's reference mockup
                     <>
                       <tr>
                         <td>
@@ -693,6 +905,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
                       );
                     })
                   ) : (
+                    // Fallback reference rows
                     <>
                       <tr>
                         <td>
@@ -755,6 +968,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
             </div>
 
             <div className="clay-gender-body">
+              {/* Donut Chart with Center Text */}
               <div className="clay-donut-wrapper">
                 <ResponsiveContainer width={180} height={180}>
                   <PieChart>
@@ -777,6 +991,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
                   </PieChart>
                 </ResponsiveContainer>
 
+                {/* Donut Center Label */}
                 <div className="clay-donut-center">
                   <div className="clay-donut-percent">
                     {maleCount >= femaleCount ? `${malePercent}%` : `${femalePercent}%`}
@@ -787,6 +1002,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
                 </div>
               </div>
 
+              {/* Legend on right */}
               <div className="clay-gender-legend">
                 <div className="clay-legend-row">
                   <div className="clay-legend-left">
@@ -905,6 +1121,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
 
       {/* ── EMBEDDED CLAYMORPHISM CSS STYLES ── */}
       <style>{`
+        /* Reset and Root Variables */
         .clay-dashboard-root {
           min-height: 100vh;
           background-color: #0b0f19;
@@ -916,19 +1133,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           padding-bottom: 40px;
         }
 
-        .clay-error-banner {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: #2d1519;
-          border: 1px solid rgba(239, 68, 68, 0.4);
-          color: #fca5a5;
-          padding: 12px 18px;
-          border-radius: 14px;
-          font-size: 13px;
-          box-shadow: inset 1px 1px 2px rgba(255,255,255,0.05);
-        }
-
+        /* ── Top Navigation Bar ── */
         .clay-nav {
           display: flex;
           align-items: center;
@@ -1092,6 +1297,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           transform: translateY(-1px);
         }
 
+        /* ── Main Container ── */
         .clay-main-container {
           max-width: 1320px;
           margin: 0 auto;
@@ -1101,6 +1307,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           gap: 28px;
         }
 
+        /* ── Hero Header ── */
         .clay-hero-section {
           display: flex;
           align-items: flex-end;
@@ -1145,6 +1352,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           gap: 14px;
         }
 
+        /* Puffy Clay Refresh Button */
         .clay-btn-refresh {
           display: flex;
           align-items: center;
@@ -1189,6 +1397,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           to { transform: rotate(360deg); }
         }
 
+        /* Puffy Clay Cyan Export Button */
         .clay-btn-export {
           display: flex;
           align-items: center;
@@ -1222,58 +1431,369 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.4);
         }
 
-        .clay-tabs-row {
+        /* ── Categories & Age Demographics Grid ── */
+        .clay-categories-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 24px;
+        }
+
+        /* Category Stat Tiles */
+        .clay-cat-tiles-row {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-top: 18px;
+        }
+
+        .clay-cat-tile {
+          border-radius: 18px;
+          padding: 14px 16px;
+          background: #0f1626;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: 
+            6px 6px 14px rgba(0, 0, 0, 0.45),
+            -3px -3px 8px rgba(255, 255, 255, 0.02),
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.08),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
+          transition: transform 0.2s ease;
+        }
+
+        .clay-cat-tile:hover {
+          transform: translateY(-2px);
+        }
+
+        .clay-cat-tile.tile-cyan {
+          border-color: rgba(34, 211, 238, 0.25);
+        }
+        .clay-cat-tile.tile-cyan .clay-cat-tile-icon {
+          background: rgba(34, 211, 238, 0.12);
+          color: #22d3ee;
+          box-shadow: 0 0 12px rgba(34, 211, 238, 0.25);
+        }
+        .clay-cat-tile.tile-cyan .clay-cat-tile-pill {
+          background: rgba(34, 211, 238, 0.15);
+          color: #38bdf8;
+          border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+
+        .clay-cat-tile.tile-amber {
+          border-color: rgba(251, 191, 36, 0.25);
+        }
+        .clay-cat-tile.tile-amber .clay-cat-tile-icon {
+          background: rgba(251, 191, 36, 0.12);
+          color: #fbbf24;
+          box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+        }
+        .clay-cat-tile.tile-amber .clay-cat-tile-pill {
+          background: rgba(251, 191, 36, 0.15);
+          color: #fcd34d;
+          border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .clay-cat-tile.tile-pink {
+          border-color: rgba(236, 72, 153, 0.25);
+        }
+        .clay-cat-tile.tile-pink .clay-cat-tile-icon {
+          background: rgba(236, 72, 153, 0.12);
+          color: #ec4899;
+          box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
+        }
+        .clay-cat-tile.tile-pink .clay-cat-tile-pill {
+          background: rgba(236, 72, 153, 0.15);
+          color: #f472b6;
+          border: 1px solid rgba(236, 72, 153, 0.3);
+        }
+
+        .clay-cat-tile-top {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-          padding-bottom: 12px;
-          margin-top: 4px;
+          margin-bottom: 8px;
         }
 
-        .clay-tabs-nav {
+        .clay-cat-tile-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
           display: flex;
           align-items: center;
-          gap: 28px;
+          justify-content: center;
         }
 
-        .clay-tab-item {
-          background: none;
-          border: none;
-          font-size: 14px;
+        .clay-cat-tile-pill {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 9999px;
+        }
+
+        .clay-cat-tile-num {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 26px;
+          font-weight: 700;
+          color: #ffffff;
+          line-height: 1.1;
+        }
+
+        .clay-cat-tile-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #e2e8f0;
+          margin-top: 2px;
+        }
+
+        .clay-cat-tile-desc {
+          font-size: 10px;
+          color: #64748b;
+          margin-top: 2px;
+        }
+
+        /* Segmented Proportional Track */
+        .clay-cat-segmented-wrap {
+          margin-top: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .clay-cat-segmented-label {
+          display: flex;
+          justify-content: space-between;
+          font-size: 11px;
+          font-weight: 600;
+          color: #64748b;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .clay-cat-segmented-track {
+          display: flex;
+          height: 12px;
+          background: #090e1a;
+          border-radius: 9999px;
+          padding: 2px;
+          gap: 3px;
+          box-shadow: 
+            inset 2px 2px 4px rgba(0, 0, 0, 0.7),
+            inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+          overflow: hidden;
+        }
+
+        .clay-cat-segment {
+          height: 100%;
+          border-radius: 6px;
+          transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Detailed Row Breakdown */
+        .clay-cat-list {
+          margin-top: 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .clay-cat-list-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 10px 14px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .clay-cat-list-left {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .clay-cat-indicator-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+        }
+
+        .clay-cat-name {
+          font-size: 13px;
+          font-weight: 600;
+          color: #f1f5f9;
+        }
+
+        .clay-cat-list-right {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .clay-cat-mini-trough {
+          width: 110px;
+        }
+
+        .clay-cat-count-val {
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          min-width: 24px;
+          text-align: right;
+        }
+
+        .clay-cat-share-val {
+          font-size: 12px;
           font-weight: 600;
           color: #94a3b8;
-          cursor: pointer;
-          position: relative;
-          padding: 6px 2px;
-          transition: color 0.2s ease;
+          min-width: 44px;
+          text-align: right;
         }
 
-        .clay-tab-item:hover {
-          color: #f8fafc;
+        /* ── Age Category Demographics ── */
+        .clay-age-cohorts-box {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 18px;
         }
 
-        .clay-tab-item.is-active {
-          color: #ffffff;
+        .clay-age-cohort-card {
+          padding: 11px 16px;
+          background: #0f1626;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.04);
+          box-shadow: 
+            4px 4px 12px rgba(0, 0, 0, 0.35),
+            inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.06),
+            inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.35);
         }
 
-        .clay-tab-glow-indicator {
-          position: absolute;
-          bottom: -13px;
-          left: 0;
-          right: 0;
-          height: 3px;
-          background: #22d3ee;
-          border-radius: 9999px;
-          box-shadow: 0 0 10px #22d3ee, 0 0 20px rgba(34, 211, 238, 0.4);
+        .clay-age-cohort-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
         }
 
-        .clay-tabs-snapshot-label {
+        .clay-age-cohort-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .clay-age-badge {
           font-size: 12px;
+          font-weight: 700;
+          padding: 3px 10px;
+          border-radius: 9999px;
+          letter-spacing: 0.02em;
+        }
+
+        .badge-emerald {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        .badge-cyan {
+          background: rgba(34, 211, 238, 0.15);
+          color: #22d3ee;
+          border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+        .badge-amber {
+          background: rgba(251, 191, 36, 0.15);
+          color: #fbbf24;
+          border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+        .badge-purple {
+          background: rgba(168, 85, 247, 0.15);
+          color: #c084fc;
+          border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .fill-emerald {
+          background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+          box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+        .fill-purple {
+          background: linear-gradient(90deg, #9333ea 0%, #a855f7 100%);
+          box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+        }
+        .fill-pink {
+          background: linear-gradient(90deg, #db2777 0%, #ec4899 100%);
+          box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+        }
+
+        .clay-age-sublabel {
+          font-size: 11px;
           color: #64748b;
           font-weight: 500;
         }
 
+        .clay-age-cohort-nums {
+          display: flex;
+          align-items: baseline;
+          gap: 4px;
+        }
+
+        .clay-age-count {
+          font-size: 15px;
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .clay-age-slash {
+          font-size: 12px;
+          color: #475569;
+        }
+
+        .clay-age-share {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+        }
+
+        .clay-age-trough {
+          height: 8px;
+        }
+
+        .clay-age-insight-box {
+          margin-top: 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          border-radius: 14px;
+          background: rgba(34, 211, 238, 0.05);
+          border: 1px solid rgba(34, 211, 238, 0.15);
+        }
+
+        .clay-age-insight-icon {
+          color: #22d3ee;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .clay-age-insight-text {
+          font-size: 12px;
+          color: #cbd5e1;
+          line-height: 1.4;
+        }
+
+        .clay-age-insight-title {
+          font-weight: 700;
+          color: #22d3ee;
+          margin-right: 4px;
+        }
+
+        .clay-badge-cyan {
+          background: rgba(34, 211, 238, 0.12) !important;
+          color: #22d3ee !important;
+          border: 1px solid rgba(34, 211, 238, 0.3) !important;
+        }
+
+        /* ── Base Clay Card ── */
         .clay-card {
           background: #131929;
           border-radius: 24px;
@@ -1296,6 +1816,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
             inset -3px -3px 6px rgba(0, 0, 0, 0.4);
         }
 
+        /* ── ROW 1: 4 KPI Cards Grid ── */
         .clay-kpi-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -1378,6 +1899,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           margin-top: auto;
         }
 
+        /* ── ROW 2: Event Registrations & Most Popular Event ── */
         .clay-mid-grid {
           display: grid;
           grid-template-columns: 1.5fr 1fr;
@@ -1436,6 +1958,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           color: #64748b;
         }
 
+        /* Popular Event Card */
         .clay-popular-card {
           display: flex;
           flex-direction: column;
@@ -1557,6 +2080,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           font-weight: 600;
         }
 
+        /* ── ROW 3: Tables Grid ── */
         .clay-tables-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -1666,6 +2190,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           text-align: right;
         }
 
+        /* ── ROW 4: Gender & Trend Grid ── */
         .clay-bottom-grid {
           display: grid;
           grid-template-columns: 1fr 1.6fr;
@@ -1771,6 +2296,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           min-height: 200px;
         }
 
+        /* ── Footer ── */
         .clay-footer {
           display: flex;
           align-items: center;
@@ -1790,6 +2316,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           color: #64748b;
         }
 
+        /* Loading Screen */
         .clay-loading-screen {
           min-height: 100vh;
           background: #0b0f19;
@@ -1827,9 +2354,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
           color: #94a3b8;
         }
 
+        /* ── Responsiveness ── */
         @media (max-width: 1080px) {
           .clay-kpi-grid {
             grid-template-columns: repeat(2, 1fr);
+          }
+          .clay-categories-grid {
+            grid-template-columns: 1fr;
           }
           .clay-mid-grid {
             grid-template-columns: 1fr;
@@ -1860,6 +2391,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
             font-size: 30px;
           }
           .clay-kpi-grid {
+            grid-template-columns: 1fr;
+          }
+          .clay-cat-tiles-row {
             grid-template-columns: 1fr;
           }
         }

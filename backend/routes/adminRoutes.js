@@ -399,6 +399,85 @@ router.get('/analytics', async (req, res) => {
     ]);
     const dailyTrend = dailyAgg.map(d => ({ date: d._id, count: d.count }));
 
+    // ── 7. Age Category Distribution ──
+    const ageAgg = await User.aggregate([
+      { $match: { age: { $exists: true, $ne: null } } },
+      { $group: { _id: '$age', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+    let under18 = 0, age18_20 = 0, age21_23 = 0, age24plus = 0;
+    let totalAgeSum = 0, totalAgeCount = 0;
+    const detailedAge = [];
+
+    ageAgg.forEach(a => {
+      const ageNum = parseInt(a._id);
+      if (!isNaN(ageNum) && ageNum > 0) {
+        totalAgeSum += ageNum * a.count;
+        totalAgeCount += a.count;
+        detailedAge.push({ age: `${ageNum} yrs`, count: a.count });
+
+        if (ageNum < 18) under18 += a.count;
+        else if (ageNum <= 20) age18_20 += a.count;
+        else if (ageNum <= 23) age21_23 += a.count;
+        else age24plus += a.count;
+      }
+    });
+
+    const averageAge = totalAgeCount > 0 ? (totalAgeSum / totalAgeCount).toFixed(1) : '0';
+    const ageDistribution = [
+      { category: '< 18 yrs', count: under18, share: totalAgeCount > 0 ? Number(((under18 / totalAgeCount) * 100).toFixed(1)) : 0 },
+      { category: '18 - 20 yrs', count: age18_20, share: totalAgeCount > 0 ? Number(((age18_20 / totalAgeCount) * 100).toFixed(1)) : 0 },
+      { category: '21 - 23 yrs', count: age21_23, share: totalAgeCount > 0 ? Number(((age21_23 / totalAgeCount) * 100).toFixed(1)) : 0 },
+      { category: '24+ yrs', count: age24plus, share: totalAgeCount > 0 ? Number(((age24plus / totalAgeCount) * 100).toFixed(1)) : 0 }
+    ];
+
+    // ── 8. Event Categories Breakdown (Technical, Cultural, Creative) ──
+    const eventCategoryMap = {};
+    events.forEach(e => {
+      eventCategoryMap[e.eventId] = e.category || 'Other';
+    });
+
+    const eventTypeCounts = {
+      Technical: 0,
+      Cultural: 0,
+      Creative: 0,
+      Other: 0
+    };
+    let totalEventRegistrations = 0;
+
+    eventAgg.forEach(e => {
+      let cat = eventCategoryMap[e._id];
+      if (!cat || cat === 'Other') {
+        if (e._id.startsWith('TECH_')) cat = 'Technical';
+        else if (e._id.startsWith('CUL_')) cat = 'Cultural';
+        else if (e._id.startsWith('CRE_')) cat = 'Creative';
+        else cat = 'Other';
+      }
+      eventTypeCounts[cat] = (eventTypeCounts[cat] || 0) + e.count;
+      totalEventRegistrations += e.count;
+    });
+
+    const eventTypeBreakdown = [
+      {
+        category: 'Technical',
+        count: eventTypeCounts.Technical || 0,
+        share: totalEventRegistrations > 0 ? Number((((eventTypeCounts.Technical || 0) / totalEventRegistrations) * 100).toFixed(1)) : 0,
+        color: '#22d3ee'
+      },
+      {
+        category: 'Cultural',
+        count: eventTypeCounts.Cultural || 0,
+        share: totalEventRegistrations > 0 ? Number((((eventTypeCounts.Cultural || 0) / totalEventRegistrations) * 100).toFixed(1)) : 0,
+        color: '#fbbf24'
+      },
+      {
+        category: 'Creative',
+        count: eventTypeCounts.Creative || 0,
+        share: totalEventRegistrations > 0 ? Number((((eventTypeCounts.Creative || 0) / totalEventRegistrations) * 100).toFixed(1)) : 0,
+        color: '#ec4899'
+      }
+    ];
+
     res.json({
       totalRegistrations,
       instituteWise,
@@ -408,7 +487,12 @@ router.get('/analytics', async (req, res) => {
       minEvent,
       genderDistribution,
       courseDistribution,
-      dailyTrend
+      dailyTrend,
+      ageDistribution,
+      averageAge,
+      detailedAge,
+      eventTypeBreakdown,
+      totalEventRegistrations
     });
   } catch (err) {
     console.error('Analytics error:', err);
