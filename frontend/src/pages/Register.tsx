@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { CommonRulesModal } from '../components/CommonRulesModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
@@ -200,6 +200,49 @@ export const Register: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { eventSlug } = useParams<{ eventSlug?: string }>();
+  const [searchParams] = useSearchParams();
+
+  // Auto-detect and populate team code if shared by a team leader
+  useEffect(() => {
+    const rawTeamCode = searchParams.get('teamId') || searchParams.get('teamCode');
+    if (rawTeamCode && rawTeamCode.trim()) {
+      const code = rawTeamCode.trim().toUpperCase();
+      fetch('/api/teams/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId: code })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.valid && data.eventId) {
+            const eventId = data.eventId;
+            setSelectedEvents((prev) => (prev.includes(eventId) ? prev : [...prev, eventId]));
+            setEventConfigs((prev) => ({
+              ...prev,
+              [eventId]: {
+                mode: 'join_team',
+                teamName: data.teamName || '',
+                teamId: code,
+              },
+            }));
+            setTeamCheckStatus((prev) => ({
+              ...prev,
+              [eventId]: {
+                loading: false,
+                valid: true,
+                message: data.message,
+                leaderName: data.leaderName,
+              },
+            }));
+            triggerTopNotification(
+              `✓ Team Code "${code}" applied for ${data.eventName}! Joining ${data.leaderName}'s team.`,
+              'success'
+            );
+          }
+        })
+        .catch((err) => console.warn('URL Team Code validation error:', err));
+    }
+  }, [searchParams]);
 
   // Deep-linking: sync URL /register/:eventSlug with activeModalEvent
   useEffect(() => {

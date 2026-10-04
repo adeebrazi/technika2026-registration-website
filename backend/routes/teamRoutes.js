@@ -31,24 +31,29 @@ router.post('/validate-code', async (req, res) => {
   const { teamId, eventSlug, eventId: explicitEventId } = req.body;
 
   try {
-    if (!teamId || (!eventSlug && !explicitEventId)) {
-      return res.status(400).json({ valid: false, message: 'Team ID and event information are required.' });
+    if (!teamId || !teamId.toString().trim()) {
+      return res.status(400).json({ valid: false, message: 'Team ID is required.' });
     }
 
     const cleanTeamId = teamId.toString().trim().toUpperCase();
-    const eventId = explicitEventId || EVENT_ID_MAP[eventSlug] || eventSlug;
-
-    const event = await Event.findOne({ eventId, isActive: true });
-    if (!event) {
-      return res.status(404).json({ valid: false, message: 'Event not found in the fest catalogue.' });
+    const eventId = explicitEventId || (eventSlug ? (EVENT_ID_MAP[eventSlug] || eventSlug) : null);
+    
+    const query = { teamId: cleanTeamId };
+    if (eventId) {
+      query.eventId = eventId;
     }
 
-    const team = await Team.findOne({ teamId: cleanTeamId, eventId });
+    const team = await Team.findOne(query);
     if (!team) {
       return res.status(404).json({ 
         valid: false, 
-        message: `Team "${cleanTeamId}" was not found for "${event.name}". Please ensure your Team Leader has registered and given you the correct code.` 
+        message: `Team "${cleanTeamId}" was not found${eventId ? ' for this event' : ''}. Please ensure your Team Leader has registered and given you the correct code.` 
       });
+    }
+
+    const event = await Event.findOne({ eventId: team.eventId, isActive: true });
+    if (!event) {
+      return res.status(404).json({ valid: false, message: 'Event not found in the fest catalogue.' });
     }
 
     if (team.status === 'cancelled') {
@@ -69,6 +74,8 @@ router.post('/validate-code', async (req, res) => {
       teamId: team.teamId,
       teamName: team.teamName || `${leader ? leader.name : 'Leader'}'s Team`,
       leaderName: leader ? leader.name : 'Team Leader',
+      eventId: event.eventId,
+      eventName: event.name,
       currentMembers: team.memberCount,
       maxMembers: event.maxMembers,
       minMembers: event.minMembers,
@@ -301,6 +308,141 @@ router.post('/invite', auth, async (req, res) => {
 // @route   POST /api/teams/register
 // @desc    Finalize team registration (Team Leader locks team)
 // @access  Private
+// @route   POST /api/teams/add-member
+// @desc    Leader directly adds a registered teammate to the team roster by Registration ID or Email
+// @access  Private
+router.post('/add-member', auth, async (req, res) => {
+  const { teamId, memberIdentifier } = req.body;
+  const leaderId = req.user.registrationId;
+
+  try {
+    if (!teamId || !memberIdentifier || !memberIdentifier.trim()) {
+      return res.status(400).json({ message: 'Team ID and teammate Registration ID or Email are required.' });
+    }
+
+    const team = await Team.findOne({ teamId });
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found.' });
+    }
+
+    if (team.leaderId !== leaderId) {
+      return res.status(403).json({ message: 'Access denied. Only the team leader can add members to this team.' });
+    }
+
+    if (team.status === 'registered') {
+      return res.status(400).json({ message: 'This team is already finalized and officially locked. No further modifications allowed.' });
+    }
+
+    const event = await Event.findOne({ eventId: team.eventId });
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
+
+    if (team.memberCount >= event.maxMembers) {
+      return res.status(400).json({
+        message: `Team is full. The maximum limit for "${event.name}" is ${event.maxMembers} members.`
+      });
+    }
+
+    const cleanInput = memberIdentifier.trim();
+    // Look up user by registration ID or Gmail
+    const teammateUser = await User.findOne({
+      $or: [
+        { registrationId: cleanInput.toUpperCase() },
+        { email: cleanInput.toLowerCase() }
+      ]
+    });
+
+    if (!teammateUser) {
+      return res.status(404).json({
+        message: `No registered participant found with ID or Email "${cleanInput}". If your friend hasn't registered yet, give them Team Code "${teamId}" so they can register and join your team!`
+      });
+    }
+
+    if (teammateUser.registrationId === leaderId) {
+      return res.status(400).json({ message: 'You are already in this team as the Team Leader.' });
+    }
+
+    // Check if already a member in this team
+    const alreadyMember = await TeamMember.findOne({ teamId, userId: teammateUser.registrationId });
+    if (alreadyMember) {
+      return res.status(400).json({ message: `${teammateUser.name} (${teammateUser.registrationId}) is already in this team.` });
+    }
+
+    // Check if teammate is already registered for this event
+    const existingReg = await Registration.findOne({ registrationId: teammateUser.registrationId, eventId: team.eventId });
+    if (existingReg) {
+      return res.status(400).json({
+        message: `${teammateUser.name} (${teammateUser.registrationId}) is already registered for "${event.name}".`
+      });
+    }
+
+    // Add to TeamMember
+    const newMember = new TeamMember({
+      teamId,
+      userId: teammateUser.registrationId,
+      role: 'Member'
+    });
+    await newMember.save();
+
+    // Create Registration record for teammate
+    const teammateReg = new Registration({
+      registrationId: teammateUser.registrationId,
+      eventId: team.eventId,
+      teamId,
+      registrationType: 'TEAM',
+      status: 'CONFIRMED'
+    });
+    await teammateReg.save();
+    queueRegistrationSync(teammateReg, event).catch(err => console.error('[SHEETS SYNC ERROR]', err.message));
+
+    // Increment member count
+    team.memberCount += 1;
+    if (team.memberCount >= event.minMembers && team.status === 'forming') {
+      team.status = 'ready';
+    }
+    await team.save();
+
+    // Clean up any pending invitation
+    await TeamInvitation.updateMany(
+      { teamId, receiverId: teammateUser.registrationId, status: 'pending' },
+      { status: 'accepted', respondedAt: new Date() }
+    );
+
+    // Notify teammate
+    const notif = new Notification({
+      userId: teammateUser.registrationId,
+      type: 'SYSTEM',
+      message: `${req.user.name} added you to their team "${team.teamName || teamId}" (${teamId}) for "${event.name}".`
+    });
+    await notif.save().catch(e => console.warn('Notif error:', e.message));
+
+    res.json({
+      success: true,
+      message: `Successfully added ${teammateUser.name} (${teammateUser.registrationId}) to your team!`,
+      member: {
+        registrationId: teammateUser.registrationId,
+        name: teammateUser.name,
+        email: teammateUser.email,
+        whatsapp: teammateUser.whatsapp,
+        institution: teammateUser.institution,
+        role: 'Member'
+      },
+      memberCount: team.memberCount,
+      minMembers: event.minMembers,
+      maxMembers: event.maxMembers,
+      status: team.status
+    });
+
+  } catch (error) {
+    console.error('Add team member error:', error.message);
+    res.status(500).json({ message: 'Server error while adding team member.' });
+  }
+});
+
+// @route   POST /api/teams/register
+// @desc    Finalize team registration (Team Leader locks team)
+// @access  Private
 router.post('/register', auth, async (req, res) => {
   const { teamId } = req.body;
   const leaderId = req.user.registrationId;
@@ -319,49 +461,23 @@ router.post('/register', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Only the team leader can lock team registration.' });
     }
 
+    if (team.status === 'registered') {
+      return res.status(400).json({ message: 'Team registration is already locked and finalized.' });
+    }
+
     const event = await Event.findOne({ eventId: team.eventId });
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found.' });
+    }
     
     // Validate minimum members
     if (team.memberCount < event.minMembers) {
       return res.status(400).json({
-        message: `Cannot register. Your team has only ${team.memberCount} accepted members. The minimum required is ${event.minMembers} (including yourself).`
+        message: `Cannot form team yet. Your team currently has ${team.memberCount} member(s). The minimum required is ${event.minMembers} (including yourself). Please add your teammates or share your Team Code (${teamId}) to complete the roster.`
       });
     }
 
-    // IF team has only 1 member (the leader), register them as INDIVIDUAL instead of team!
-    if (team.memberCount === 1) {
-      // 1. Fetch leader's registration record
-      const leaderReg = await Registration.findOne({ teamId: team.teamId, registrationId: leaderId, eventId: team.eventId });
-      if (leaderReg) {
-        leaderReg.teamId = null;
-        leaderReg.registrationType = 'INDIVIDUAL';
-        leaderReg.status = 'CONFIRMED';
-        await leaderReg.save();
-        
-        // Sync individual sheets in background
-        queueRegistrationSync(leaderReg, event).catch(err => console.error('[SHEETS BACKGROUND ERROR] Failed to sync leader registration:', err.message));
-      }
-
-      // 2. Cancel all pending invitations
-      await TeamInvitation.updateMany(
-        { teamId: team.teamId, status: 'pending' },
-        { status: 'cancelled', respondedAt: new Date() }
-      );
-
-      // 3. Disband Team and delete memberships
-      await TeamMember.deleteMany({ teamId: team.teamId });
-      await Team.deleteOne({ teamId: team.teamId });
-
-      console.log(`[TEAM DISBANDED] Team ${teamId} disbanded due to single member registration. Leader registered solo.`);
-
-      return res.json({
-        success: true,
-        message: `Since no other participants joined your team, you have been registered as an Individual for "${event.name}". The team has been disbanded.`,
-        disbanded: true
-      });
-    }
-
-    // Otherwise, register as team
+    // Lock and officially register the team
     team.status = 'registered';
     await team.save();
 
@@ -381,7 +497,8 @@ router.post('/register', auth, async (req, res) => {
 
     res.json({
       success: true,
-      message: `Registration locked! Your team "${teamId}" is officially enrolled in "${event.name}".`
+      message: `Registration locked! Your team "${teamId}" is officially enrolled and ready for "${event.name}".`,
+      status: 'registered'
     });
 
   } catch (error) {
@@ -391,7 +508,7 @@ router.post('/register', auth, async (req, res) => {
 });
 
 // @route   POST /api/teams/remove-member
-// @desc    Remove team member or cancel pending invitation (Leader only, forming stage only)
+// @desc    Remove team member or cancel pending invitation (Leader only, forming/ready stage only)
 // @access  Private
 router.post('/remove-member', auth, async (req, res) => {
   const { teamId, targetUserId } = req.body;
@@ -411,8 +528,8 @@ router.post('/remove-member', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Only the team leader can modify the team roster.' });
     }
 
-    if (team.status !== 'forming') {
-      return res.status(400).json({ message: 'Roster modifications are only allowed while the team is in the forming status.' });
+    if (team.status === 'registered') {
+      return res.status(400).json({ message: 'Roster modifications are not allowed after the team is officially finalized and locked.' });
     }
 
     if (targetUserId === leaderId) {
@@ -432,6 +549,9 @@ router.post('/remove-member', auth, async (req, res) => {
       
       // Decrement member count
       team.memberCount = Math.max(1, team.memberCount - 1);
+      if (team.memberCount < event.minMembers) {
+        team.status = 'forming';
+      }
       await team.save();
 
       // Find the associated invitation to cancel
