@@ -5,11 +5,6 @@ import { Navbar } from './components/Navbar';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
-import { AdminLogin } from './pages/Admin/AdminLogin';
-import { AdminLayout } from './pages/Admin/AdminLayout';
-import { UsersView } from './pages/Admin/UsersView';
-import { TeamsView } from './pages/Admin/TeamsView';
-import { AnalyticsView } from './pages/Admin/AnalyticsView';
 
 const App: React.FC = () => {
   return (
@@ -27,15 +22,6 @@ const App: React.FC = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/register/:eventSlug" element={<Register />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Navigate to="/admin/analytics" replace />} />
-                <Route path="analytics" element={<AnalyticsView />} />
-                <Route path="users" element={<UsersView />} />
-                <Route path="teams" element={<TeamsView />} />
-              </Route>
               
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>

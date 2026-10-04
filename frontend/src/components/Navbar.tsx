@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import logoPng from '@/assets/logo.png';
 import technikaLogoJpg from '@/assets/technika_logo.jpg';
@@ -11,10 +11,9 @@ export const MAIN_WEBSITE_URL = typeof window !== 'undefined' &&
     : 'https://technika2026.online';
 
 export const Navbar: React.FC = () => {
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isAdminRoute = false;
+  const { theme, toggleTheme } = useTheme();
 
   const handleHomeClick = () => {
     window.location.href = MAIN_WEBSITE_URL;
@@ -274,52 +273,6 @@ export const Navbar: React.FC = () => {
               <span className="nav-home-full-text">MAIN WEBSITE</span>
               <span className="nav-home-mobile-text">HOME</span>
             </button>
-
-            {/* Sign Out button (Only on Admin pages, next to Home) */}
-            {isAdminRoute && localStorage.getItem('adminToken') && (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('adminToken');
-                  localStorage.removeItem('adminRole');
-                  localStorage.removeItem('adminName');
-                  localStorage.removeItem('adminDesignation');
-                  navigate('/admin/login');
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 18px',
-                  fontSize: '0.75rem',
-                  fontWeight: 900,
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  color: '#dc2626',
-                  background: '#fee2e2',
-                  borderRadius: '14px',
-                  border: '2px solid rgba(239, 68, 68, 0.15)',
-                  boxShadow: '4px 6px 14px rgba(239, 68, 68, 0.12), inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(239, 68, 68, 0.08)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.transform = 'translateY(-1px)';
-                  el.style.background = '#fecaca';
-                  el.style.boxShadow = '5px 8px 18px rgba(239, 68, 68, 0.18), inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(239, 68, 68, 0.12)';
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.transform = 'none';
-                  el.style.background = '#fee2e2';
-                  el.style.boxShadow = '4px 6px 14px rgba(239, 68, 68, 0.12), inset 2px 2px 4px rgba(255, 255, 255, 0.8), inset -2px -2px 4px rgba(239, 68, 68, 0.08)';
-                }}
-              >
-                🚪 SIGN OUT
-              </button>
-            )}
           </div>
         </div>
       </header>
