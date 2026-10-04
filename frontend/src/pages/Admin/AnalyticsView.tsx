@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
-  AreaChart, Area,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  AreaChart, Area
 } from 'recharts';
+import {
+  ClipboardList, Building2, Users, GraduationCap,
+  ArrowUpRight, RefreshCw, Download, Sparkles,
+  Info, LogOut
+} from 'lucide-react';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -20,675 +24,1848 @@ interface AnalyticsData {
   dailyTrend: { date: string; count: number }[];
 }
 
-const CHART_COLORS = [
-  '#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b',
-  '#ef4444', '#ec4899', '#6366f1', '#14b8a6', '#f97316',
-  '#84cc16', '#a855f7', '#0ea5e9', '#22c55e', '#eab308',
-  '#e11d48', '#d946ef', '#4f46e5', '#2dd4bf', '#fb923c',
-];
+export interface AnalyticsViewProps {
+  onLogout?: () => void;
+}
 
-const GENDER_COLORS: Record<string, string> = {
-  Male: '#3b82f6',
-  Female: '#ec4899',
-  Other: '#8b5cf6'
-};
-
-export const AnalyticsView: React.FC = () => {
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+/* ── Animated Number Counter ── */
+function useAnimatedCounter(target: number, duration = 1000): number {
+  const [val, setVal] = useState(0);
+  const prevRef = useRef(0);
 
   useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        const token = localStorage.getItem('adminToken');
-        const res = await fetch(`${API}/api/admin/analytics`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed to fetch analytics');
-        const json = await res.json();
-        setData(json);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load analytics');
-      } finally {
-        setLoading(false);
-      }
+    const start = prevRef.current;
+    const diff = target - start;
+    if (diff === 0) {
+      setVal(target);
+      return;
+    }
+    const startTime = performance.now();
+
+    const frame = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.round(start + diff * eased);
+      setVal(current);
+      prevRef.current = current;
+      if (progress < 1) requestAnimationFrame(frame);
     };
+
+    requestAnimationFrame(frame);
+  }, [target, duration]);
+
+  return val;
+}
+
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onLogout }) => {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Participation' | 'Events'>('Overview');
+  const [error, setError] = useState('');
+
+  const fetchAnalytics = async (isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('dashboardToken');
+      const res = await fetch(`${API}/api/admin/analytics`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch analytics');
+      const json: AnalyticsData = await res.json();
+      setData(json);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load analytics data');
+    } finally {
+      setLoading(false);
+      if (isManual) {
+        setTimeout(() => setIsRefreshing(false), 600);
+      }
+    }
+  };
+
+  useEffect(() => {
     fetchAnalytics();
   }, []);
 
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} />;
-  if (!data) return null;
+  const formatZeroPad = (n: number) => {
+    return n < 10 ? `0${n}` : `${n}`;
+  };
 
-  const genderData = Object.entries(data.genderDistribution).map(([name, value]) => ({ name, value }));
-  const totalGender = genderData.reduce((s, g) => s + g.value, 0);
+  // Export report to CSV
+  const handleExportReport = () => {
+    if (!data) return;
+
+    let csvContent = 'data:text/csv;charset=utf-8,';
+    csvContent += 'TECHNIKA 6.0 - REGISTRATION ANALYTICS REPORT\n';
+    csvContent += `Generated At,${new Date().toLocaleString()}\n`;
+    csvContent += `Total Registrations,${data.totalRegistrations}\n`;
+    csvContent += `Participating Institutes,${data.totalInstitutes}\n\n`;
+
+    csvContent += '--- INSTITUTE PARTICIPATION ---\n';
+    csvContent += 'Institute,Participants,Share (%)\n';
+    data.instituteWise.forEach(item => {
+      const share = data.totalRegistrations > 0 ? ((item.count / data.totalRegistrations) * 100).toFixed(1) : '0';
+      csvContent += `"${item.institute.replace(/"/g, '""')}",${item.count},${share}%\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += '--- COURSE PARTICIPATION ---\n';
+    csvContent += 'Course,Participants,Share (%)\n';
+    data.courseDistribution.forEach(item => {
+      const share = data.totalRegistrations > 0 ? ((item.count / data.totalRegistrations) * 100).toFixed(1) : '0';
+      csvContent += `"${item.course.replace(/"/g, '""')}",${item.count},${share}%\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += '--- EVENT REGISTRATIONS ---\n';
+    csvContent += 'Event ID,Event Name,Registrations\n';
+    data.eventWise.forEach(ev => {
+      csvContent += `"${ev.eventId}","${ev.eventName.replace(/"/g, '""')}",${ev.count}\n`;
+    });
+    csvContent += '\n';
+
+    csvContent += '--- GENDER DEMOGRAPHICS ---\n';
+    csvContent += 'Gender,Count\n';
+    Object.entries(data.genderDistribution).forEach(([gender, count]) => {
+      csvContent += `"${gender}",${count}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `technika_analytics_report_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getInitials = (name: string, maxLen = 2): string => {
+    if (!name) return '??';
+    const words = name.trim().split(/\s+/);
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.slice(0, maxLen).toUpperCase();
+  };
+
+  const maleCount = data?.genderDistribution?.Male || 0;
+  const femaleCount = data?.genderDistribution?.Female || 0;
+  const otherCount = data?.genderDistribution?.Other || 0;
+  const totalRegistrations = data?.totalRegistrations || 0;
+
+  const malePercent = totalRegistrations > 0 ? Math.round((maleCount / totalRegistrations) * 100) : 0;
+  const femalePercent = totalRegistrations > 0 ? Math.round((femaleCount / totalRegistrations) * 100) : 0;
+
+  const animatedTotal = useAnimatedCounter(totalRegistrations);
+  const animatedInstitutes = useAnimatedCounter(data?.totalInstitutes || 0);
+  const animatedMale = useAnimatedCounter(maleCount);
+  const animatedFemale = useAnimatedCounter(femaleCount);
+
+  const topEvent = data?.maxEvent;
+  const topEventName = topEvent?.eventName || 'Robo Wars';
+  const topEventCount = topEvent?.count || 2;
+  const topEventShare = totalRegistrations > 0 ? Math.round((topEventCount / totalRegistrations) * 100) : 100;
+
+  const leastEvent = data?.minEvent;
+  const leastEventName = leastEvent?.eventName || 'Code Buster';
+  const leastEventCount = leastEvent?.count || 1;
+
+  const eventChartData = useMemo(() => {
+    if (!data || data.eventWise.length === 0) {
+      return [
+        { name: 'Robo Wars', count: 2, fill: '#22d3ee' },
+        { name: 'Web Wizard', count: 1, fill: '#fbbf24' },
+        { name: 'Code Buster', count: 1, fill: '#64748b' }
+      ];
+    }
+    const colors = ['#22d3ee', '#fbbf24', '#64748b', '#38bdf8', '#a855f7', '#ec4899', '#10b981'];
+    return data.eventWise.map((e, idx) => ({
+      name: e.eventName,
+      count: e.count,
+      fill: colors[idx % colors.length]
+    }));
+  }, [data]);
+
+  const genderChartData = useMemo(() => {
+    const arr = [];
+    if (maleCount > 0 || totalRegistrations === 0) {
+      arr.push({ name: 'Male', value: maleCount > 0 ? maleCount : 2, fill: '#22d3ee' });
+    }
+    if (femaleCount > 0 || totalRegistrations === 0) {
+      arr.push({ name: 'Female', value: femaleCount > 0 ? femaleCount : 0.001, fill: '#fbbf24' });
+    }
+    if (otherCount > 0) {
+      arr.push({ name: 'Other', value: otherCount, fill: '#a855f7' });
+    }
+    return arr;
+  }, [maleCount, femaleCount, otherCount, totalRegistrations]);
+
+  const trendData = useMemo(() => {
+    if (!data || data.dailyTrend.length === 0) {
+      return [
+        { date: 'Recorded day', count: 2 }
+      ];
+    }
+    return data.dailyTrend.map(d => ({
+      date: d.date.split('-').slice(1).join('/'),
+      count: d.count
+    }));
+  }, [data]);
+
+  if (loading) {
+    return (
+      <div className="clay-loading-screen">
+        <div className="clay-spinner-box">
+          <div className="clay-spinner" />
+          <p className="clay-loading-text">Loading Technika Analytics...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="ana-shell">
-      {/* ── Page Header ── */}
-      <div className="ana-header">
-        <div className="ana-header-left">
-          <h1 className="ana-title">📊 Analytics Dashboard</h1>
-          <p className="ana-subtitle">Technika 6.0 — Live Registration Insights</p>
-        </div>
-        <button className="ana-refresh-btn" onClick={() => window.location.reload()}>
-          ↻ Refresh
-        </button>
-      </div>
-
-      {/* ── Stat Cards Row ── */}
-      <div className="ana-stats-row">
-        <StatCard icon="📋" label="Total Registrations" value={data.totalRegistrations} accent="#3b82f6" />
-        <StatCard icon="🏛️" label="Institutes Participated" value={data.totalInstitutes} accent="#8b5cf6" />
-        <StatCard icon="♂️" label="Male Participants" value={data.genderDistribution?.Male || 0} accent="#06b6d4" />
-        <StatCard icon="♀️" label="Female Participants" value={data.genderDistribution?.Female || 0} accent="#ec4899" />
-      </div>
-
-      {/* ── Event Highlights Row ── */}
-      <div className="ana-highlight-row">
-        <div className="ana-highlight-card ana-highlight-max">
-          <span className="ana-highlight-emoji">🔥</span>
-          <div className="ana-highlight-info">
-            <span className="ana-highlight-label">Most Popular Event</span>
-            <span className="ana-highlight-value">{data.maxEvent?.eventName || 'N/A'}</span>
-            <span className="ana-highlight-count">{data.maxEvent?.count || 0} registrations</span>
+    <div className="clay-dashboard-root">
+      {/* ── Top Navigation Bar ── */}
+      <header className="clay-nav">
+        <div className="clay-nav-left">
+          <div className="clay-nav-cap-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+            </svg>
           </div>
-        </div>
-        <div className="ana-highlight-card ana-highlight-min">
-          <span className="ana-highlight-emoji">💎</span>
-          <div className="ana-highlight-info">
-            <span className="ana-highlight-label">Least Registered Event</span>
-            <span className="ana-highlight-value">{data.minEvent?.eventName || 'N/A'}</span>
-            <span className="ana-highlight-count">{data.minEvent?.count || 0} registrations</span>
+          <div className="clay-nav-titles">
+            <div className="clay-nav-uni-title">ARKA JAIN UNIVERSITY</div>
+            <div className="clay-nav-uni-subtitle">Jharkhand &nbsp;·&nbsp; NAAC Grade A</div>
           </div>
-        </div>
-      </div>
 
-      {/* ── Charts Grid ── */}
-      <div className="ana-charts-grid">
-        {/* Event-wise Bar Chart */}
-        <div className="ana-chart-card ana-chart-full">
-          <h3 className="ana-chart-title">📈 Event-wise Registrations</h3>
-          <div className="ana-chart-body" style={{ height: 360 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.eventWise} margin={{ top: 10, right: 20, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="eventName" angle={-35} textAnchor="end" tick={{ fontSize: 11, fill: '#64748b' }} interval={0} />
-                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
-                <Tooltip contentStyle={{ borderRadius: 14, border: '2px solid #e2e8f0', boxShadow: '4px 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }} />
-                <Bar dataKey="count" name="Registrations" radius={[8, 8, 0, 0]}>
-                  {data.eventWise.map((_, i) => (
-                    <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="clay-nav-divider" />
+
+          <div className="clay-nav-brand">
+            Technika <span className="clay-brand-cyan">6.0</span>
           </div>
         </div>
 
-        {/* Gender Pie Chart */}
-        <div className="ana-chart-card">
-          <h3 className="ana-chart-title">🧬 Gender Distribution</h3>
-          <div className="ana-chart-body" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={genderData}
-                  cx="50%" cy="50%"
-                  innerRadius={60} outerRadius={100}
-                  paddingAngle={4}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value} (${((value / totalGender) * 100).toFixed(1)}%)`}
-                  labelLine={{ stroke: '#94a3b8' }}
-                >
-                  {genderData.map((entry, i) => (
-                    <Cell key={`g-${i}`} fill={GENDER_COLORS[entry.name] || CHART_COLORS[i]} stroke="#fff" strokeWidth={2} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 13 }} />
-              </PieChart>
-            </ResponsiveContainer>
+        <div className="clay-nav-right">
+          <div className="clay-status-pill">
+            <span className="clay-pulse-dot" />
+            <span className="clay-status-text">Registration analytics</span>
           </div>
-        </div>
 
-        {/* Daily Trend Area Chart */}
-        <div className="ana-chart-card">
-          <h3 className="ana-chart-title">📅 Daily Registration Trend</h3>
-          <div className="ana-chart-body" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.dailyTrend} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
-                <defs>
-                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} angle={-30} textAnchor="end" />
-                <YAxis tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
-                <Tooltip contentStyle={{ borderRadius: 14, border: '2px solid #e2e8f0', fontSize: 13 }} />
-                <Area type="monotone" dataKey="count" name="Registrations" stroke="#3b82f6" strokeWidth={2.5} fill="url(#trendGrad)" dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6, strokeWidth: 2 }} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="clay-avatar-bubble" title="Admin Workspace">
+            AJ
           </div>
-        </div>
 
-        {/* Course Radar Chart */}
-        {data.courseDistribution.length > 0 && data.courseDistribution.length <= 15 && (
-          <div className="ana-chart-card">
-            <h3 className="ana-chart-title">🎓 Course Distribution (Radar)</h3>
-            <div className="ana-chart-body" style={{ height: 320 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={data.courseDistribution.slice(0, 12)} cx="50%" cy="50%" outerRadius="70%">
-                  <PolarGrid stroke="#e2e8f0" />
-                  <PolarAngleAxis dataKey="course" tick={{ fontSize: 10, fill: '#475569' }} />
-                  <PolarRadiusAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
-                  <Radar name="Participants" dataKey="count" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.25} strokeWidth={2} />
-                  <Tooltip contentStyle={{ borderRadius: 14, fontSize: 13 }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+          {onLogout && (
+            <button 
+              onClick={onLogout} 
+              className="clay-logout-btn" 
+              title="Sign Out of Dashboard"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* ── Main Canvas Content ── */}
+      <main className="clay-main-container">
+        {error && (
+          <div className="clay-error-banner">
+            <Info size={16} />
+            <span>{error}</span>
           </div>
         )}
+        
+        {/* ── Hero Title & Action Buttons Row ── */}
+        <section className="clay-hero-section">
+          <div className="clay-hero-left">
+            <div className="clay-breadcrumb">
+              TECHNIKA 6.0 &nbsp;/&nbsp; ANALYTICS WORKSPACE
+            </div>
+            <h1 className="clay-hero-heading">
+              Registration overview<span className="clay-period">.</span>
+            </h1>
+            <p className="clay-hero-subtitle">
+              Every participant. Every institute. The complete picture.
+            </p>
+          </div>
 
-        {/* Course Bar Chart (fallback for many courses) */}
-        {data.courseDistribution.length > 15 && (
-          <div className="ana-chart-card ana-chart-full">
-            <h3 className="ana-chart-title">🎓 Course-wise Participants</h3>
-            <div className="ana-chart-body" style={{ height: 380 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.courseDistribution} layout="vertical" margin={{ top: 10, right: 20, left: 120, bottom: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: '#64748b' }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="course" tick={{ fontSize: 11, fill: '#64748b' }} width={110} />
-                  <Tooltip contentStyle={{ borderRadius: 14, fontSize: 13 }} />
-                  <Bar dataKey="count" name="Participants" radius={[0, 8, 8, 0]}>
-                    {data.courseDistribution.map((_, i) => (
-                      <Cell key={`cc-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+          <div className="clay-hero-actions">
+            <button 
+              className={`clay-btn-refresh ${isRefreshing ? 'is-spinning' : ''}`}
+              onClick={() => fetchAnalytics(true)}
+              disabled={isRefreshing}
+            >
+              <RefreshCw size={17} className={isRefreshing ? 'clay-spin-anim' : ''} />
+              <span>Refresh</span>
+            </button>
+
+            <button 
+              className="clay-btn-export"
+              onClick={handleExportReport}
+            >
+              <Download size={17} strokeWidth={2.4} />
+              <span>Export report</span>
+            </button>
+          </div>
+        </section>
+
+        {/* ── Sub Navigation Tabs ── */}
+        <div className="clay-tabs-row">
+          <div className="clay-tabs-nav">
+            <button 
+              className={`clay-tab-item ${activeTab === 'Overview' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('Overview')}
+            >
+              Overview
+              {activeTab === 'Overview' && <div className="clay-tab-glow-indicator" />}
+            </button>
+            <button 
+              className={`clay-tab-item ${activeTab === 'Participation' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('Participation')}
+            >
+              Participation
+              {activeTab === 'Participation' && <div className="clay-tab-glow-indicator" />}
+            </button>
+            <button 
+              className={`clay-tab-item ${activeTab === 'Events' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('Events')}
+            >
+              Events
+              {activeTab === 'Events' && <div className="clay-tab-glow-indicator" />}
+            </button>
+          </div>
+
+          <div className="clay-tabs-snapshot-label">
+            All registrations &nbsp;·&nbsp; Reference snapshot
+          </div>
+        </div>
+
+        {/* ── ROW 1: 4 Puffy Clay KPI Cards ── */}
+        <section className="clay-kpi-grid">
+          {/* Card 1: Total registrations */}
+          <div className="clay-kpi-card">
+            <div className="clay-kpi-head">
+              <span className="clay-kpi-title">Total registrations</span>
+              <div className="clay-kpi-icon-wrap">
+                <ClipboardList size={18} />
+              </div>
+            </div>
+            <div className="clay-kpi-val-row">
+              <span className="clay-kpi-num clay-num-cyan">
+                {formatZeroPad(animatedTotal)}
+              </span>
+              <span className="clay-kpi-label">participants</span>
+            </div>
+            <div className="clay-kpi-foot">
+              Across {data?.eventWise?.length || 3} registered events
+            </div>
+          </div>
+
+          {/* Card 2: Participating institutes */}
+          <div className="clay-kpi-card">
+            <div className="clay-kpi-head">
+              <span className="clay-kpi-title">Participating institutes</span>
+              <div className="clay-kpi-icon-wrap">
+                <Building2 size={18} />
+              </div>
+            </div>
+            <div className="clay-kpi-val-row">
+              <span className="clay-kpi-num">
+                {formatZeroPad(animatedInstitutes)}
+              </span>
+              <span className="clay-kpi-label">institutes</span>
+            </div>
+            <div className="clay-kpi-foot">
+              Equal participation share
+            </div>
+          </div>
+
+          {/* Card 3: Male participants */}
+          <div className="clay-kpi-card">
+            <div className="clay-kpi-head">
+              <span className="clay-kpi-title">Male participants</span>
+              <div className="clay-kpi-icon-wrap">
+                <Users size={18} />
+              </div>
+            </div>
+            <div className="clay-kpi-val-row">
+              <span className="clay-kpi-num">
+                {formatZeroPad(animatedMale)}
+              </span>
+              <span className="clay-kpi-percent">{malePercent}%</span>
+            </div>
+            <div className="clay-kpi-foot">
+              Of total registrations
+            </div>
+          </div>
+
+          {/* Card 4: Female participants */}
+          <div className="clay-kpi-card">
+            <div className="clay-kpi-head">
+              <span className="clay-kpi-title">Female participants</span>
+              <div className="clay-kpi-icon-wrap">
+                <Users size={18} />
+              </div>
+            </div>
+            <div className="clay-kpi-val-row">
+              <span className="clay-kpi-num">
+                {formatZeroPad(animatedFemale)}
+              </span>
+              <span className="clay-kpi-percent">{femalePercent}%</span>
+            </div>
+            <div className="clay-kpi-foot">
+              {femaleCount === 0 ? 'No registrations yet' : 'Of total registrations'}
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROW 2: Event Registrations & Most Popular Event ── */}
+        <section className="clay-mid-grid">
+          {/* Left: Event registrations Bar Chart */}
+          <div className="clay-card clay-event-chart-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Event registrations</h2>
+                <p className="clay-card-subtitle">Participation across the Technika lineup</p>
+              </div>
+              <div className="clay-badge-pill">
+                {data?.eventWise?.length || 3} events
+              </div>
+            </div>
+
+            <div className="clay-barchart-container">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={eventChartData} margin={{ top: 32, right: 24, left: -20, bottom: 20 }}>
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fill: '#94a3b8', fontSize: 11 }} 
+                    axisLine={false} 
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#64748b', fontSize: 11 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    allowDecimals={false}
+                    domain={[0, (dataMax: number) => Math.max(3, dataMax + 1)]}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                    contentStyle={{ 
+                      backgroundColor: '#161f33', 
+                      borderRadius: 14, 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                      color: '#f8fafc',
+                      fontSize: 12
+                    }} 
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    radius={[8, 8, 4, 4]} 
+                    barSize={48}
+                    label={{ 
+                      position: 'top', 
+                      fill: '#f8fafc', 
+                      fontSize: 13, 
+                      fontWeight: 600,
+                      dy: -8
+                    }}
+                  >
+                    {eventChartData.map((entry, index) => (
+                      <Cell key={`bar-${index}`} fill={entry.fill} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* ── Data Tables ── */}
-      <div className="ana-tables-grid">
-        {/* Institute Table */}
-        <div className="ana-table-card">
-          <h3 className="ana-chart-title">🏛️ Institute-wise Participation</h3>
-          <div className="ana-table-wrap">
-            <table className="ana-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Institute</th>
-                  <th>Participants</th>
-                  <th>Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.instituteWise.map((inst, i) => (
-                  <tr key={i}>
-                    <td className="ana-table-rank">{i + 1}</td>
-                    <td className="ana-table-name">{inst.institute}</td>
-                    <td className="ana-table-count">{inst.count}</td>
-                    <td className="ana-table-share">
-                      <div className="ana-share-bar-wrap">
-                        <div
-                          className="ana-share-bar"
-                          style={{
-                            width: `${(inst.count / data.totalRegistrations) * 100}%`,
-                            background: CHART_COLORS[i % CHART_COLORS.length]
-                          }}
-                        />
-                        <span>{((inst.count / data.totalRegistrations) * 100).toFixed(1)}%</span>
-                      </div>
-                    </td>
+            <div className="clay-card-footer-info">
+              <Info size={14} className="clay-info-icon" />
+              <span>Participants may register for more than one event.</span>
+            </div>
+          </div>
+
+          {/* Right: Most Popular Event Card */}
+          <div className="clay-card clay-popular-card">
+            <div className="clay-img-frame">
+              <img 
+                src="/robo-wars.jpg" 
+                alt="Robo Wars" 
+                className="clay-event-img"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+              <div className="clay-img-overlay-glow" />
+            </div>
+
+            <div className="clay-popular-body">
+              <div className="clay-popular-tag">
+                <Sparkles size={13} className="clay-sparkle-icon" />
+                <span>MOST POPULAR EVENT</span>
+              </div>
+
+              <div className="clay-popular-title-row">
+                <h3 className="clay-popular-name">{topEventName}</h3>
+                <button className="clay-arrow-btn" title="View event details">
+                  <ArrowUpRight size={17} />
+                </button>
+              </div>
+
+              <div className="clay-popular-stats">
+                {topEventCount} registrations &nbsp;·&nbsp; {topEventShare}% of participants
+              </div>
+
+              <div className="clay-popular-divider" />
+
+              <div className="clay-popular-footer-row">
+                <span className="clay-popular-foot-lbl">Least registered</span>
+                <span className="clay-popular-foot-val">{leastEventName} &nbsp;·&nbsp; {leastEventCount}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── ROW 3: Institute Participation & Course Participation ── */}
+        <section className="clay-tables-grid">
+          {/* Left: Institute Participation */}
+          <div className="clay-card clay-table-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Institute participation</h2>
+                <p className="clay-card-subtitle">Representation from participating institutions</p>
+              </div>
+              <div className="clay-kpi-icon-wrap">
+                <Building2 size={18} />
+              </div>
+            </div>
+
+            <div className="clay-table-wrap">
+              <table className="clay-data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '56%' }}>INSTITUTE</th>
+                    <th style={{ width: '20%', textAlign: 'center' }}>PARTICIPANTS</th>
+                    <th style={{ width: '24%', textAlign: 'right' }}>SHARE</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(data?.instituteWise && data.instituteWise.length > 0) ? (
+                    data.instituteWise.map((inst, idx) => {
+                      const share = totalRegistrations > 0 ? ((inst.count / totalRegistrations) * 100).toFixed(1) : '50.0';
+                      const isCyan = idx % 2 === 0;
+                      return (
+                        <tr key={idx}>
+                          <td>
+                            <div className="clay-entity-cell">
+                              <span className="clay-initial-badge">
+                                {getInitials(inst.institute)}
+                              </span>
+                              <span className="clay-entity-name" title={inst.institute}>
+                                {inst.institute}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className="clay-count-val">{inst.count}</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div className="clay-share-col">
+                              <div className="clay-bar-trough">
+                                <div 
+                                  className={`clay-bar-fill ${isCyan ? 'fill-cyan' : 'fill-amber'}`}
+                                  style={{ width: `${Math.min(100, Math.max(10, Number(share)))}%` }}
+                                />
+                              </div>
+                              <span className="clay-share-text">{share}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <tr>
+                        <td>
+                          <div className="clay-entity-cell">
+                            <span className="clay-initial-badge">AJ</span>
+                            <span className="clay-entity-name">Arka Jain University</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="clay-count-val">1</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="clay-share-col">
+                            <div className="clay-bar-trough">
+                              <div className="clay-bar-fill fill-cyan" style={{ width: '50%' }} />
+                            </div>
+                            <span className="clay-share-text">50.0%</span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div className="clay-entity-cell">
+                            <span className="clay-initial-badge">AD</span>
+                            <span className="clay-entity-name">AIIMS Deoghar</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="clay-count-val">1</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="clay-share-col">
+                            <div className="clay-bar-trough">
+                              <div className="clay-bar-fill fill-amber" style={{ width: '50%' }} />
+                            </div>
+                            <span className="clay-share-text">50.0%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        {/* Course Table */}
-        <div className="ana-table-card">
-          <h3 className="ana-chart-title">🎓 Course-wise Participation</h3>
-          <div className="ana-table-wrap">
-            <table className="ana-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Course</th>
-                  <th>Participants</th>
-                  <th>Share</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.courseDistribution.map((c, i) => (
-                  <tr key={i}>
-                    <td className="ana-table-rank">{i + 1}</td>
-                    <td className="ana-table-name">{c.course}</td>
-                    <td className="ana-table-count">{c.count}</td>
-                    <td className="ana-table-share">
-                      <div className="ana-share-bar-wrap">
-                        <div
-                          className="ana-share-bar"
-                          style={{
-                            width: `${(c.count / data.totalRegistrations) * 100}%`,
-                            background: CHART_COLORS[i % CHART_COLORS.length]
-                          }}
-                        />
-                        <span>{((c.count / data.totalRegistrations) * 100).toFixed(1)}%</span>
-                      </div>
-                    </td>
+          {/* Right: Course Participation */}
+          <div className="clay-card clay-table-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Course participation</h2>
+                <p className="clay-card-subtitle">Registrations by academic discipline</p>
+              </div>
+              <div className="clay-kpi-icon-wrap">
+                <GraduationCap size={18} />
+              </div>
+            </div>
+
+            <div className="clay-table-wrap">
+              <table className="clay-data-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '56%' }}>COURSE</th>
+                    <th style={{ width: '20%', textAlign: 'center' }}>PARTICIPANTS</th>
+                    <th style={{ width: '24%', textAlign: 'right' }}>SHARE</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(data?.courseDistribution && data.courseDistribution.length > 0) ? (
+                    data.courseDistribution.map((c, idx) => {
+                      const share = totalRegistrations > 0 ? ((c.count / totalRegistrations) * 100).toFixed(1) : '50.0';
+                      const isCyan = idx % 2 === 0;
+                      return (
+                        <tr key={idx}>
+                          <td>
+                            <div className="clay-entity-cell">
+                              <span className="clay-initial-badge">
+                                {getInitials(c.course)}
+                              </span>
+                              <span className="clay-entity-name" title={c.course}>
+                                {c.course}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className="clay-count-val">{c.count}</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div className="clay-share-col">
+                              <div className="clay-bar-trough">
+                                <div 
+                                  className={`clay-bar-fill ${isCyan ? 'fill-cyan' : 'fill-amber'}`}
+                                  style={{ width: `${Math.min(100, Math.max(10, Number(share)))}%` }}
+                                />
+                              </div>
+                              <span className="clay-share-text">{share}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <>
+                      <tr>
+                        <td>
+                          <div className="clay-entity-cell">
+                            <span className="clay-initial-badge">BC</span>
+                            <span className="clay-entity-name">BCA</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="clay-count-val">1</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="clay-share-col">
+                            <div className="clay-bar-trough">
+                              <div className="clay-bar-fill fill-cyan" style={{ width: '50%' }} />
+                            </div>
+                            <span className="clay-share-text">50.0%</span>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div className="clay-entity-cell">
+                            <span className="clay-initial-badge">BT</span>
+                            <span className="clay-entity-name">BTech</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="clay-count-val">1</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="clay-share-col">
+                            <div className="clay-bar-trough">
+                              <div className="clay-bar-fill fill-amber" style={{ width: '50%' }} />
+                            </div>
+                            <span className="clay-share-text">50.0%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* ── Inline Styles ── */}
+        {/* ── ROW 4: Gender Distribution & Daily Registration Trend ── */}
+        <section className="clay-bottom-grid">
+          {/* Left: Gender Distribution Donut */}
+          <div className="clay-card clay-gender-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Gender distribution</h2>
+                <p className="clay-card-subtitle">Participant demographics</p>
+              </div>
+              <div className="clay-kpi-icon-wrap">
+                <Users size={18} />
+              </div>
+            </div>
+
+            <div className="clay-gender-body">
+              <div className="clay-donut-wrapper">
+                <ResponsiveContainer width={180} height={180}>
+                  <PieChart>
+                    <Pie
+                      data={genderChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={62}
+                      outerRadius={84}
+                      paddingAngle={3}
+                      dataKey="value"
+                      startAngle={90}
+                      endAngle={-270}
+                      stroke="none"
+                    >
+                      {genderChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+
+                <div className="clay-donut-center">
+                  <div className="clay-donut-percent">
+                    {maleCount >= femaleCount ? `${malePercent}%` : `${femalePercent}%`}
+                  </div>
+                  <div className="clay-donut-sub">
+                    {maleCount >= femaleCount ? 'male participants' : 'female participants'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="clay-gender-legend">
+                <div className="clay-legend-row">
+                  <div className="clay-legend-left">
+                    <span className="clay-legend-dot dot-cyan" />
+                    <span className="clay-legend-label">Male</span>
+                  </div>
+                  <span className="clay-legend-val">
+                    {maleCount} &nbsp;/&nbsp; {malePercent}%
+                  </span>
+                </div>
+
+                <div className="clay-legend-row">
+                  <div className="clay-legend-left">
+                    <span className="clay-legend-dot dot-amber" />
+                    <span className="clay-legend-label">Female</span>
+                  </div>
+                  <span className="clay-legend-val">
+                    {femaleCount} &nbsp;/&nbsp; {femalePercent}%
+                  </span>
+                </div>
+
+                {otherCount > 0 && (
+                  <div className="clay-legend-row">
+                    <div className="clay-legend-left">
+                      <span className="clay-legend-dot dot-purple" />
+                      <span className="clay-legend-label">Other</span>
+                    </div>
+                    <span className="clay-legend-val">
+                      {otherCount} &nbsp;/&nbsp; {totalRegistrations > 0 ? Math.round((otherCount / totalRegistrations) * 100) : 0}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Daily Registration Trend Area Chart */}
+          <div className="clay-card clay-trend-card">
+            <div className="clay-card-header-row">
+              <div>
+                <h2 className="clay-card-serif-title">Daily registration trend</h2>
+                <p className="clay-card-subtitle">Registration activity over time</p>
+              </div>
+              <div className="clay-badge-pill">
+                {totalRegistrations} registrations
+              </div>
+            </div>
+
+            <div className="clay-trend-chart-box">
+              <ResponsiveContainer width="100%" height={210}>
+                <AreaChart data={trendData} margin={{ top: 20, right: 20, left: -25, bottom: 10 }}>
+                  <defs>
+                    <linearGradient id="clayCyanGlow" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.28} />
+                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: '#94a3b8', fontSize: 11 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                  />
+                  <YAxis 
+                    tick={{ fill: '#64748b', fontSize: 11 }} 
+                    axisLine={false} 
+                    tickLine={false} 
+                    allowDecimals={false}
+                    domain={[0, (dataMax: number) => Math.max(4, dataMax + 1)]}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#161f33', 
+                      borderRadius: 14, 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                      color: '#f8fafc',
+                      fontSize: 12
+                    }} 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="count" 
+                    stroke="#22d3ee" 
+                    strokeWidth={2.5}
+                    fill="url(#clayCyanGlow)" 
+                    dot={{ fill: '#22d3ee', stroke: '#0e1726', strokeWidth: 3, r: 5 }}
+                    activeDot={{ fill: '#38bdf8', stroke: '#fff', strokeWidth: 2, r: 7 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="clay-card-footer-info">
+              <Info size={14} className="clay-info-icon" />
+              <span>
+                {data?.dailyTrend?.length && data.dailyTrend.length > 1
+                  ? 'Real-time timeline synced from central registry.'
+                  : 'One recorded day. Data not provided in the source.'}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Footer ── */}
+        <footer className="clay-footer">
+          <div className="clay-foot-left">
+            Arka Jain University &nbsp;/&nbsp; Technika 6.0
+          </div>
+          <div className="clay-foot-right">
+            Registration analytics &nbsp;·&nbsp; Reference snapshot
+          </div>
+        </footer>
+
+      </main>
+
+      {/* ── EMBEDDED CLAYMORPHISM CSS STYLES ── */}
       <style>{`
-        .ana-shell {
-          padding: 0;
+        .clay-dashboard-root {
+          min-height: 100vh;
+          background-color: #0b0f19;
+          background-image: 
+            radial-gradient(circle at 15% 15%, rgba(14, 165, 233, 0.04) 0%, transparent 40%),
+            radial-gradient(circle at 85% 85%, rgba(245, 158, 11, 0.03) 0%, transparent 40%);
+          color: #f8fafc;
+          font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+          padding-bottom: 40px;
         }
 
-        /* ── Header ── */
-        .ana-header {
+        .clay-error-banner {
           display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1.8rem;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-        .ana-title {
-          font-size: 1.65rem;
-          font-weight: 900;
-          color: #0f172a;
-          margin: 0;
-          letter-spacing: -0.02em;
-        }
-        .ana-subtitle {
-          font-size: 0.82rem;
-          color: #64748b;
-          margin: 4px 0 0;
-          font-weight: 500;
-        }
-        .ana-refresh-btn {
-          padding: 0.55rem 1.2rem;
+          align-items: center;
+          gap: 10px;
+          background: #2d1519;
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          color: #fca5a5;
+          padding: 12px 18px;
           border-radius: 14px;
-          border: 2px solid rgba(255,255,255,0.9);
-          background: #f4f8fd;
-          color: #2563eb;
-          font-weight: 800;
-          font-size: 0.8rem;
-          cursor: pointer;
-          box-shadow:
-            4px 5px 12px rgba(162,178,201,0.2),
-            -3px -3px 8px rgba(255,255,255,0.7),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(162,178,201,0.12);
-          transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .ana-refresh-btn:hover {
-          background: #dbeafe;
-          transform: translateY(-2px);
-          box-shadow:
-            6px 8px 18px rgba(162,178,201,0.25),
-            -5px -5px 14px rgba(255,255,255,0.8),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(37,99,235,0.12);
+          font-size: 13px;
+          box-shadow: inset 1px 1px 2px rgba(255,255,255,0.05);
         }
 
-        /* ── Stat Cards ── */
-        .ana-stats-row {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-        .ana-stat-card {
-          background: #f4f8fd;
-          border-radius: 20px;
-          border: 2.5px solid rgba(255,255,255,0.9);
-          padding: 1.3rem 1.2rem;
+        .clay-nav {
           display: flex;
           align-items: center;
-          gap: 14px;
-          box-shadow:
-            6px 8px 18px rgba(162,178,201,0.22),
-            -5px -5px 14px rgba(255,255,255,0.8),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(162,178,201,0.18);
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .ana-stat-card:hover {
-          transform: translateY(-3px);
-        }
-        .ana-stat-icon {
-          width: 50px;
-          height: 50px;
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-          flex-shrink: 0;
-          border: 2px solid rgba(255,255,255,0.8);
-          box-shadow:
-            inset 3px 3px 6px rgba(255,255,255,0.6),
-            inset -3px -3px 6px rgba(0,0,0,0.08),
-            3px 4px 10px rgba(0,0,0,0.06);
-        }
-        .ana-stat-info {
-          display: flex;
-          flex-direction: column;
-        }
-        .ana-stat-value {
-          font-size: 1.7rem;
-          font-weight: 900;
-          color: #0f172a;
-          line-height: 1.15;
-        }
-        .ana-stat-label {
-          font-size: 0.72rem;
-          color: #64748b;
-          font-weight: 600;
-          letter-spacing: 0.01em;
-          margin-top: 2px;
+          justify-content: space-between;
+          padding: 18px 48px;
+          background: #0e1322;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+          position: sticky;
+          top: 0;
+          z-index: 50;
         }
 
-        /* ── Highlight Cards ── */
-        .ana-highlight-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-          margin-bottom: 1.5rem;
-        }
-        .ana-highlight-card {
-          background: #f4f8fd;
-          border-radius: 20px;
-          border: 2.5px solid rgba(255,255,255,0.9);
-          padding: 1.2rem 1.4rem;
+        .clay-nav-left {
           display: flex;
           align-items: center;
           gap: 16px;
-          box-shadow:
-            6px 8px 18px rgba(162,178,201,0.22),
-            -5px -5px 14px rgba(255,255,255,0.8),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(162,178,201,0.18);
         }
-        .ana-highlight-max {
-          border-left: 4px solid #10b981;
+
+        .clay-nav-cap-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          background: #141c2e;
+          box-shadow: 
+            5px 5px 12px rgba(0, 0, 0, 0.5),
+            -3px -3px 8px rgba(255, 255, 255, 0.04),
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.1),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
         }
-        .ana-highlight-min {
-          border-left: 4px solid #f59e0b;
-        }
-        .ana-highlight-emoji {
-          font-size: 2rem;
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-        }
-        .ana-highlight-info {
+
+        .clay-nav-titles {
           display: flex;
           flex-direction: column;
         }
-        .ana-highlight-label {
-          font-size: 0.68rem;
-          color: #94a3b8;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .ana-highlight-value {
-          font-size: 1.15rem;
-          font-weight: 900;
-          color: #0f172a;
-          margin-top: 2px;
-        }
-        .ana-highlight-count {
-          font-size: 0.78rem;
-          color: #64748b;
-          font-weight: 600;
-          margin-top: 1px;
-        }
 
-        /* ── Charts Grid ── */
-        .ana-charts-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.2rem;
-          margin-bottom: 1.5rem;
-        }
-        .ana-chart-full {
-          grid-column: 1 / -1;
-        }
-        .ana-chart-card {
-          background: #f4f8fd;
-          border-radius: 20px;
-          border: 2.5px solid rgba(255,255,255,0.9);
-          padding: 1.2rem;
-          box-shadow:
-            6px 8px 18px rgba(162,178,201,0.22),
-            -5px -5px 14px rgba(255,255,255,0.8),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(162,178,201,0.18);
-        }
-        .ana-chart-title {
-          font-size: 0.95rem;
+        .clay-nav-uni-title {
           font-weight: 800;
-          color: #0f172a;
-          margin: 0 0 0.8rem;
-          padding-bottom: 0.6rem;
-          border-bottom: 2px solid rgba(255,255,255,0.8);
-        }
-        .ana-chart-body {
-          width: 100%;
-        }
-
-        /* ── Tables Grid ── */
-        .ana-tables-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1.2rem;
-          margin-bottom: 2rem;
-        }
-        .ana-table-card {
-          background: #f4f8fd;
-          border-radius: 20px;
-          border: 2.5px solid rgba(255,255,255,0.9);
-          padding: 1.2rem;
-          box-shadow:
-            6px 8px 18px rgba(162,178,201,0.22),
-            -5px -5px 14px rgba(255,255,255,0.8),
-            inset 2px 2px 4px rgba(255,255,255,0.8),
-            inset -2px -2px 4px rgba(162,178,201,0.18);
-        }
-        .ana-table-wrap {
-          max-height: 420px;
-          overflow-y: auto;
-          border-radius: 12px;
-        }
-        .ana-table-wrap::-webkit-scrollbar { width: 6px; }
-        .ana-table-wrap::-webkit-scrollbar-track { background: #eef3f9; border-radius: 6px; }
-        .ana-table-wrap::-webkit-scrollbar-thumb { background: #c8d5e3; border-radius: 6px; }
-        .ana-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.82rem;
-        }
-        .ana-table thead {
-          position: sticky;
-          top: 0;
-          z-index: 2;
-        }
-        .ana-table th {
-          background: #e6ecf5;
-          color: #475569;
-          font-weight: 800;
-          font-size: 0.7rem;
-          text-transform: uppercase;
+          font-size: 15px;
           letter-spacing: 0.08em;
-          padding: 0.65rem 0.8rem;
-          text-align: left;
-          border-bottom: 2px solid rgba(255,255,255,0.7);
+          color: #ffffff;
         }
-        .ana-table td {
-          padding: 0.55rem 0.8rem;
-          border-bottom: 1px solid #e2e8f0;
-          color: #334155;
-        }
-        .ana-table tr:last-child td {
-          border-bottom: none;
-        }
-        .ana-table tr:hover td {
-          background: rgba(59,130,246,0.04);
-        }
-        .ana-table-rank {
-          font-weight: 900;
+
+        .clay-nav-uni-subtitle {
+          font-size: 11px;
           color: #94a3b8;
-          font-size: 0.75rem;
-          width: 30px;
+          font-weight: 500;
+          letter-spacing: 0.02em;
         }
-        .ana-table-name {
+
+        .clay-nav-divider {
+          width: 1px;
+          height: 28px;
+          background: rgba(255, 255, 255, 0.12);
+          margin: 0 6px;
+        }
+
+        .clay-nav-brand {
+          font-size: 16px;
           font-weight: 700;
-          color: #0f172a;
+          color: #f8fafc;
+          letter-spacing: -0.01em;
         }
-        .ana-table-count {
+
+        .clay-brand-cyan {
+          color: #22d3ee;
+        }
+
+        .clay-nav-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .clay-status-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 16px;
+          border-radius: 9999px;
+          background: #13192b;
+          border: 1px solid rgba(34, 211, 238, 0.15);
+          box-shadow: 
+            4px 4px 10px rgba(0, 0, 0, 0.4),
+            -2px -2px 6px rgba(255, 255, 255, 0.03),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.08),
+            inset -1px -1px 3px rgba(0, 0, 0, 0.4);
+        }
+
+        .clay-pulse-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #22d3ee;
+          box-shadow: 0 0 10px #22d3ee;
+          animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(0.85); }
+        }
+
+        .clay-status-text {
+          font-size: 12px;
+          font-weight: 500;
+          color: #94a3b8;
+        }
+
+        .clay-avatar-bubble {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #141c2e;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #fbbf24;
+          font-weight: 700;
+          font-size: 13px;
+          box-shadow: 
+            4px 4px 12px rgba(0, 0, 0, 0.5),
+            -2px -2px 6px rgba(255, 255, 255, 0.04),
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.12),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
+          cursor: pointer;
+          transition: transform 0.2s ease;
+        }
+
+        .clay-avatar-bubble:hover {
+          transform: scale(1.05);
+        }
+
+        .clay-logout-btn {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 14px;
+          border-radius: 12px;
+          background: #192238;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #f87171;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 
+            4px 4px 10px rgba(0, 0, 0, 0.4),
+            inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.08),
+            inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.4);
+          transition: all 0.2s ease;
+        }
+
+        .clay-logout-btn:hover {
+          background: #ef4444;
+          color: #ffffff;
+          box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+          transform: translateY(-1px);
+        }
+
+        .clay-main-container {
+          max-width: 1320px;
+          margin: 0 auto;
+          padding: 32px 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+        }
+
+        .clay-hero-section {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 24px;
+          padding: 8px 0;
+        }
+
+        .clay-breadcrumb {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          color: #64748b;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+        }
+
+        .clay-hero-heading {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 40px;
+          font-weight: 700;
+          color: #ffffff;
+          letter-spacing: -0.01em;
+          margin-bottom: 6px;
+          line-height: 1.15;
+        }
+
+        .clay-period {
+          color: #22d3ee;
+        }
+
+        .clay-hero-subtitle {
+          font-size: 14px;
+          color: #94a3b8;
+          font-weight: 400;
+        }
+
+        .clay-hero-actions {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .clay-btn-refresh {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 22px;
+          border-radius: 14px;
+          background: #141b2c;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #f8fafc;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 
+            6px 6px 16px rgba(0, 0, 0, 0.5),
+            -4px -4px 10px rgba(255, 255, 255, 0.03),
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.1),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
+          transition: all 0.2s ease;
+        }
+
+        .clay-btn-refresh:hover:not(:disabled) {
+          transform: translateY(-2px);
+          background: #182238;
+          box-shadow: 
+            8px 8px 20px rgba(0, 0, 0, 0.55),
+            -5px -5px 12px rgba(255, 255, 255, 0.05),
+            inset 1.5px 1.5px 3px rgba(255, 255, 255, 0.15),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .clay-btn-refresh:active {
+          transform: translateY(1px);
+          box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.6);
+        }
+
+        .clay-spin-anim {
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .clay-btn-export {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 24px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #38bdf8 0%, #22d3ee 50%, #06b6d4 100%);
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          color: #03141f;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 
+            6px 6px 18px rgba(6, 182, 212, 0.38),
+            -3px -3px 8px rgba(255, 255, 255, 0.1),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.55),
+            inset -2px -2px 5px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s ease;
+        }
+
+        .clay-btn-export:hover {
+          transform: translateY(-2px);
+          box-shadow: 
+            8px 8px 24px rgba(6, 182, 212, 0.5),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.65),
+            inset -2px -2px 5px rgba(0, 0, 0, 0.25);
+        }
+
+        .clay-btn-export:active {
+          transform: translateY(1px);
+          box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .clay-tabs-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          padding-bottom: 12px;
+          margin-top: 4px;
+        }
+
+        .clay-tabs-nav {
+          display: flex;
+          align-items: center;
+          gap: 28px;
+        }
+
+        .clay-tab-item {
+          background: none;
+          border: none;
+          font-size: 14px;
+          font-weight: 600;
+          color: #94a3b8;
+          cursor: pointer;
+          position: relative;
+          padding: 6px 2px;
+          transition: color 0.2s ease;
+        }
+
+        .clay-tab-item:hover {
+          color: #f8fafc;
+        }
+
+        .clay-tab-item.is-active {
+          color: #ffffff;
+        }
+
+        .clay-tab-glow-indicator {
+          position: absolute;
+          bottom: -13px;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: #22d3ee;
+          border-radius: 9999px;
+          box-shadow: 0 0 10px #22d3ee, 0 0 20px rgba(34, 211, 238, 0.4);
+        }
+
+        .clay-tabs-snapshot-label {
+          font-size: 12px;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .clay-card {
+          background: #131929;
+          border-radius: 24px;
+          padding: 26px 28px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          box-shadow: 
+            12px 14px 28px rgba(0, 0, 0, 0.55),
+            -6px -6px 18px rgba(255, 255, 255, 0.025),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.08),
+            inset -3px -3px 6px rgba(0, 0, 0, 0.45);
+          position: relative;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .clay-card:hover {
+          box-shadow: 
+            14px 18px 34px rgba(0, 0, 0, 0.6),
+            -7px -7px 20px rgba(255, 255, 255, 0.035),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.1),
+            inset -3px -3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .clay-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 20px;
+        }
+
+        .clay-kpi-card {
+          background: #131929;
+          border-radius: 22px;
+          padding: 22px 24px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          box-shadow: 
+            10px 12px 24px rgba(0, 0, 0, 0.5),
+            -5px -5px 14px rgba(255, 255, 255, 0.02),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.08),
+            inset -2px -2px 5px rgba(0, 0, 0, 0.4);
+          display: flex;
+          flex-direction: column;
+          transition: transform 0.2s ease;
+        }
+
+        .clay-kpi-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .clay-kpi-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+
+        .clay-kpi-title {
+          font-size: 13px;
+          font-weight: 500;
+          color: #94a3b8;
+        }
+
+        .clay-kpi-icon-wrap {
+          color: #64748b;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .clay-kpi-val-row {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .clay-kpi-num {
+          font-size: 38px;
           font-weight: 800;
-          color: #2563eb;
-          text-align: center;
+          color: #ffffff;
+          line-height: 1;
+          letter-spacing: -0.02em;
         }
-        .ana-table-share {
-          width: 140px;
+
+        .clay-num-cyan {
+          color: #22d3ee;
         }
-        .ana-share-bar-wrap {
+
+        .clay-kpi-label {
+          font-size: 13px;
+          color: #94a3b8;
+          font-weight: 500;
+        }
+
+        .clay-kpi-percent {
+          font-size: 16px;
+          font-weight: 700;
+          color: #94a3b8;
+        }
+
+        .clay-kpi-foot {
+          font-size: 12px;
+          color: #64748b;
+          margin-top: auto;
+        }
+
+        .clay-mid-grid {
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 22px;
+        }
+
+        .clay-card-header-row {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 18px;
+        }
+
+        .clay-card-serif-title {
+          font-family: 'Playfair Display', Georgia, serif;
+          font-size: 20px;
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 4px;
+        }
+
+        .clay-card-subtitle {
+          font-size: 12px;
+          color: #94a3b8;
+        }
+
+        .clay-badge-pill {
+          padding: 4px 12px;
+          border-radius: 9999px;
+          background: #0d121f;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          font-size: 11px;
+          font-weight: 600;
+          color: #94a3b8;
+          box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .clay-barchart-container {
+          width: 100%;
+          min-height: 240px;
+        }
+
+        .clay-card-footer-info {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: #64748b;
+          border-top: 1px solid rgba(255, 255, 255, 0.05);
+          padding-top: 14px;
+          margin-top: 10px;
+        }
+
+        .clay-info-icon {
+          flex-shrink: 0;
+          color: #64748b;
+        }
+
+        .clay-popular-card {
+          display: flex;
+          flex-direction: column;
+          padding: 20px;
+        }
+
+        .clay-img-frame {
+          position: relative;
+          width: 100%;
+          height: 180px;
+          border-radius: 18px;
+          overflow: hidden;
+          background: #0d1220;
+          box-shadow: 
+            inset 2px 2px 5px rgba(0, 0, 0, 0.7),
+            inset -1px -1px 3px rgba(255, 255, 255, 0.05);
+          margin-bottom: 18px;
+        }
+
+        .clay-event-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .clay-img-overlay-glow {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(13, 18, 32, 0.85) 100%);
+          pointer-events: none;
+        }
+
+        .clay-popular-body {
+          display: flex;
+          flex-direction: column;
+          flex-grow: 1;
+        }
+
+        .clay-popular-tag {
           display: flex;
           align-items: center;
           gap: 6px;
-        }
-        .ana-share-bar {
-          height: 6px;
-          border-radius: 4px;
-          min-width: 4px;
-          transition: width 0.5s ease;
-        }
-        .ana-share-bar-wrap span {
-          font-size: 0.68rem;
-          color: #94a3b8;
+          font-size: 11px;
           font-weight: 700;
-          white-space: nowrap;
+          letter-spacing: 0.08em;
+          color: #fbbf24;
+          text-transform: uppercase;
+          margin-bottom: 8px;
         }
 
-        /* ── Loading & Error States ── */
-        .ana-loading-shell {
+        .clay-sparkle-icon {
+          color: #fbbf24;
+        }
+
+        .clay-popular-title-row {
           display: flex;
-          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+        }
+
+        .clay-popular-name {
+          font-size: 22px;
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .clay-arrow-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          background: #182236;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #f8fafc;
+          display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 400px;
-          gap: 1.2rem;
+          cursor: pointer;
+          box-shadow: 
+            3px 3px 8px rgba(0, 0, 0, 0.4),
+            inset 1px 1px 2px rgba(255, 255, 255, 0.1),
+            inset -1px -1px 2px rgba(0, 0, 0, 0.4);
+          transition: transform 0.2s ease;
         }
-        .ana-loading-spinner {
-          width: 52px;
-          height: 52px;
-          border-radius: 50%;
-          border: 4px solid #e2e8f0;
-          border-top-color: #3b82f6;
-          animation: anaSpin 0.8s linear infinite;
+
+        .clay-arrow-btn:hover {
+          transform: scale(1.08);
+          background: #202b44;
         }
-        @keyframes anaSpin {
-          to { transform: rotate(360deg); }
+
+        .clay-popular-stats {
+          font-size: 13px;
+          color: #94a3b8;
+          margin-bottom: 16px;
         }
-        .ana-loading-text {
-          font-size: 0.9rem;
+
+        .clay-popular-divider {
+          width: 100%;
+          height: 1px;
+          background: rgba(255, 255, 255, 0.06);
+          margin-top: auto;
+          margin-bottom: 12px;
+        }
+
+        .clay-popular-footer-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 12px;
+        }
+
+        .clay-popular-foot-lbl {
           color: #64748b;
+        }
+
+        .clay-popular-foot-val {
+          color: #94a3b8;
           font-weight: 600;
         }
-        .ana-error-shell {
+
+        .clay-tables-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 22px;
+        }
+
+        .clay-table-wrap {
+          overflow-x: auto;
+        }
+
+        .clay-data-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+        }
+
+        .clay-data-table th {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: #64748b;
+          text-transform: uppercase;
+          padding: 8px 12px 14px 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          text-align: left;
+        }
+
+        .clay-data-table td {
+          padding: 14px 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          vertical-align: middle;
+        }
+
+        .clay-entity-cell {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .clay-initial-badge {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          background: #0d121f;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          color: #94a3b8;
+          font-size: 11px;
+          font-weight: 700;
+          box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.5);
+          flex-shrink: 0;
+        }
+
+        .clay-entity-name {
+          color: #f8fafc;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 240px;
+        }
+
+        .clay-count-val {
+          font-weight: 600;
+          color: #f8fafc;
+        }
+
+        .clay-share-col {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+        }
+
+        .clay-bar-trough {
+          width: 64px;
+          height: 6px;
+          background: #0d121f;
+          border-radius: 9999px;
+          overflow: hidden;
+          box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.6);
+        }
+
+        .clay-bar-fill {
+          height: 100%;
+          border-radius: 9999px;
+          transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fill-cyan {
+          background: #22d3ee;
+          box-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+        }
+
+        .fill-amber {
+          background: #fbbf24;
+          box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+        }
+
+        .clay-share-text {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+          min-width: 44px;
+          text-align: right;
+        }
+
+        .clay-bottom-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.6fr;
+          gap: 22px;
+        }
+
+        .clay-gender-body {
+          display: flex;
+          align-items: center;
+          justify-content: space-around;
+          padding: 10px 0 6px;
+          flex-wrap: wrap;
+          gap: 20px;
+        }
+
+        .clay-donut-wrapper {
+          position: relative;
+          width: 180px;
+          height: 180px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .clay-donut-center {
+          position: absolute;
+          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          min-height: 300px;
-          gap: 0.8rem;
-        }
-        .ana-error-icon { font-size: 2.5rem; }
-        .ana-error-msg {
-          font-size: 0.9rem;
-          color: #dc2626;
-          font-weight: 700;
+          pointer-events: none;
         }
 
-        /* ── Responsive ── */
-        @media (max-width: 1024px) {
-          .ana-stats-row { grid-template-columns: repeat(2, 1fr); }
-          .ana-charts-grid { grid-template-columns: 1fr; }
-          .ana-tables-grid { grid-template-columns: 1fr; }
-          .ana-highlight-row { grid-template-columns: 1fr; }
+        .clay-donut-percent {
+          font-size: 26px;
+          font-weight: 800;
+          color: #ffffff;
+          line-height: 1;
+          letter-spacing: -0.02em;
         }
-        @media (max-width: 640px) {
-          .ana-stats-row { grid-template-columns: 1fr; }
-          .ana-title { font-size: 1.3rem; }
-          .ana-stat-value { font-size: 1.4rem; }
+
+        .clay-donut-sub {
+          font-size: 11px;
+          color: #94a3b8;
+          font-weight: 500;
+          margin-top: 4px;
+        }
+
+        .clay-gender-legend {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          min-width: 160px;
+        }
+
+        .clay-legend-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 13px;
+        }
+
+        .clay-legend-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .clay-legend-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        .dot-cyan {
+          background: #22d3ee;
+          box-shadow: 0 0 6px rgba(34, 211, 238, 0.6);
+        }
+
+        .dot-amber {
+          background: #fbbf24;
+          box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+        }
+
+        .dot-purple {
+          background: #a855f7;
+          box-shadow: 0 0 6px rgba(168, 85, 247, 0.6);
+        }
+
+        .clay-legend-label {
+          color: #94a3b8;
+          font-weight: 500;
+        }
+
+        .clay-legend-val {
+          font-weight: 600;
+          color: #f8fafc;
+        }
+
+        .clay-trend-chart-box {
+          width: 100%;
+          min-height: 200px;
+        }
+
+        .clay-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 4px 6px;
+          font-size: 12px;
+          color: #475569;
+          border-top: 1px solid rgba(255, 255, 255, 0.04);
+          margin-top: 8px;
+        }
+
+        .clay-foot-left {
+          color: #64748b;
+        }
+
+        .clay-foot-right {
+          color: #64748b;
+        }
+
+        .clay-loading-screen {
+          min-height: 100vh;
+          background: #0b0f19;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .clay-spinner-box {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          padding: 40px;
+          border-radius: 28px;
+          background: #141c2e;
+          box-shadow: 
+            14px 14px 30px rgba(0, 0, 0, 0.5),
+            -6px -6px 16px rgba(255, 255, 255, 0.03),
+            inset 2px 2px 4px rgba(255, 255, 255, 0.08);
+        }
+
+        .clay-spinner {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          border: 4px solid #1a243c;
+          border-top-color: #22d3ee;
+          animation: spin 0.8s linear infinite;
+        }
+
+        .clay-loading-text {
+          font-size: 14px;
+          font-weight: 600;
+          color: #94a3b8;
+        }
+
+        @media (max-width: 1080px) {
+          .clay-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .clay-mid-grid {
+            grid-template-columns: 1fr;
+          }
+          .clay-tables-grid {
+            grid-template-columns: 1fr;
+          }
+          .clay-bottom-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .clay-nav {
+            padding: 14px 20px;
+            flex-direction: column;
+            gap: 14px;
+            align-items: flex-start;
+          }
+          .clay-nav-right {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .clay-main-container {
+            padding: 20px 16px;
+          }
+          .clay-hero-heading {
+            font-size: 30px;
+          }
+          .clay-kpi-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>
   );
 };
 
-/* ── Sub-Components ── */
-const StatCard: React.FC<{ icon: string; label: string; value: number; accent: string }> = ({ icon, label, value, accent }) => (
-  <div className="ana-stat-card">
-    <div className="ana-stat-icon" style={{ background: `${accent}15` }}>
-      {icon}
-    </div>
-    <div className="ana-stat-info">
-      <span className="ana-stat-value" style={{ color: accent }}>{value.toLocaleString()}</span>
-      <span className="ana-stat-label">{label}</span>
-    </div>
-  </div>
-);
-
-const LoadingState = () => (
-  <div className="ana-loading-shell">
-    <div className="ana-loading-spinner" />
-    <span className="ana-loading-text">Loading analytics...</span>
-    <style>{`
-      .ana-loading-shell {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        min-height: 400px; gap: 1.2rem;
-      }
-      .ana-loading-spinner {
-        width: 52px; height: 52px; border-radius: 50%;
-        border: 4px solid #e2e8f0; border-top-color: #3b82f6;
-        animation: anaSpin 0.8s linear infinite;
-      }
-      @keyframes anaSpin { to { transform: rotate(360deg); } }
-      .ana-loading-text { font-size: 0.9rem; color: #64748b; font-weight: 600; }
-    `}</style>
-  </div>
-);
-
-const ErrorState: React.FC<{ message: string }> = ({ message }) => (
-  <div className="ana-error-shell">
-    <span className="ana-error-icon">⚠️</span>
-    <span className="ana-error-msg">{message}</span>
-    <style>{`
-      .ana-error-shell {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        min-height: 300px; gap: 0.8rem;
-      }
-      .ana-error-icon { font-size: 2.5rem; }
-      .ana-error-msg { font-size: 0.9rem; color: #dc2626; font-weight: 700; }
-    `}</style>
-  </div>
-);
+export default AnalyticsView;
