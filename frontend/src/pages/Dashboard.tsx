@@ -414,307 +414,201 @@ export const Dashboard: React.FC = () => {
 
                               return (
                                 <div style={{ marginTop: '14px', borderTop: '2px solid var(--border-color)', paddingTop: '14px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                  
+                                  {/* ── Top Bar: Team Name, Code & Status ── */}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                     <div>
-                                      <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-main)' }}>
-                                        TEAM NAME: <span style={{ color: 'var(--accent, #f5a201)' }}>{userTeam?.teamName || 'Team'}</span>
+                                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span>TEAM: <strong style={{ color: 'var(--accent, #f5a201)' }}>{userTeam?.teamName || 'Team'}</strong></span>
+                                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                                          ({memberCount} of {minRequired}-{maxAllowed} players)
+                                        </span>
                                       </div>
+                                      
+                                      {/* Team Code with quick Copy & WhatsApp share */}
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
                                         <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#000000', background: '#FFE600', padding: '2px 8px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000000' }}>
-                                          TEAM ID: {teamId}
+                                          CODE: {teamId}
                                         </span>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)' }}>
-                                          Required: {minRequired} to {maxAllowed} Players
-                                        </span>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopyTeamCode(teamId)}
+                                          style={{
+                                            background: copiedTeamId === teamId ? '#10b981' : '#ffffff',
+                                            color: '#000000',
+                                            border: '1.5px solid #000000',
+                                            padding: '2px 8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 900,
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                          title="Copy Team Code to share with friends"
+                                        >
+                                          <i className={copiedTeamId === teamId ? 'fa-solid fa-check' : 'fa-solid fa-copy'}></i>
+                                          {copiedTeamId === teamId ? 'Copied' : 'Copy'}
+                                        </button>
+
+                                        <a
+                                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Join my team *${userTeam?.teamName || 'Team'}* for *${event?.name || 'Technika 6.0'}*! \n\nTeam Code: *${teamId}*\nRegister here: ${window.location.origin}/register?teamCode=${teamId}`)}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{
+                                            background: '#25D366',
+                                            color: '#ffffff',
+                                            border: '1.5px solid #000000',
+                                            padding: '2px 8px',
+                                            fontSize: '0.72rem',
+                                            fontWeight: 900,
+                                            textDecoration: 'none',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                          title="Invite friends on WhatsApp"
+                                        >
+                                          <i className="fa-brands fa-whatsapp"></i>
+                                          WhatsApp
+                                        </a>
                                       </div>
                                     </div>
 
                                     <div>
                                       {isFormed ? (
-                                        <span style={{ background: '#10b981', color: '#000000', fontSize: '0.72rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          <i className="fa-solid fa-circle-check"></i> REGISTERED &amp; LOCKED
+                                        <span style={{ background: '#10b981', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                          ✓ TEAM CONFIRMED
                                         </span>
                                       ) : isReady ? (
-                                        <span style={{ background: '#3ce6fc', color: '#000000', fontSize: '0.72rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          <i className="fa-solid fa-bolt"></i> READY TO FORM ({memberCount}/{minRequired} MET)
+                                        <span style={{ background: '#3ce6fc', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                          ⚡ READY TO FORM
                                         </span>
                                       ) : (
-                                        <span style={{ background: '#ff7a00', color: '#000000', fontSize: '0.72rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          <i className="fa-solid fa-triangle-exclamation"></i> INCOMPLETE ({memberCount}/{minRequired} REQUIRED)
+                                        <span style={{ background: '#ff7a00', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                          ⚠️ NEEDS {minRequired - memberCount} MORE
                                         </span>
                                       )}
                                     </div>
                                   </div>
 
-                                  {/* Team Criteria Guidance Alert */}
-                                  {isIncomplete && (
-                                    <div style={{ background: 'rgba(255, 122, 0, 0.12)', border: '2px dashed #ff7a00', padding: '10px 14px', marginTop: '10px', marginBottom: '14px', color: 'var(--text-main)', fontSize: '0.82rem' }}>
-                                      <strong style={{ color: '#ff7a00' }}><i className="fa-solid fa-triangle-exclamation"></i> Minimum Players Required:</strong> This competition requires at least <strong>{minRequired} team members</strong> (max {maxAllowed}). You currently have <strong>{memberCount} member{memberCount === 1 ? '' : 's'}</strong>. A team cannot be formed with only 1 member. Add your teammates below or share your Team Code with friends to enable team formation.
-                                    </div>
-                                  )}
-
-                                  {isReady && (
-                                    <div style={{ background: 'rgba(60, 230, 252, 0.12)', border: '2px solid #3ce6fc', padding: '10px 14px', marginTop: '10px', marginBottom: '14px', color: 'var(--text-main)', fontSize: '0.82rem' }}>
-                                      <strong style={{ color: '#3ce6fc' }}><i className="fa-solid fa-circle-check"></i> Criteria Satisfied:</strong> Your team has <strong>{memberCount} members</strong> (minimum {minRequired} met). You can now click <strong>"Form &amp; Finalize Team"</strong> below to lock your team, or continue adding members up to {maxAllowed}.
-                                    </div>
-                                  )}
-
-                                  {isFormed && (
-                                    <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '2px solid #10b981', padding: '10px 14px', marginTop: '10px', marginBottom: '14px', color: 'var(--text-main)', fontSize: '0.82rem' }}>
-                                      <strong style={{ color: '#10b981' }}><i className="fa-solid fa-shield-halved"></i> Team Formed &amp; Locked:</strong> This team is officially confirmed and locked for Technika 6.0 competition day.
-                                    </div>
-                                  )}
-
-                                  {/* Team Roster List */}
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '8px' }}>
-                                    Team Roster ({memberCount} {memberCount === 1 ? 'Member' : 'Members'})
-                                  </div>
-
-                                  {currentMembers.length > 0 ? (
-                                    currentMembers.map((member) => (
-                                      <div
-                                        key={member.registrationId}
-                                        className="team-roster-row"
-                                        style={{
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          alignItems: 'center',
-                                          padding: '8px 12px',
-                                          background: 'rgba(0,0,0,0.2)',
-                                          border: '1px solid var(--border-color)',
-                                          marginBottom: '6px',
-                                          fontSize: '0.8rem',
-                                          flexWrap: 'wrap',
-                                          gap: '8px'
-                                        }}
-                                      >
-                                        <div>
-                                          <strong>{member.name}</strong>
-                                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '6px' }}>
-                                            ({member.registrationId})
-                                          </span>
-                                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                            {member.email} {member.whatsapp ? `· 📞 ${member.whatsapp}` : ''}
-                                          </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                          <span
-                                            style={{
+                                  {/* ── Team Roster List ── */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                                    {currentMembers.length > 0 ? (
+                                      currentMembers.map((member) => (
+                                        <div
+                                          key={member.registrationId}
+                                          style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '8px 12px',
+                                            background: 'rgba(0,0,0,0.2)',
+                                            border: '1px solid var(--border-color)',
+                                            fontSize: '0.82rem',
+                                            flexWrap: 'wrap',
+                                            gap: '8px'
+                                          }}
+                                        >
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{
                                               background: member.role === 'Leader' ? '#FFE600' : '#8aebee',
                                               color: '#000',
                                               fontSize: '0.65rem',
                                               fontWeight: 900,
-                                              padding: '2px 8px',
+                                              padding: '2px 6px',
                                               border: '1px solid #000'
-                                            }}
-                                          >
-                                            {member.role === 'Leader' ? '👑 LEADER' : '👤 MEMBER'}
-                                          </span>
+                                            }}>
+                                              {member.role.toUpperCase()}
+                                            </span>
+                                            <strong>{member.name}</strong>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                              ({member.registrationId})
+                                            </span>
+                                          </div>
 
-                                          {/* Leader can remove non-leader members before locking */}
-                                          {isLeader && !isFormed && member.role !== 'Leader' && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handleRemoveMember(teamId, member.registrationId, member.name)}
-                                              disabled={removingMember[`${teamId}_${member.registrationId}`]}
-                                              style={{
-                                                background: '#ef4444',
-                                                color: '#ffffff',
-                                                border: '1px solid #000000',
-                                                padding: '3px 8px',
-                                                fontSize: '0.65rem',
-                                                fontWeight: 800,
-                                                cursor: 'pointer',
-                                                boxShadow: '1px 1px 0px #000',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                              }}
-                                              title="Remove member from team"
-                                            >
-                                              <i className="fa-solid fa-xmark"></i> Remove
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))
-                                  ) : (
-                                    <div
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '8px 12px',
-                                        background: 'rgba(0,0,0,0.2)',
-                                        border: '1px solid var(--border-color)',
-                                        marginBottom: '6px',
-                                        fontSize: '0.8rem'
-                                      }}
-                                    >
-                                      <div>
-                                        <strong>{currentUser?.name || 'Leader'}</strong>
-                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '6px' }}>
-                                          ({currentUser?.registrationId})
-                                        </span>
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                          {currentUser?.email} {currentUser?.whatsapp ? `· 📞 ${currentUser.whatsapp}` : ''}
-                                        </div>
-                                      </div>
-                                      <span
-                                        style={{
-                                          background: '#FFE600',
-                                          color: '#000',
-                                          fontSize: '0.65rem',
-                                          fontWeight: 900,
-                                          padding: '2px 8px',
-                                          border: '1px solid #000'
-                                        }}
-                                      >
-                                        👑 LEADER
-                                      </span>
-                                    </div>
-                                  )}
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                                              {member.whatsapp || member.email}
+                                            </span>
 
-                                  {/* Leader Interactive Add & Invite Box */}
+                                            {isLeader && !isFormed && member.role !== 'Leader' && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveMember(teamId, member.registrationId, member.name)}
+                                                disabled={removingMember[`${teamId}_${member.registrationId}`]}
+                                                style={{
+                                                  background: '#ef4444',
+                                                  color: '#ffffff',
+                                                  border: '1px solid #000000',
+                                                  padding: '2px 6px',
+                                                  fontSize: '0.65rem',
+                                                  fontWeight: 800,
+                                                  cursor: 'pointer'
+                                                }}
+                                                title="Remove member"
+                                              >
+                                                ✕
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', fontSize: '0.82rem' }}>
+                                        <strong>{currentUser?.name || 'Leader'}</strong> ({currentUser?.registrationId})
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* ── Leader Quick Action Strip ── */}
                                   {isLeader && !isFormed && (
-                                    <div style={{ marginTop: '16px', background: 'rgba(255, 255, 255, 0.05)', border: '2px solid var(--border-color)', padding: '16px' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                                        <span style={{ background: '#FFE600', color: '#000000', fontWeight: 900, fontSize: '0.72rem', padding: '2px 8px', border: '1px solid #000' }}>
-                                          👑 LEADER ACTIONS
+                                    <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1.5px solid var(--border-color)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                      
+                                      {/* Quick Add Bar */}
+                                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        <input
+                                          type="text"
+                                          placeholder="Add friend by Registration ID (e.g. SCLA3P) or Gmail..."
+                                          value={addMemberInputs[teamId] || ''}
+                                          onChange={(e) => setAddMemberInputs({ ...addMemberInputs, [teamId]: e.target.value })}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddMember(teamId); }}
+                                          style={{
+                                            flex: '1 1 240px',
+                                            padding: '7px 10px',
+                                            background: 'var(--input-bg, #000)',
+                                            color: 'var(--text-main, #fff)',
+                                            border: '2px solid var(--border-color, #000)',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600
+                                          }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAddMember(teamId)}
+                                          disabled={addingMember[teamId]}
+                                          style={{
+                                            background: '#FFE600',
+                                            color: '#000000',
+                                            border: '2px solid #000000',
+                                            boxShadow: '2px 2px 0px #000000',
+                                            padding: '7px 14px',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 900,
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                        >
+                                          {addingMember[teamId] ? 'ADDING...' : '+ ADD'}
+                                        </button>
+                                      </div>
+
+                                      {/* Bottom Bar: Instructions hint on left, Form Team Button on right */}
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                          Friends haven't registered? Share code <strong>{teamId}</strong> — they join when signing up.
                                         </span>
-                                        <span style={{ fontWeight: 800, fontSize: '0.88rem', textTransform: 'uppercase' }}>
-                                          Add Friends &amp; Fill Roster
-                                        </span>
-                                      </div>
-
-                                      {/* Option 1: Add registered participant directly */}
-                                      <div style={{ marginBottom: '16px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px', color: 'var(--text-muted)' }}>
-                                          Option 1: Add Registered Friend (By Registration ID or Gmail)
-                                        </label>
-                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                          <input
-                                            type="text"
-                                            placeholder="e.g. SCLA3P or friend@gmail.com"
-                                            value={addMemberInputs[teamId] || ''}
-                                            onChange={(e) => setAddMemberInputs({ ...addMemberInputs, [teamId]: e.target.value })}
-                                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddMember(teamId); }}
-                                            style={{
-                                              flex: '1 1 240px',
-                                              padding: '8px 12px',
-                                              background: 'var(--input-bg, #000)',
-                                              color: 'var(--text-main, #fff)',
-                                              border: '2px solid var(--border-color, #000)',
-                                              fontSize: '0.82rem',
-                                              fontWeight: 700
-                                            }}
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => handleAddMember(teamId)}
-                                            disabled={addingMember[teamId]}
-                                            style={{
-                                              background: '#FFE600',
-                                              color: '#000000',
-                                              border: '2px solid #000000',
-                                              boxShadow: '2px 2px 0px #000000',
-                                              padding: '8px 16px',
-                                              fontSize: '0.8rem',
-                                              fontWeight: 900,
-                                              cursor: 'pointer',
-                                              textTransform: 'uppercase',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '6px'
-                                            }}
-                                          >
-                                            <i className="fa-solid fa-user-plus"></i>
-                                            {addingMember[teamId] ? 'ADDING...' : '+ ADD TO TEAM'}
-                                          </button>
-                                        </div>
-                                        <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '4px', display: 'block' }}>
-                                          * If your friend has already registered on Technika, enter their 6-character Registration ID or Gmail above.
-                                        </small>
-                                      </div>
-
-                                      {/* Option 2: Friends haven't registered yet? Share Team Code */}
-                                      <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '14px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '6px', color: 'var(--text-muted)' }}>
-                                          Option 2: Friends Haven't Registered Yet? Share Team Code
-                                        </label>
-                                        <div style={{ background: 'rgba(0, 0, 0, 0.25)', border: '1.5px solid var(--border-color)', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                                          <div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                                              Your Team Code:
-                                            </div>
-                                            <div style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: 900, color: '#FFE600', letterSpacing: '0.05em', marginTop: '2px' }}>
-                                              {teamId}
-                                            </div>
-                                          </div>
-
-                                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleCopyTeamCode(teamId)}
-                                              style={{
-                                                background: copiedTeamId === teamId ? '#10b981' : '#ffffff',
-                                                color: '#000000',
-                                                border: '2px solid #000000',
-                                                boxShadow: '2px 2px 0px #000000',
-                                                padding: '6px 12px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 900,
-                                                cursor: 'pointer',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '6px'
-                                              }}
-                                            >
-                                              <i className={copiedTeamId === teamId ? 'fa-solid fa-check' : 'fa-solid fa-copy'}></i>
-                                              {copiedTeamId === teamId ? 'COPIED!' : 'COPY CODE'}
-                                            </button>
-
-                                            <a
-                                              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Join my team *${userTeam?.teamName || 'Team'}* for *${event?.name || 'Technika 6.0'}*! \n\n👉 Join using Team Code: *${teamId}*\nRegister here: ${window.location.origin}/register?teamCode=${teamId}`)}`}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              style={{
-                                                background: '#25D366',
-                                                color: '#ffffff',
-                                                border: '2px solid #000000',
-                                                boxShadow: '2px 2px 0px #000000',
-                                                padding: '6px 12px',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 900,
-                                                textDecoration: 'none',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '6px'
-                                              }}
-                                            >
-                                              <i className="fa-brands fa-whatsapp"></i>
-                                              SHARE ON WHATSAPP
-                                            </a>
-                                          </div>
-                                        </div>
-                                        <p style={{ margin: '8px 0 0 0', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                                          💡 <strong>Unregistered friends:</strong> When your friends register at the website, they select <strong>{event?.name || 'this event'}</strong> &rarr; <em>"Join Friend's Team"</em> and enter <strong>{teamId}</strong>. Once submitted, they are automatically linked to your roster above!
-                                        </p>
-                                      </div>
-
-                                      {/* Form / Finalize Team Button */}
-                                      <div style={{ marginTop: '18px', borderTop: '2px solid var(--border-color)', paddingTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                                        <div>
-                                          <div style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--text-main)' }}>
-                                            FINAL TEAM SUBMISSION
-                                          </div>
-                                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                            {isIncomplete
-                                              ? `Requires at least ${minRequired - memberCount} more member${minRequired - memberCount > 1 ? 's' : ''} to unlock team formation.`
-                                              : `Criteria met (${memberCount}/${minRequired} players). You can now officially form and lock your team.`}
-                                          </div>
-                                        </div>
 
                                         {isIncomplete ? (
                                           <button
@@ -723,20 +617,14 @@ export const Dashboard: React.FC = () => {
                                             style={{
                                               background: '#374151',
                                               color: '#9ca3af',
-                                              border: '2px solid #4b5563',
-                                              padding: '10px 18px',
-                                              fontSize: '0.8rem',
+                                              border: '1.5px solid #4b5563',
+                                              padding: '7px 14px',
+                                              fontSize: '0.76rem',
                                               fontWeight: 800,
-                                              cursor: 'not-allowed',
-                                              textTransform: 'uppercase',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '8px'
+                                              cursor: 'not-allowed'
                                             }}
-                                            title={`Add at least ${minRequired - memberCount} more member(s) to form team.`}
                                           >
-                                            <i className="fa-solid fa-lock"></i>
-                                            FORM TEAM (NEEDS {minRequired - memberCount} MORE)
+                                            🔒 FORM TEAM ({memberCount}/{minRequired} PLAYERS)
                                           </button>
                                         ) : (
                                           <button
@@ -746,20 +634,15 @@ export const Dashboard: React.FC = () => {
                                             style={{
                                               background: '#10b981',
                                               color: '#000000',
-                                              border: '2.5px solid #000000',
-                                              boxShadow: '3px 3px 0px #000000',
-                                              padding: '10px 20px',
-                                              fontSize: '0.85rem',
+                                              border: '2px solid #000000',
+                                              boxShadow: '2px 2px 0px #000000',
+                                              padding: '7px 16px',
+                                              fontSize: '0.8rem',
                                               fontWeight: 900,
-                                              cursor: 'pointer',
-                                              textTransform: 'uppercase',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '8px'
+                                              cursor: 'pointer'
                                             }}
                                           >
-                                            <i className="fa-solid fa-flag-checkered"></i>
-                                            {formingTeam[teamId] ? 'FORMING TEAM...' : `⚡ FORM & FINALIZE TEAM (${memberCount} PLAYERS)`}
+                                            {formingTeam[teamId] ? 'FORMING...' : `⚡ FORM TEAM (${memberCount} PLAYERS)`}
                                           </button>
                                         )}
                                       </div>
