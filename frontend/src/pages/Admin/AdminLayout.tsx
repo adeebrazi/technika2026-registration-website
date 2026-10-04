@@ -25,6 +25,7 @@ export const AdminLayout: React.FC = () => {
   };
 
   const navItems = [
+    { name: 'Analytics', path: '/admin/analytics', icon: '📊', desc: 'Dashboard & insights' },
     { name: 'Participants', path: '/admin/users', icon: '👤', desc: 'View all registrations' },
     { name: 'Teams', path: '/admin/teams', icon: '👥', desc: 'Team formations & rosters' },
   ];

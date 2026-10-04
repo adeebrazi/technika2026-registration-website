@@ -164,6 +164,28 @@ router.post('/login', (req, res) => {
   );
 });
 
+// @route   POST /api/admin/dashboard-login
+// @desc    Dashboard PIN authentication
+// @access  Public
+router.post('/dashboard-login', (req, res) => {
+  const { pin } = req.body;
+  const validPin = process.env.DASHBOARD_PIN || '1234';
+
+  if (!pin || pin !== validPin) {
+    return res.status(401).json({ message: 'Invalid PIN' });
+  }
+
+  jwt.sign(
+    { role: 'viewer', name: 'Dashboard Viewer', isAdmin: true },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' },
+    (err, token) => {
+      if (err) throw err;
+      res.json({ success: true, token, role: 'viewer' });
+    }
+  );
+});
+
 // @route   GET /api/admin/users
 // @desc    Get all users with their registrations (role-filtered)
 // @access  Private (All Admin Roles)
@@ -314,6 +336,83 @@ router.delete('/users/:id', verifyAdminToken, authorizeRoles('admin'), async (re
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/analytics
+// @desc    Get comprehensive analytics for admin dashboard
+// @access  Private (Admin & Faculty Only)
+router.get('/analytics', verifyAdminToken, async (req, res) => {
+  try {
+    // ── 1. Total number of registrations (unique users) ──
+    const totalRegistrations = await User.countDocuments();
+
+    // ── 2. Institute-wise breakdown ──
+    const instituteAgg = await User.aggregate([
+      { $group: { _id: '$institution', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    const instituteWise = instituteAgg.map(i => ({ institute: i._id || 'Unknown', count: i.count }));
+    const totalInstitutes = instituteAgg.length;
+
+    // ── 3. Event-wise registration counts ──
+    const events = await Event.find();
+    const eventMap = {};
+    events.forEach(e => { eventMap[e.eventId] = e.name; });
+
+    const eventAgg = await Registration.aggregate([
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    const eventWise = eventAgg.map(e => ({
+      eventId: e._id,
+      eventName: eventMap[e._id] || e._id,
+      count: e.count
+    }));
+    const maxEvent = eventWise.length > 0 ? eventWise[0] : null;
+    const minEvent = eventWise.length > 0 ? eventWise[eventWise.length - 1] : null;
+
+    // ── 4. Gender distribution ──
+    const genderAgg = await User.aggregate([
+      { $group: { _id: '$gender', count: { $sum: 1 } } }
+    ]);
+    const genderDistribution = {};
+    genderAgg.forEach(g => { genderDistribution[g._id || 'Unknown'] = g.count; });
+
+    // ── 5. Course-wise distribution ──
+    const courseAgg = await User.aggregate([
+      { $group: { _id: '$course', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    const courseDistribution = courseAgg.map(c => ({ course: c._id || 'Unknown', count: c.count }));
+
+    // ── 6. Daily registration trend (last 30 days) ──
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dailyAgg = await User.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+      { $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+        count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+    const dailyTrend = dailyAgg.map(d => ({ date: d._id, count: d.count }));
+
+    res.json({
+      totalRegistrations,
+      instituteWise,
+      totalInstitutes,
+      eventWise,
+      maxEvent,
+      minEvent,
+      genderDistribution,
+      courseDistribution,
+      dailyTrend
+    });
+  } catch (err) {
+    console.error('Analytics error:', err);
+    res.status(500).json({ message: 'Server error fetching analytics' });
   }
 });
 

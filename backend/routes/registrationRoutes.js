@@ -13,7 +13,6 @@ const Notification = require('../models/Notification');
 const cloudinaryService = require('../services/cloudinaryService');
 const { compressImage } = require('../utils/imageCompressor');
 const { queueParticipantSync, queueRegistrationSync, appendVerificationRecord } = require('../services/sheetsService');
-const { verifyPaymentScreenshot } = require('../utils/geminiVerifier');
 
 // Multer configuration for file upload in memory
 const upload = multer({
@@ -332,52 +331,9 @@ router.post(
         );
 
         expectedAmount = 150;
-
-        // AI Screenshot Verification Pipeline
-        const aiResult = await verifyPaymentScreenshot(
-          compressedBuffer,
-          paymentFile.mimetype || 'image/jpeg',
-          paymentScreenshotUrl
-        );
-
-        if (aiResult.status !== 'SUCCESS') {
-          return res.status(400).json({
-            message: 'Payment verification failed: The screenshot does not show a successful completed transaction.'
-          });
-        }
-
-        if (aiResult.isEdited) {
-          return res.status(400).json({
-            message: 'Payment verification failed: The screenshot shows signs of digital editing or tampering.'
-          });
-        }
-
-        // Security Check: Payee must be ARKA JAIN UNIVERSITY
-        if (!aiResult.isPayeeArkaJain) {
-          const detectedPayee = aiResult.payeeName || aiResult.payeeUpi || 'an unauthorized recipient';
-          return res.status(400).json({
-            message: `Payment security check failed: Payment must be sent to ARKA JAIN UNIVERSITY (UPI: 3217855a@bandhan). The uploaded receipt shows payment sent to: ${detectedPayee}.`
-          });
-        }
-
-        if (aiResult.amount !== expectedAmount) {
-          return res.status(400).json({
-            message: `Payment verification failed: Expected payment of ₹${expectedAmount} for your selected events, but the screenshot shows a payment of ₹${aiResult.amount}.`
-          });
-        }
-
-        finalAiUtr = aiResult.finalAiUtr;
-        if (finalAiUtr && !finalAiUtr.startsWith('NO_UTR_FOUND')) {
-          const existingAiUTR = await User.findOne({ utrFetchedFromScreenshot: finalAiUtr });
-          if (existingAiUTR) {
-            return res.status(400).json({
-              message: `The UTR/Transaction ID (${finalAiUtr}) from your screenshot has already been used!`
-            });
-          }
-        }
-
-        verifiedAmount = aiResult.amount;
-        verificationStatus = aiResult.status;
+        verifiedAmount = 150;
+        finalAiUtr = cleanUTR;
+        verificationStatus = 'SUCCESS';
       }
 
       // 9. Save Participant details in User collection

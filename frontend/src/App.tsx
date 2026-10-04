@@ -9,6 +9,7 @@ import { AdminLogin } from './pages/Admin/AdminLogin';
 import { AdminLayout } from './pages/Admin/AdminLayout';
 import { UsersView } from './pages/Admin/UsersView';
 import { TeamsView } from './pages/Admin/TeamsView';
+import { AnalyticsView } from './pages/Admin/AnalyticsView';
 
 const App: React.FC = () => {
   return (
@@ -30,7 +31,8 @@ const App: React.FC = () => {
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<Navigate to="/admin/users" replace />} />
+                <Route index element={<Navigate to="/admin/analytics" replace />} />
+                <Route path="analytics" element={<AnalyticsView />} />
                 <Route path="users" element={<UsersView />} />
                 <Route path="teams" element={<TeamsView />} />
               </Route>
