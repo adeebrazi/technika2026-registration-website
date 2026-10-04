@@ -340,9 +340,9 @@ router.delete('/users/:id', verifyAdminToken, authorizeRoles('admin'), async (re
 });
 
 // @route   GET /api/admin/analytics
-// @desc    Get comprehensive analytics for admin dashboard
-// @access  Private (Admin & Faculty Only)
-router.get('/analytics', verifyAdminToken, async (req, res) => {
+// @desc    Get comprehensive analytics for dashboard
+// @access  Public (No login required)
+router.get('/analytics', async (req, res) => {
   try {
     // ── 1. Total number of registrations (unique users) ──
     const totalRegistrations = await User.countDocuments();
