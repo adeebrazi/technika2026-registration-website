@@ -406,6 +406,17 @@ export const Register: React.FC = () => {
     }
   }, [navigate]);
 
+  // Turn off context menu on registration page
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement> | { target: { name: string; value: string } }
   ) => {
@@ -711,7 +722,11 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="container" style={{ marginTop: '4.8vh' }}>
+    <div 
+      className="container" 
+      style={{ marginTop: '4.8vh' }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {/* Top-Right Notification Toast (Auto-vanishes in 2 seconds) */}
       {topNotification && (
         <div
