@@ -6,8 +6,81 @@ const User = require('../models/User');
 const Team = require('../models/Team');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
+const RolePermission = require('../models/RolePermission');
 const cloudinaryService = require('../services/cloudinaryService');
 const vercelService = require('../services/vercelService');
+
+const DEFAULT_PERMISSIONS = {
+  faculty: {
+    targetKey: 'faculty',
+    title: 'Faculty Coordinator',
+    canViewParticipants: true,
+    canViewContactInfo: true,
+    canViewFinancials: true,
+    canViewDocuments: true,
+    canViewTeams: true,
+    canViewAnalytics: true,
+    canViewDeveloperHub: false,
+    canVerifyPayments: true,
+    canDeleteParticipants: false,
+    canEditTeams: true,
+    canExportCSV: true,
+    canCheckInParticipants: true,
+    assignedEvents: []
+  },
+  coordinator: {
+    targetKey: 'coordinator',
+    title: 'Student Coordinator',
+    canViewParticipants: true,
+    canViewContactInfo: true,
+    canViewFinancials: false,
+    canViewDocuments: false,
+    canViewTeams: true,
+    canViewAnalytics: false,
+    canViewDeveloperHub: false,
+    canVerifyPayments: false,
+    canDeleteParticipants: false,
+    canEditTeams: false,
+    canExportCSV: false,
+    canCheckInParticipants: true,
+    assignedEvents: []
+  }
+};
+
+const getActivePermissions = async (role, email) => {
+  if (role === 'admin') {
+    return {
+      targetKey: 'admin',
+      title: 'Administrator',
+      canViewParticipants: true,
+      canViewContactInfo: true,
+      canViewFinancials: true,
+      canViewDocuments: true,
+      canViewTeams: true,
+      canViewAnalytics: true,
+      canViewDeveloperHub: true,
+      canVerifyPayments: true,
+      canDeleteParticipants: true,
+      canEditTeams: true,
+      canExportCSV: true,
+      canCheckInParticipants: true,
+      assignedEvents: []
+    };
+  }
+
+  try {
+    if (email) {
+      const emailPerm = await RolePermission.findOne({ targetKey: email.toLowerCase() });
+      if (emailPerm) return emailPerm.toObject();
+    }
+    const rolePerm = await RolePermission.findOne({ targetKey: role });
+    if (rolePerm) return rolePerm.toObject();
+  } catch (err) {
+    console.error('Error reading role permissions:', err);
+  }
+
+  return DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.coordinator;
+};
 
 // Parse env users string: supports both "Name:email:password" and "email:password"
 const parseEnvUsers = (envStr) => {
@@ -189,18 +262,17 @@ router.post('/dashboard-login', (req, res) => {
 });
 
 // @route   GET /api/admin/users
-// @desc    Get all users with their registrations (role-filtered)
+// @desc    Get all users with their registrations (dynamic permission-filtered)
 // @access  Private (All Admin Roles)
-// NOTE: Admin & Faculty see FULL details. Student Coordinators see limited data only.
 router.get('/users', verifyAdminToken, async (req, res) => {
   try {
     const requestingRole = req.admin?.role; // 'admin' | 'faculty' | 'coordinator'
-    const isFullAccess = (requestingRole === 'admin' || requestingRole === 'faculty');
+    const requestingEmail = req.admin?.email;
+    const perms = await getActivePermissions(requestingRole, requestingEmail);
 
     const users = await User.find().select('-passwordHash').sort({ createdAt: -1 });
     
     // Fetch all events to construct an in-memory mapping
-    const Event = require('../models/Event');
     const events = await Event.find();
     const eventMap = {};
     events.forEach(e => {
@@ -223,30 +295,142 @@ router.get('/users', verifyAdminToken, async (req, res) => {
         };
       });
 
-      // FULL ACCESS: Admin & Faculty — return everything
-      if (isFullAccess) {
+      // Filter by assigned events if restricted
+      if (perms.assignedEvents && perms.assignedEvents.length > 0) {
+        const hasAssignedEvent = registeredEvents.some(re => 
+          re.event && perms.assignedEvents.includes(re.event.name)
+        );
+        if (!hasAssignedEvent) return null;
+      }
+
+      // Root Admin has full unfiltered access
+      if (requestingRole === 'admin') {
         return {
           ...user.toObject(),
           registeredEvents
         };
       }
 
-      // LIMITED ACCESS: Student Coordinator — only name, institution, events
-      return {
-        _id: user._id,
-        name: user.name,
-        institution: user.institution,
+      // Dynamic permission filtering based on what Admin configured for Faculty/Coordinator
+      const uObj = user.toObject();
+      const filteredUser = {
+        _id: uObj._id,
+        name: uObj.name,
+        registrationId: uObj.registrationId,
+        institution: uObj.institution,
+        course: uObj.course,
+        semester: uObj.semester,
+        gender: uObj.gender,
+        createdAt: uObj.createdAt,
         registeredEvents: registeredEvents.map(re => ({
           _id: re._id,
-          event: re.event ? { name: re.event.name } : null
+          eventId: re.eventId,
+          event: re.event
         }))
       };
+
+      // CAN VIEW CONTACT INFO
+      if (perms.canViewContactInfo) {
+        filteredUser.email = uObj.email;
+        filteredUser.whatsapp = uObj.whatsapp;
+      }
+
+      // CAN VIEW FINANCIALS
+      if (perms.canViewFinancials) {
+        filteredUser.paymentUTR = uObj.paymentUTR;
+        filteredUser.utrEnteredManually = uObj.utrEnteredManually;
+        filteredUser.paymentStatus = uObj.paymentStatus;
+        filteredUser.isAjuExempt = uObj.isAjuExempt;
+      }
+
+      // CAN VIEW DOCUMENTS
+      if (perms.canViewDocuments) {
+        filteredUser.paymentScreenshotUrl = uObj.paymentScreenshotUrl;
+        filteredUser.noDuesSlipUrl = uObj.noDuesSlipUrl;
+        filteredUser.collegeIdCardUrl = uObj.collegeIdCardUrl;
+      }
+
+      return filteredUser;
     }));
 
-    // Include the access level in response so frontend knows what to render
-    res.json({ users: usersWithEvents, accessLevel: isFullAccess ? 'full' : 'limited' });
+    const finalUsers = usersWithEvents.filter(Boolean);
+    const accessLevel = perms.canViewFinancials && perms.canViewDocuments ? 'full' : 'limited';
+
+    res.json({ users: finalUsers, accessLevel, permissions: perms });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/permissions
+// @desc    Get access permissions matrix for roles and users
+// @access  Private (All Authenticated Staff)
+router.get('/permissions', verifyAdminToken, async (req, res) => {
+  try {
+    const dbPerms = await RolePermission.find();
+    const permMap = {};
+    dbPerms.forEach(p => {
+      permMap[p.targetKey] = p.toObject();
+    });
+
+    const staffFaculty = Object.entries(ADMIN_PROFILES)
+      .filter(([_, p]) => p.designation === 'Faculty Coordinator')
+      .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
+
+    const staffCoordinators = Object.entries(ADMIN_PROFILES)
+      .filter(([_, p]) => p.designation === 'Student Coordinator')
+      .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
+
+    res.json({
+      success: true,
+      faculty: permMap['faculty'] || DEFAULT_PERMISSIONS.faculty,
+      coordinator: permMap['coordinator'] || DEFAULT_PERMISSIONS.coordinator,
+      customOverrides: dbPerms.filter(p => p.targetKey !== 'faculty' && p.targetKey !== 'coordinator'),
+      staffList: {
+        faculty: staffFaculty,
+        coordinators: staffCoordinators
+      },
+      currentRole: req.admin?.role,
+      userPermissions: await getActivePermissions(req.admin?.role, req.admin?.email)
+    });
+  } catch (err) {
+    console.error('Error fetching permissions:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/permissions
+// @desc    Assign access to faculty and student coordinators (what they can see and what they can edit)
+// @access  Private (Administrator Only)
+router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { targetKey, title, ...permissionsData } = req.body;
+    if (!targetKey) {
+      return res.status(400).json({ message: 'targetKey is required (e.g. "faculty", "coordinator", or user email)' });
+    }
+
+    const defaultTitle = targetKey === 'faculty' ? 'Faculty Coordinator' : (targetKey === 'coordinator' ? 'Student Coordinator' : (ADMIN_PROFILES[targetKey]?.name || targetKey));
+
+    const updated = await RolePermission.findOneAndUpdate(
+      { targetKey: targetKey.toLowerCase() },
+      {
+        targetKey: targetKey.toLowerCase(),
+        title: title || defaultTitle,
+        ...permissionsData,
+        updatedBy: req.admin?.name || 'Administrator',
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Access permissions updated successfully for ${updated.title || targetKey}`,
+      permission: updated
+    });
+  } catch (err) {
+    console.error('Error saving permissions:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
