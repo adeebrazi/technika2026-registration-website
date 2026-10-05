@@ -9,7 +9,7 @@ const verifyPaymentScreenshot = async (imageInput, mimeTypeInput = 'image/jpeg',
       internalId: null,
       appName: 'MOCKPAY',
       finalAiUtr: 'MOCK' + Math.floor(1000000000 + Math.random() * 9000000000),
-      amount: 150, // default match
+      amount: 100, // default match
       payeeName: 'ARKA JAIN UNIVERSITY',
       payeeUpi: '3217855a@bandhan',
       isPayeeArkaJain: true,
@@ -71,7 +71,7 @@ Security & Verification Instructions:
 2. 12-digit UTR / UPI Reference Number:
    - Extract the 12-digit UPI reference number / UTR / transaction sequence number if visible on the screen.
 3. Amount Paid:
-   - Extract the exact numeric amount in INR paid (e.g. 150, 500, etc.).
+   - Extract the exact numeric amount in INR paid (e.g. 100, 600, etc.).
 4. Payment Status:
    - Set to SUCCESS only if the transaction was completed successfully (e.g., "Paid successfully", "Payment Successful", green checkmark). Otherwise mark FAILED, PENDING, or UNKNOWN.
 5. Image Tampering:

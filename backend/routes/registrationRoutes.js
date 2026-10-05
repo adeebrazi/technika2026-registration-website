@@ -295,7 +295,7 @@ router.post(
         verifiedAmount = 600;
         verificationStatus = 'SUCCESS';
       } else {
-        // --- STANDARD ONLINE UPI PAYMENT (₹150) FLOW ---
+        // --- STANDARD ONLINE UPI PAYMENT (₹100) FLOW ---
         const paymentFile = req.files && req.files['paymentScreenshot'] ? req.files['paymentScreenshot'][0] : null;
         if (!paymentFile) {
           return res.status(400).json({ message: 'Payment screenshot is required!' });
@@ -330,8 +330,8 @@ router.post(
           'payment_screenshots'
         );
 
-        expectedAmount = 150;
-        verifiedAmount = 150;
+        expectedAmount = 100;
+        verifiedAmount = 100;
         finalAiUtr = cleanUTR;
         verificationStatus = 'SUCCESS';
       }

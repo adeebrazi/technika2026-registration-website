@@ -117,9 +117,9 @@ export const Register: React.FC = () => {
   const isAjuExempt = isAju && isAjuExemptEngineeringCourse(effectiveCourse);
   const availableSemesters = getSemestersForCourse(formData.course);
 
-  // Calculate dynamic registration fee total (Rs. 150 flat fee)
+  // Calculate dynamic registration fee total (Rs. 100 flat fee)
   const calculateTotalAmount = () => {
-    return selectedEvents.length > 0 ? 150 : 0;
+    return selectedEvents.length > 0 ? 100 : 0;
   };
 
   const totalAmount = calculateTotalAmount();
@@ -818,7 +818,7 @@ export const Register: React.FC = () => {
         <p className="tagline">Create an account, verify payment, and gain access to event registrations and team management.</p>
       </header>
 
-      {/* 45 Events ₹150 Announcement in Neo-Brutalism */}
+      {/* 45 Events ₹100 Announcement in Neo-Brutalism */}
       <FestAnnouncement />
 
       {!success ? (

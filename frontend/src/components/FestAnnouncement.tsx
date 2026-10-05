@@ -28,7 +28,7 @@ export const FestAnnouncement: React.FC = () => {
       }}
     >
       <span className="shrink-0">⚡</span>
-      <span className="text-center">REGISTRATION FEE FOR ALL EVENTS : ₹150 ONLY</span>
+      <span className="text-center">REGISTRATION FEE FOR ALL EVENTS : ₹100 ONLY</span>
       <span className="shrink-0">⚡</span>
     </div>
   );
