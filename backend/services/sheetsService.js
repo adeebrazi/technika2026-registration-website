@@ -97,6 +97,10 @@ const queueRegistrationSync = async (registration, event) => {
   }
 };
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const sheetHeaderLastChecked = {};
+const HEADER_CACHE_TTL = 1000 * 60 * 30; // Cache header verification for 30 minutes
+
 const creatingSheets = {};
 
 /**
@@ -133,6 +137,11 @@ const getDynamicHeaders = async () => {
  * Helper to ensure a sheet tab exists in Google Sheets and headers are up to date
  */
 const ensureSheetExists = async (sheetName) => {
+  // If verified within the last 30 minutes, skip redundant get/update requests
+  if (sheetHeaderLastChecked[sheetName] && (Date.now() - sheetHeaderLastChecked[sheetName] < HEADER_CACHE_TTL)) {
+    return;
+  }
+
   if (creatingSheets[sheetName]) {
     await creatingSheets[sheetName];
     return;
@@ -208,6 +217,8 @@ const ensureSheetExists = async (sheetName) => {
           resource: { requests }
         });
       }
+
+      sheetHeaderLastChecked[sheetName] = Date.now();
     } catch (err) {
       console.error(`Error checking/creating sheet "${sheetName}":`, err.message);
     }
@@ -350,11 +361,18 @@ const processSingleTask = async (task) => {
     await task.save();
     console.log(`[SYNC] Synced ${task.type} for ID: ${task.registrationId} to Google Sheets`);
   } catch (error) {
-    task.status = 'FAILED';
-    task.retryCount += 1;
-    task.errorMessage = error.message;
-    await task.save();
-    console.error(`[SYNC FAILED] Error syncing ${task.type} for ID: ${task.registrationId}:`, error.message);
+    if (error.message && error.message.includes('Quota exceeded')) {
+      task.status = 'PENDING';
+      task.errorMessage = error.message;
+      await task.save();
+      console.warn(`[SYNC RATE LIMIT] Google Sheets quota limit hit for ID: ${task.registrationId}. Kept in PENDING queue.`);
+    } else {
+      task.status = 'FAILED';
+      task.retryCount += 1;
+      task.errorMessage = error.message;
+      await task.save();
+      console.error(`[SYNC FAILED] Error syncing ${task.type} for ID: ${task.registrationId}:`, error.message);
+    }
     throw error;
   }
 };
@@ -485,27 +503,17 @@ const startQueueWorker = () => {
         const existingTask = await SheetsQueue.findOne({ registrationId: u.registrationId, type: 'PARTICIPANT' });
         if (!existingTask) {
           await queueParticipantSync(u);
-        } else {
-          const task = new SheetsQueue({
-            registrationId: u.registrationId,
-            type: 'PARTICIPANT',
-            data: {
-              registrationId: u.registrationId,
-              name: u.name,
-              age: u.age,
-              gender: u.gender,
-              email: u.email,
-              whatsapp: u.whatsapp,
-              institution: u.institution,
-              course: u.course,
-              semester: u.semester,
-              utr: u.paymentUTR,
-              screenshotUrl: u.paymentScreenshotUrl,
-              registeredAt: u.createdAt
+          await sleep(1000);
+        } else if (existingTask.status !== 'SUCCESS') {
+          try {
+            await processSingleTask(existingTask);
+            await sleep(1000);
+          } catch (err) {
+            if (err.message && err.message.includes('Quota exceeded')) {
+              console.warn('[SHEETS WORKER] Quota reached during user reconciliation. Pausing for 60s...');
+              await sleep(60000);
             }
-          });
-          await task.save();
-          processSingleTask(task).catch(err => {});
+          }
         }
       }
 
@@ -520,13 +528,20 @@ const startQueueWorker = () => {
           });
           if (!existingTask) {
             await queueRegistrationSync(r, ev);
-          } else {
+            await sleep(1000);
+          } else if (existingTask.status !== 'SUCCESS') {
             existingTask.status = 'PENDING';
             existingTask.retryCount = 0;
             await existingTask.save();
-            await processSingleTask(existingTask).catch(err => {
-              console.error(`[SHEETS WORKER] Registration sync failed for ID: ${existingTask.registrationId}:`, err.message);
-            });
+            try {
+              await processSingleTask(existingTask);
+              await sleep(1000);
+            } catch (err) {
+              if (err.message && err.message.includes('Quota exceeded')) {
+                console.warn('[SHEETS WORKER] Quota reached during registration reconciliation. Pausing for 60s...');
+                await sleep(60000);
+              }
+            }
           }
         }
       }
@@ -543,15 +558,22 @@ const startQueueWorker = () => {
     try {
       const pendingTasks = await SheetsQueue.find({
         status: { $in: ['PENDING', 'FAILED'] },
-        retryCount: { $lt: 5 },
-      }).limit(15);
+        retryCount: { $lt: 8 },
+      }).limit(10); // Process in polite batches of 10
 
       if (pendingTasks.length > 0) {
         console.log(`Google Sheets worker found ${pendingTasks.length} pending sync tasks.`);
         for (const task of pendingTasks) {
           try {
             await processSingleTask(task);
-          } catch (err) {}
+            await sleep(1200); // Respect Google Sheets 60 req/min limit
+          } catch (err) {
+            if (err.message && err.message.includes('Quota exceeded')) {
+              console.warn('[SHEETS WORKER] Quota limit reached in queue poll. Pausing worker for 60 seconds...');
+              await sleep(60000);
+              break;
+            }
+          }
         }
       }
 

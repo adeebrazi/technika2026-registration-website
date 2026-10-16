@@ -56,6 +56,11 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   onValidateTeamCode,
   formDataName
 }) => {
+  // Teammates Verification State: { [uniqueId]: { loading: boolean, valid?: boolean, name?: string, institution?: string, message?: string } }
+  const [teammateStatus, setTeammateStatus] = React.useState<
+    Record<string, { loading: boolean; valid?: boolean; name?: string; institution?: string; message?: string }>
+  >({});
+
   if (!event) return null;
 
   const minMembers = event.minMembers ?? 1;
@@ -64,11 +69,6 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   const isTeamOnly = minMembers > 1;
   const isHybrid = minMembers === 1 && maxMembers > 1;
   const currentMode = config?.mode || (isTeamOnly ? 'create_team' : 'solo');
-
-  // Teammates Verification State: { [uniqueId]: { loading: boolean, valid?: boolean, name?: string, institution?: string, message?: string } }
-  const [teammateStatus, setTeammateStatus] = React.useState<
-    Record<string, { loading: boolean; valid?: boolean; name?: string; institution?: string; message?: string }>
-  >({});
 
   const maxTeammates = Math.max(1, (maxMembers ?? 2) - 1);
   const currentTeammates = config?.teamMembers && config.teamMembers.length > 0 ? config.teamMembers : [''];

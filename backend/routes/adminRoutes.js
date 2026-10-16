@@ -705,14 +705,59 @@ router.get('/developer-status', async (req, res) => {
       }
     }
 
-    const [userCount, teamCount, regCount, eventCount, cloudinaryUsage, vercelMetrics] = await Promise.all([
+    const SheetsQueue = require('../models/SheetsQueue');
+    const [userCount, teamCount, regCount, eventCount, cloudinaryUsage, vercelMetrics, queueStats] = await Promise.all([
       User.countDocuments().catch(() => 0),
       Team.countDocuments().catch(() => 0),
       Registration.countDocuments().catch(() => 0),
       Event.countDocuments().catch(() => 0),
       cloudinaryService.getUsage().catch(err => ({ configured: false, error: err.message })),
-      vercelService.getVercelMetrics().catch(err => ({ error: err.message }))
+      vercelService.getVercelMetrics().catch(err => ({ error: err.message })),
+      SheetsQueue.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]).catch(() => [])
     ]);
+
+    const queueMap = { PENDING: 0, FAILED: 0, SUCCESS: 0 };
+    (queueStats || []).forEach(q => { if (q && q._id) queueMap[q._id] = q.count; });
+    const totalQueueTasks = queueMap.PENDING + queueMap.FAILED + queueMap.SUCCESS;
+
+    let sheetsStatus = 'HEALTHY';
+    let sheetsLatency = '1.2s Sync Pacing';
+    const bottlenecks = [];
+    let healthScore = 100;
+
+    if (!isMongoConnected) {
+      healthScore -= 50;
+      bottlenecks.push('MongoDB Disconnected');
+    }
+    if (dbPing > 200) {
+      healthScore -= 10;
+      bottlenecks.push('High DB Latency');
+    }
+
+    if (queueMap.FAILED > 0) {
+      sheetsStatus = 'DEGRADED';
+      sheetsLatency = `${queueMap.FAILED} failed (retrying)`;
+      healthScore -= Math.min(30, queueMap.FAILED * 3);
+      bottlenecks.push(`${queueMap.FAILED} Google Sheets sync failures`);
+    } else if (queueMap.PENDING > 20) {
+      sheetsStatus = 'ACTIVE';
+      sheetsLatency = `${queueMap.PENDING} queued (throttled sync)`;
+      healthScore -= 10;
+      bottlenecks.push(`${queueMap.PENDING} sync tasks backlogged in queue`);
+    } else if (queueMap.PENDING > 0) {
+      sheetsStatus = 'ACTIVE';
+      sheetsLatency = `${queueMap.PENDING} queued | ${queueMap.SUCCESS} synced`;
+    } else {
+      sheetsStatus = 'HEALTHY';
+      sheetsLatency = `${queueMap.SUCCESS} rows synced`;
+    }
+
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    const healthStatusText = healthScore >= 95 ? '100% OPERATIONAL' : (healthScore >= 70 ? `${healthScore}% DEGRADED` : `${healthScore}% CRITICAL`);
+    const healthSummaryText = bottlenecks.length === 0 ? 'Zero pipeline bottlenecks detected' : `${bottlenecks.length} bottleneck(s): ${bottlenecks.join(' | ')}`;
 
     const memory = process.memoryUsage();
 
@@ -721,6 +766,18 @@ router.get('/developer-status', async (req, res) => {
       uptimeSeconds: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV || 'production',
       nodeVersion: process.version,
+      systemHealth: {
+        score: healthScore,
+        label: healthStatusText,
+        summary: healthSummaryText,
+        bottlenecks
+      },
+      sheetsQueue: {
+        total: totalQueueTasks,
+        pending: queueMap.PENDING,
+        failed: queueMap.FAILED,
+        success: queueMap.SUCCESS
+      },
       cloudinary: cloudinaryUsage,
       vercel: vercelMetrics,
       memory: {
@@ -753,11 +810,11 @@ router.get('/developer-status', async (req, res) => {
         {
           id: 'sheets-sync',
           name: 'Google Sheets Data Lake Sync',
-          description: 'Asynchronous event queue worker streaming rows to Google Spreadsheets',
-          status: process.env.GOOGLE_SHEETS_SPREADSHEET_ID ? 'HEALTHY' : 'STANDBY',
+          description: `Asynchronous event queue worker streaming rows to Google Spreadsheets (${queueMap.SUCCESS} Synced, ${queueMap.PENDING} Pending, ${queueMap.FAILED} Failed)`,
+          status: sheetsStatus,
           flow: ['Registration Event Hook', 'Async Memory Queue Worker', 'Google Sheets v4 API', 'Cloud Spreadsheet'],
-          latency: '2.1s batch interval',
-          configured: Boolean(process.env.GOOGLE_SHEETS_SPREADSHEET_ID)
+          latency: sheetsLatency,
+          configured: Boolean(process.env.GOOGLE_SPREADSHEET_ID || process.env.GOOGLE_SHEETS_SPREADSHEET_ID)
         },
         {
           id: 'media-cloudinary',
