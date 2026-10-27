@@ -290,7 +290,6 @@ export const INSTITUTIONS = [
   "ST.MARY'S ENGLISH HIGH SCHOOL",
   "Subhash Institute of Technology, Deoghar",
   "TARAPORE SCHOOL",
-  "TATA STEEL TECHNICAL INSTITUTE",
   "Tata Steel Technical Institute, Burmamines",
   "Techno India University",
   "The Graduate School College for Women, Sakchi, Jamshedpur",
