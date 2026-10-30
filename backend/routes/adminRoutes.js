@@ -411,6 +411,24 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/my-permissions
+// @desc    Get live active permissions for currently authenticated user
+// @access  Private (All Authenticated Staff)
+router.get('/my-permissions', verifyAdminToken, async (req, res) => {
+  try {
+    const perms = await getActivePermissions(req.admin?.role, req.admin?.email);
+    res.json({
+      success: true,
+      permissions: perms,
+      role: req.admin?.role,
+      email: req.admin?.email,
+      name: req.admin?.name
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   POST /api/admin/permissions
 // @desc    Assign access to faculty and student coordinators (what they can see and what they can edit)
 // @access  Private (Administrator Only)
