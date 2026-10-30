@@ -259,10 +259,10 @@ h1, h2, h3, h4, .logo {
 .theme-main .aju-exemption-callout p,
 .theme-light .aju-exemption-callout p,
 .dark .aju-exemption-callout p,
-.aju-exemption-callout span,
-.theme-main .aju-exemption-callout span,
-.theme-light .aju-exemption-callout span,
-.dark .aju-exemption-callout span,
+.aju-exemption-callout span:not(.aju-badge-active),
+.theme-main .aju-exemption-callout span:not(.aju-badge-active),
+.theme-light .aju-exemption-callout span:not(.aju-badge-active),
+.dark .aju-exemption-callout span:not(.aju-badge-active),
 .aju-exemption-callout div,
 .theme-main .aju-exemption-callout div,
 .theme-light .aju-exemption-callout div,
@@ -270,6 +270,47 @@ h1, h2, h3, h4, .logo {
 .aju-exemption-callout strong,
 .theme-main .aju-exemption-callout strong {
   color: #000000 !important;
+}
+
+.aju-badge-active,
+.aju-exemption-callout .aju-badge-active,
+.theme-main .aju-exemption-callout .aju-badge-active,
+.theme-light .aju-exemption-callout .aju-badge-active,
+.dark .aju-exemption-callout .aju-badge-active {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background-color: #000000 !important;
+  color: #FFE600 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 2px 2px 0px 0px #000000 !important;
+  padding: 5px 12px !important;
+  font-size: 0.8rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-radius: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.aju-badge-fee,
+.aju-exemption-callout .aju-badge-fee,
+.theme-main .aju-exemption-callout .aju-badge-fee,
+.theme-light .aju-exemption-callout .aju-badge-fee,
+.dark .aju-exemption-callout .aju-badge-fee {
+  display: inline-flex !important;
+  align-items: center !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #000000 !important;
+  box-shadow: 2px 2px 0px 0px #000000 !important;
+  padding: 5px 12px !important;
+  font-size: 0.78rem !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  border-radius: 0 !important;
+  line-height: 1.2 !important;
 }
 
 /* LIGHT Theme (.theme-light) - Clean Light Mode Cards */

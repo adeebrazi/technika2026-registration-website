@@ -18,23 +18,33 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Please enter all fields.' });
     }
 
-    let query = {};
-    if (registrationIdOrEmail.includes('@')) {
-      query = { email: registrationIdOrEmail.toLowerCase().trim() };
-    } else {
-      query = { registrationId: registrationIdOrEmail.toUpperCase().trim() };
-    }
-
-    const user = await User.findOne(query);
     const genericErrorMessage = 'Invalid credentials. Please check your Registration ID/Email and Password.';
+    let user = null;
 
-    if (!user) {
-      return res.status(400).json({ message: genericErrorMessage });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
-      return res.status(400).json({ message: genericErrorMessage });
+    if (registrationIdOrEmail.includes('@')) {
+      // Multiple students may share an email: find candidate matching the entered password
+      const candidates = await User.find({ email: registrationIdOrEmail.toLowerCase().trim() });
+      if (!candidates || candidates.length === 0) {
+        return res.status(400).json({ message: genericErrorMessage });
+      }
+      for (const cand of candidates) {
+        if (cand.passwordHash && (await bcrypt.compare(password, cand.passwordHash))) {
+          user = cand;
+          break;
+        }
+      }
+      if (!user) {
+        return res.status(400).json({ message: genericErrorMessage });
+      }
+    } else {
+      user = await User.findOne({ registrationId: registrationIdOrEmail.toUpperCase().trim() });
+      if (!user) {
+        return res.status(400).json({ message: genericErrorMessage });
+      }
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) {
+        return res.status(400).json({ message: genericErrorMessage });
+      }
     }
 
     const payload = {
@@ -99,7 +109,7 @@ router.get('/me', auth, async (req, res) => {
 // @desc    Update participant profile details (excluding email, utr, password, registrationId)
 // @access  Private
 router.put('/profile', auth, async (req, res) => {
-  const { name, age, gender, whatsapp, institution, course, semester } = req.body;
+  const { name, gender, whatsapp, institution, course, semester } = req.body;
 
   try {
     const user = await User.findOne({ registrationId: req.user.registrationId });
@@ -108,7 +118,6 @@ router.put('/profile', auth, async (req, res) => {
     }
 
     if (name) user.name = name;
-    if (age) user.age = parseInt(age);
     if (gender) {
       if (!['Male', 'Female'].includes(gender)) {
         return res.status(400).json({ message: 'Gender must be Male or Female.' });

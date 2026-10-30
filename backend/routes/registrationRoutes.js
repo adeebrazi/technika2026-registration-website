@@ -129,10 +129,16 @@ router.post(
         return res.status(400).json({ message: 'Password must be at least 6 characters long!' });
       }
 
-      // Check unique email
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ message: 'This email is already registered!' });
+      // Multiple students are allowed to register with the same email ID.
+      // Only block if the exact same participant (same name & email) is already registered.
+      const existingSameStudent = await User.findOne({
+        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+        email: email.toLowerCase().trim()
+      });
+      if (existingSameStudent) {
+        return res.status(400).json({
+          message: `Participant "${name}" is already registered with ID: ${existingSameStudent.registrationId}. If you are registering another student with this email, please enter their own name.`
+        });
       }
 
       // 2. Parse selected events
@@ -145,21 +151,13 @@ router.post(
         }
       }
 
-      // Normalize to array of objects: { slug, mode: 'solo'|'create_team'|'join_team', teamName, teamId }
+      // Normalize to array of event slugs
       const normalizedEvents = [];
       for (const item of parsedEventsInput) {
         if (typeof item === 'string') {
-          normalizedEvents.push({ slug: item, mode: 'auto', teamName: '', teamId: '' });
+          normalizedEvents.push({ slug: item });
         } else if (item && typeof item === 'object' && item.slug) {
-          normalizedEvents.push({
-            slug: item.slug,
-            mode: item.mode || 'auto',
-            teamName: item.teamName ? item.teamName.trim() : '',
-            teamId: item.teamId ? item.teamId.trim().toUpperCase() : '',
-            teamMembers: Array.isArray(item.teamMembers)
-              ? item.teamMembers.map(m => (typeof m === 'string' ? m.trim().toUpperCase() : '')).filter(Boolean)
-              : []
-          });
+          normalizedEvents.push({ slug: item.slug });
         }
       }
 
@@ -186,50 +184,6 @@ router.post(
             return res.status(400).json({
               message: 'Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.'
             });
-          }
-        }
-      }
-
-      // 4. Age Calculation
-      let finalAge = parseInt(age);
-      if (isNaN(finalAge) && dob) {
-        const birthDate = new Date(dob);
-        if (!isNaN(birthDate.getTime())) {
-          const today = new Date();
-          let computedAge = today.getFullYear() - birthDate.getFullYear();
-          const m = today.getMonth() - birthDate.getMonth();
-          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            computedAge--;
-          }
-          finalAge = computedAge;
-        }
-      }
-
-      if (isNaN(finalAge) || finalAge < 0) {
-        return res.status(400).json({ message: 'A valid Date of Birth or Age is required!' });
-      }
-
-      // 5. Pre-validate join_team codes
-      for (const item of normalizedEvents) {
-        if (item.mode === 'join_team') {
-          const eventId = EVENT_ID_MAP[item.slug] || item.slug;
-          const event = await Event.findOne({ eventId, isActive: true });
-          if (!event) continue;
-
-          if (!item.teamId) {
-            return res.status(400).json({ message: `Please enter a Team ID to join a team for "${event.name}".` });
-          }
-          const targetTeam = await Team.findOne({ teamId: item.teamId, eventId });
-          if (!targetTeam) {
-            return res.status(400).json({
-              message: `Team "${item.teamId}" was not found for "${event.name}". Please ensure your Team Leader has registered first and given you the correct code.`
-            });
-          }
-          if (targetTeam.status === 'cancelled') {
-            return res.status(400).json({ message: `Team "${item.teamId}" has been cancelled or disbanded.` });
-          }
-          if (targetTeam.memberCount >= event.maxMembers) {
-            return res.status(400).json({ message: `Team "${item.teamId}" is already full (${targetTeam.memberCount}/${event.maxMembers} members).` });
           }
         }
       }
@@ -340,8 +294,7 @@ router.post(
       const user = new User({
         registrationId,
         name,
-        age: finalAge,
-        gender,
+        gender: gender || 'Not Specified',
         email,
         whatsapp,
         institution,
@@ -363,6 +316,7 @@ router.post(
 
     const createdTeams = [];
 
+    // All events are registered individually - teams are formed on-spot at the venue
     if (normalizedEvents && normalizedEvents.length > 0) {
       for (const item of normalizedEvents) {
         const eventId = EVENT_ID_MAP[item.slug] || item.slug;
@@ -372,156 +326,15 @@ router.post(
           const event = await Event.findOne({ eventId, isActive: true });
           if (!event) continue;
 
-          let mode = item.mode;
-          if (mode === 'auto') {
-            if (event.individualAllowed) {
-              mode = 'solo';
-            } else if (event.teamAllowed) {
-              mode = 'create_team';
-            }
-          }
-
-          if (mode === 'solo' && event.individualAllowed) {
-            // Register individually
-            const reg = new Registration({
-              registrationId,
-              eventId,
-              teamId: null,
-              registrationType: 'INDIVIDUAL',
-              status: 'CONFIRMED'
-            });
-            await reg.save();
-            queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
-          } else if (mode === 'create_team' && event.teamAllowed) {
-            // Register as Team Leader
-            const newTeamId = await generateTeamId();
-            const defaultName = item.teamName ? item.teamName : `${name}'s Team`;
-            const isFullTeam = 1 >= event.minMembers;
-
-            const team = new Team({
-              teamId: newTeamId,
-              teamName: defaultName,
-              eventId,
-              leaderId: registrationId,
-              status: isFullTeam ? 'ready' : 'forming',
-              memberCount: 1
-            });
-            await team.save();
-
-            const member = new TeamMember({
-              teamId: newTeamId,
-              userId: registrationId,
-              role: 'Leader'
-            });
-            await member.save();
-
-            const reg = new Registration({
-              registrationId,
-              eventId,
-              teamId: newTeamId,
-              registrationType: 'TEAM',
-              status: 'CONFIRMED'
-            });
-            await reg.save();
-            queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
-
-            // Automatically register teammates entered by the Team Leader
-            const addedTeammates = [];
-            if (Array.isArray(item.teamMembers) && item.teamMembers.length > 0) {
-              const uniqueTeammateIds = Array.from(new Set(item.teamMembers));
-              for (const memberId of uniqueTeammateIds) {
-                if (!memberId || memberId === registrationId) continue;
-                if (team.memberCount >= event.maxMembers) break;
-
-                const teammateUser = await User.findOne({ registrationId: memberId });
-                if (!teammateUser) continue;
-
-                // Check if already registered for this event
-                const existingTeammateReg = await Registration.findOne({ registrationId: memberId, eventId });
-                if (existingTeammateReg) continue;
-
-                const tm = new TeamMember({
-                  teamId: newTeamId,
-                  userId: memberId,
-                  role: 'Member'
-                });
-                await tm.save();
-
-                const teammateReg = new Registration({
-                  registrationId: memberId,
-                  eventId,
-                  teamId: newTeamId,
-                  registrationType: 'TEAM',
-                  status: 'CONFIRMED'
-                });
-                await teammateReg.save();
-                queueRegistrationSync(teammateReg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
-
-                team.memberCount += 1;
-                addedTeammates.push(teammateUser.name);
-
-                // Notify teammate
-                const teammateNotif = new Notification({
-                  userId: memberId,
-                  type: 'SYSTEM',
-                  message: `${name} has added you to team "${defaultName}" (${newTeamId}) for ${event.name}!`
-                });
-                await teammateNotif.save().catch(e => console.warn('Notif error:', e.message));
-              }
-
-              if (team.memberCount >= event.minMembers) {
-                team.status = 'ready';
-              }
-              await team.save();
-            }
-
-            createdTeams.push({
-              eventId,
-              eventName: event.name,
-              teamId: newTeamId,
-              teamName: defaultName,
-              minMembers: event.minMembers,
-              maxMembers: event.maxMembers,
-              memberCount: team.memberCount,
-              addedTeammates
-            });
-          } else if (mode === 'join_team' && event.teamAllowed) {
-            // Join Friend's Team
-            const cleanTeamId = item.teamId;
-            const targetTeam = await Team.findOne({ teamId: cleanTeamId, eventId });
-            if (targetTeam) {
-              const member = new TeamMember({
-                teamId: cleanTeamId,
-                userId: registrationId,
-                role: 'Member'
-              });
-              await member.save();
-
-              targetTeam.memberCount += 1;
-              if (targetTeam.memberCount >= event.minMembers && targetTeam.status === 'forming') {
-                targetTeam.status = 'ready';
-              }
-              await targetTeam.save();
-
-              const reg = new Registration({
-                registrationId,
-                eventId,
-                teamId: cleanTeamId,
-                registrationType: 'TEAM',
-                status: 'CONFIRMED'
-              });
-              await reg.save();
-              queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
-
-              // Notify Team Leader
-              const leaderNotif = new Notification({
-                userId: targetTeam.leaderId,
-                type: 'SYSTEM',
-                message: `${name} (${registrationId}) has joined your team (${cleanTeamId}) for ${event.name}!`
-              });
-              await leaderNotif.save().catch(e => console.warn('Notif error:', e.message));
-            }
-          }
+          const reg = new Registration({
+            registrationId,
+            eventId,
+            teamId: null,
+            registrationType: 'INDIVIDUAL',
+            status: 'CONFIRMED'
+          });
+          await reg.save();
+          queueRegistrationSync(reg, event).catch(err => console.error('[SHEETS INITIAL REG SYNC ERROR]', err.message));
         } catch (eventErr) {
           console.error(`Failed to register event ${eventId} on signup:`, eventErr.message);
         }

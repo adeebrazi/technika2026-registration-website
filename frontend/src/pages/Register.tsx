@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { EventDetailsModal } from '../components/EventDetailsModal';
 import { CommonRulesModal } from '../components/CommonRulesModal';
 import { getEventPhoto, getEventDetails } from '../utils/eventHelpers';
 import { MAIN_WEBSITE_URL } from '../components/Navbar';
 import { FestAnnouncement } from '../components/FestAnnouncement';
-import { DatePicker } from '../components/DatePicker';
 import { CustomSelect } from '../components/CustomSelect';
 import { INSTITUTIONS } from '../data/institutions';
 import {
@@ -89,8 +88,6 @@ export const Register: React.FC = () => {
     email: '',
     confirmEmail: '',
     whatsapp: '',
-    dob: '',
-    age: '',
     gender: '',
     institution: '',
     otherInstitution: '',
@@ -111,7 +108,8 @@ export const Register: React.FC = () => {
   const NOTE = 'Technika 6.0 Registration';
 
   // Derived values for ARKA JAIN University and engineering course exemption
-  const effectiveInstitution = formData.institution === 'Others' ? formData.otherInstitution : formData.institution;
+  const isOthersInstitution = formData.institution === 'Others' || formData.institution === 'OTHERS';
+  const effectiveInstitution = isOthersInstitution ? formData.otherInstitution : formData.institution;
   const effectiveCourse = formData.course === 'Others' ? formData.otherCourse : formData.course;
   const isAju = isArkaJainUniversity(effectiveInstitution);
   const isAjuExempt = isAju && isAjuExemptEngineeringCourse(effectiveCourse);
@@ -188,11 +186,6 @@ export const Register: React.FC = () => {
   const [regId, setRegId] = useState('');
   const [participantName, setParticipantName] = useState('');
 
-  // Team Registration Configuration State
-  const [eventConfigs, setEventConfigs] = useState<Record<string, { mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string; teamMembers?: string[] }>>({});
-  const [teamCheckStatus, setTeamCheckStatus] = useState<Record<string, { loading: boolean; valid?: boolean; message?: string; leaderName?: string }>>({});
-  const [createdTeams, setCreatedTeams] = useState<Array<{ eventId: string; eventName: string; teamId: string; teamName: string; minMembers: number; maxMembers: number; memberCount?: number; addedTeammates?: string[] }>>([]);
-
   // Rules Acceptance State
   const [acceptedRules, setAcceptedRules] = useState(false);
   const [showCommonRulesModal, setShowCommonRulesModal] = useState(false);
@@ -200,49 +193,6 @@ export const Register: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { eventSlug } = useParams<{ eventSlug?: string }>();
-  const [searchParams] = useSearchParams();
-
-  // Auto-detect and populate team code if shared by a team leader
-  useEffect(() => {
-    const rawTeamCode = searchParams.get('teamId') || searchParams.get('teamCode');
-    if (rawTeamCode && rawTeamCode.trim()) {
-      const code = rawTeamCode.trim().toUpperCase();
-      fetch('/api/teams/validate-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId: code })
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.valid && data.eventId) {
-            const eventId = data.eventId;
-            setSelectedEvents((prev) => (prev.includes(eventId) ? prev : [...prev, eventId]));
-            setEventConfigs((prev) => ({
-              ...prev,
-              [eventId]: {
-                mode: 'join_team',
-                teamName: data.teamName || '',
-                teamId: code,
-              },
-            }));
-            setTeamCheckStatus((prev) => ({
-              ...prev,
-              [eventId]: {
-                loading: false,
-                valid: true,
-                message: data.message,
-                leaderName: data.leaderName,
-              },
-            }));
-            triggerTopNotification(
-              `✓ Team Code "${code}" applied for ${data.eventName}! Joining ${data.leaderName}'s team.`,
-              'success'
-            );
-          }
-        })
-        .catch((err) => console.warn('URL Team Code validation error:', err));
-    }
-  }, [searchParams]);
 
   // Deep-linking: sync URL /register/:eventSlug with activeModalEvent
   useEffect(() => {
@@ -278,7 +228,7 @@ export const Register: React.FC = () => {
     navigate('/register');
   };
 
-  const toggleEventSelection = (eventId: string, minMembers?: number) => {
+  const toggleEventSelection = (eventId: string) => {
     if (eventId === 'treasure-hunt' && isAju) {
       triggerTopNotification(
         'Treasure Hunt is exclusively for outside colleges and is not permitted for ARKA JAIN University students.',
@@ -292,63 +242,9 @@ export const Register: React.FC = () => {
       if (isSelected) {
         return prev.filter((id) => id !== eventId);
       } else {
-        if (!eventConfigs[eventId]) {
-          const detail = getEventDetails(eventId);
-          const resolvedMin = minMembers !== undefined ? minMembers : (detail?.minMembers ?? 1);
-          const isTeamOnly = resolvedMin > 1;
-          setEventConfigs((cPrev) => ({
-            ...cPrev,
-            [eventId]: {
-              mode: isTeamOnly ? 'create_team' : 'solo',
-              teamName: '',
-              teamId: ''
-            }
-          }));
-        }
         return [...prev, eventId];
       }
     });
-  };
-
-  const updateEventConfig = (eventId: string, updates: Partial<{ mode: 'solo' | 'create_team' | 'join_team'; teamName: string; teamId: string; teamMembers?: string[] }>) => {
-    setEventConfigs((prev) => ({
-      ...prev,
-      [eventId]: {
-        ...(prev[eventId] || { mode: 'solo', teamName: '', teamId: '' }),
-        ...updates
-      }
-    }));
-  };
-
-  const handleValidateTeamCode = async (slug: string, teamId: string) => {
-    if (!teamId.trim()) return;
-    setTeamCheckStatus((prev) => ({ ...prev, [slug]: { loading: true } }));
-    try {
-      const res = await fetch('/api/teams/validate-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId: teamId.trim(), eventSlug: slug })
-      });
-      const data = await res.json();
-      setTeamCheckStatus((prev) => ({
-        ...prev,
-        [slug]: {
-          loading: false,
-          valid: data.valid,
-          message: data.message,
-          leaderName: data.leaderName
-        }
-      }));
-    } catch (err: any) {
-      setTeamCheckStatus((prev) => ({
-        ...prev,
-        [slug]: {
-          loading: false,
-          valid: false,
-          message: 'Server connection error during validation.'
-        }
-      }));
-    }
   };
 
   const toggleCategoryAll = (eventIds: string[]) => {
@@ -358,45 +254,7 @@ export const Register: React.FC = () => {
       setSelectedEvents((prev) => prev.filter((id) => !selectableIds.includes(id)));
     } else {
       setSelectedEvents((prev) => Array.from(new Set([...prev, ...selectableIds])));
-      setEventConfigs((cPrev) => {
-        const next = { ...cPrev };
-        selectableIds.forEach((id) => {
-          if (!next[id]) {
-            const detail = getEventDetails(id);
-            const isTeamOnly = (detail?.minMembers ?? 1) > 1;
-            next[id] = {
-              mode: isTeamOnly ? 'create_team' : 'solo',
-              teamName: '',
-              teamId: ''
-            };
-          }
-        });
-        return next;
-      });
     }
-  };
-
-  // Calculate age in years from DOB string
-  const calculateAge = (dobString: string): string => {
-    if (!dobString) return '';
-    const birthDate = new Date(dobString);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age > 0 ? String(age) : '';
-  };
-
-  const handleDobChange = (valOrEvent: string | React.ChangeEvent<HTMLInputElement>) => {
-    const dobVal = typeof valOrEvent === 'string' ? valOrEvent : valOrEvent.target.value;
-    const computedAge = calculateAge(dobVal);
-    setFormData((prev) => ({
-      ...prev,
-      dob: dobVal,
-      age: computedAge,
-    }));
   };
 
   // If already logged in, redirect to dashboard
@@ -587,6 +445,11 @@ export const Register: React.FC = () => {
       return;
     }
 
+    if (!formData.gender) {
+      setError('Please select your gender.');
+      return;
+    }
+
     if (isAjuExempt) {
       if (!noDuesSlipFile) {
         setError('Please upload your ₹600 manual payment slip paid during No-Dues.');
@@ -624,26 +487,11 @@ export const Register: React.FC = () => {
       return;
     }
 
-    // Validate team configs for join_team
-    for (const slug of selectedEvents) {
-      const config = eventConfigs[slug];
-      if (config && config.mode === 'join_team') {
-        if (!config.teamId || !config.teamId.trim()) {
-          setError(`Please enter the Team ID to join your friend's team, or select "Register as Leader".`);
-          return;
-        }
-        if (teamCheckStatus[slug] && teamCheckStatus[slug].valid === false) {
-          setError(teamCheckStatus[slug].message || `The Team ID entered for one of your selected events is invalid.`);
-          return;
-        }
-      }
-    }
-
     setLoading(true);
 
     const submissionData = new FormData();
     Object.entries(formData).forEach(([key, val]) => {
-      if (key === 'institution' && formData.institution === 'Others') {
+      if (key === 'institution' && (formData.institution === 'Others' || formData.institution === 'OTHERS')) {
         submissionData.append(key, formData.otherInstitution);
       } else if (key === 'course' && formData.course === 'Others') {
         submissionData.append(key, formData.otherCourse);
@@ -667,20 +515,7 @@ export const Register: React.FC = () => {
       submissionData.append('paymentScreenshot', selectedFile!);
     }
 
-    const selectedEventsPayload = selectedEvents.map((slug) => {
-      const detail = getEventDetails(slug);
-      const isTeamOnly = (detail?.minMembers ?? 1) > 1;
-      const defaultMode = isTeamOnly ? 'create_team' : 'solo';
-      const config = eventConfigs[slug] || { mode: defaultMode, teamName: '', teamId: '', teamMembers: [] };
-      return {
-        slug,
-        mode: config.mode || defaultMode,
-        teamName: config.teamName || '',
-        teamId: config.teamId || '',
-        teamMembers: config.teamMembers || []
-      };
-    });
-    submissionData.append('selectedEvents', JSON.stringify(selectedEventsPayload));
+    submissionData.append('selectedEvents', JSON.stringify(selectedEvents));
 
     try {
       const response = await fetch('/api/register', {
@@ -706,10 +541,6 @@ export const Register: React.FC = () => {
 
       setRegId(registrationId);
       setParticipantName(nameVal);
-
-      if (result.createdTeams && Array.isArray(result.createdTeams)) {
-        setCreatedTeams(result.createdTeams);
-      }
 
       setSuccess(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -981,26 +812,6 @@ export const Register: React.FC = () => {
                 )}
 
                 <div className="form-group">
-                  <label htmlFor="dob">
-                    DATE OF BIRTH (DOB) <span className="required">*</span>
-                    {formData.age && (
-                      <span style={{ marginLeft: '8px', color: '#000000', fontWeight: 900, textTransform: 'none', background: '#ffffff', border: '1.5px solid #000', padding: '1px 6px', fontSize: '0.75rem' }}>
-                        Age: {formData.age} yrs
-                      </span>
-                    )}
-                  </label>
-                  <DatePicker
-                    id="dob"
-                    name="dob"
-                    required
-                    value={formData.dob}
-                    onChange={(dateStr) => handleDobChange(dateStr)}
-                    minYear={1990}
-                    maxYear={2026}
-                  />
-                </div>
-
-                <div className="form-group">
                   <label htmlFor="gender">
                     GENDER <span className="required">*</span>
                   </label>
@@ -1014,6 +825,7 @@ export const Register: React.FC = () => {
                     placeholder="Select gender"
                   />
                 </div>
+
               </div>
             </div>
 
@@ -1039,7 +851,7 @@ export const Register: React.FC = () => {
                     placeholder="Select or search your institution"
                     searchable
                   />
-                  {formData.institution === 'Others' && (
+                  {(formData.institution === 'Others' || formData.institution === 'OTHERS') && (
                     <input
                       type="text"
                       name="otherInstitution"
@@ -1215,9 +1027,6 @@ export const Register: React.FC = () => {
                       const evtDetail = getEventDetails(evt.id);
                       const descText = evtDetail?.description || 'Fest competition arena event.';
 
-                      const minMembers = evtDetail?.minMembers ?? 1;
-                      const isTeamOnly = minMembers > 1;
-                      const currentMode = eventConfigs[evt.id]?.mode || (isTeamOnly ? 'create_team' : 'solo');
                       const isTreasureHunt = evt.id === 'treasure-hunt';
                       const isTreasureHuntDisabled = isTreasureHunt && isAju;
 
@@ -1332,14 +1141,10 @@ export const Register: React.FC = () => {
                                     textTransform: 'uppercase',
                                     padding: '2px 7px',
                                     background: 'rgba(0,0,0,0.85)',
-                                    color: currentMode === 'create_team' ? '#FFE600' : currentMode === 'join_team' ? '#3CE6FC' : '#10b981',
-                                    border: `1.5px solid ${currentMode === 'create_team' ? '#FFE600' : currentMode === 'join_team' ? '#3CE6FC' : '#10b981'}`
+                                    color: '#10b981',
+                                    border: '1.5px solid #10b981'
                                   }}>
-                                    {currentMode === 'create_team'
-                                      ? `👑 Leader: ${eventConfigs[evt.id]?.teamName || 'Team'}`
-                                      : currentMode === 'join_team'
-                                      ? `🤝 Joining: ${eventConfigs[evt.id]?.teamId || 'Pending'}`
-                                      : '👤 Solo Entry'}
+                                    ✓ SELECTED
                                   </span>
                                 </div>
                               )}
@@ -1411,9 +1216,9 @@ export const Register: React.FC = () => {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         if (isChecked) {
-                                          toggleEventSelection(evt.id, minMembers);
+                                          toggleEventSelection(evt.id);
                                         } else {
-                                          toggleEventSelection(evt.id, minMembers);
+                                          toggleEventSelection(evt.id);
                                           handleOpenEventModal(evt.id);
                                         }
                                       }}
@@ -1458,30 +1263,11 @@ export const Register: React.FC = () => {
                 <div>
                   {/* AJU Exemption Callout Banner */}
                   <div className="aju-exemption-callout">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        background: '#000000',
-                        color: '#FFE600',
-                        padding: '4px 10px',
-                        fontSize: '0.78rem',
-                        fontWeight: 900,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                        border: '2px solid #000000',
-                        boxShadow: '2px 2px 0px 0px #000000'
-                      }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', flexWrap: 'wrap' }}>
+                      <span className="aju-badge-active">
                         ⚡ AJU EXEMPTION ACTIVE
                       </span>
-                      <span style={{
-                        background: '#ffffff',
-                        border: '2px solid #000000',
-                        padding: '4px 10px',
-                        fontSize: '0.76rem',
-                        fontWeight: 900,
-                        color: '#000000',
-                        textTransform: 'uppercase',
-                        boxShadow: '2px 2px 0px 0px #000000'
-                      }}>
+                      <span className="aju-badge-fee">
                         FEE: ₹600 (PAID IN NO-DUES)
                       </span>
                     </div>
@@ -1922,81 +1708,25 @@ export const Register: React.FC = () => {
               <i className="fa-solid fa-key"></i> Please make sure to save your Registration ID. Use it along with your chosen password to log into the dashboard.
             </p>
 
-            {createdTeams && createdTeams.length > 0 && (
-              <div style={{
-                marginTop: '18px',
-                marginBottom: '18px',
-                background: '#000000',
-                border: '3px solid #FFE600',
-                boxShadow: '4px 4px 0px 0px #FFE600',
-                padding: '16px 20px',
-                color: '#ffffff',
-                textAlign: 'left'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <span style={{ background: '#FFE600', color: '#000000', fontWeight: 900, fontSize: '0.75rem', padding: '2px 8px', border: '1px solid #000' }}>
-                    👑 YOU ARE TEAM LEADER
-                  </span>
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Share Team ID with Teammates:</span>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {createdTeams.map((t, idx) => (
-                    <div key={idx} style={{ background: 'rgba(255,255,255,0.08)', border: '1.5px solid #ffffff', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#FFE600' }}>{t.eventName}</div>
-                        <div style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>
-                          Team Name: <strong>{t.teamName}</strong> · Team ID: <code style={{ background: '#ffffff', color: '#000000', padding: '2px 6px', fontWeight: 900, fontSize: '0.88rem' }}>{t.teamId}</code>
-                          {t.addedTeammates && t.addedTeammates.length > 0 && (
-                            <div style={{ marginTop: '4px', color: '#86efac', fontWeight: 700 }}>
-                              ✓ Linked Teammate(s): {t.addedTeammates.join(', ')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(t.teamId);
-                            alert(`Copied Team ID ${t.teamId} to clipboard!`);
-                          }}
-                          style={{
-                            background: '#ffffff',
-                            color: '#000000',
-                            border: '1.5px solid #000',
-                            padding: '4px 10px',
-                            fontSize: '0.72rem',
-                            fontWeight: 900,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          📋 Copy Code
-                        </button>
-                        <a
-                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! I created our team for ${t.eventName} at Technika 6.0! Join our team by entering Team ID: *${t.teamId}* when registering at: ${window.location.origin}/register`)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            background: '#25D366',
-                            color: '#ffffff',
-                            border: '1.5px solid #000',
-                            padding: '4px 10px',
-                            fontSize: '0.72rem',
-                            fontWeight: 900,
-                            textDecoration: 'none',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <i className="fa-brands fa-whatsapp"></i> Share on WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div style={{
+              marginTop: '18px',
+              marginBottom: '18px',
+              background: '#f8fafc',
+              border: '3px solid #000000',
+              boxShadow: '4px 4px 0px 0px #000000',
+              padding: '16px 20px',
+              color: '#000000',
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ background: '#FFE600', color: '#000000', fontWeight: 900, fontSize: '0.78rem', padding: '3px 8px', border: '1.5px solid #000' }}>
+                  💡 ON-SPOT TEAM FORMATION
+                </span>
               </div>
-            )}
+              <p style={{ margin: 0, fontSize: '0.86rem', lineHeight: 1.5, fontWeight: 700, color: '#334155' }}>
+                All participants have been registered individually! For any group or team events (e.g., BGMI, Free Fire, Tug of War, Robo Wars, etc.), you will form teams directly on-spot with your friends at the venue during event reporting.
+              </p>
+            </div>
           </div>
 
           <div className="success-actions">
@@ -2016,14 +1746,8 @@ export const Register: React.FC = () => {
         onClose={handleCloseEventModal}
         isSelected={activeModalEvent ? selectedEvents.includes(activeModalEvent.id) : false}
         onToggleSelect={(eventId) => {
-          const detail = getEventDetails(eventId);
-          toggleEventSelection(eventId, detail?.minMembers);
+          toggleEventSelection(eventId);
         }}
-        config={activeModalEvent ? eventConfigs[activeModalEvent.id] : undefined}
-        onUpdateConfig={(eventId, updates) => updateEventConfig(eventId, updates)}
-        teamCheckStatus={activeModalEvent ? teamCheckStatus[activeModalEvent.id] : undefined}
-        onValidateTeamCode={(eventId, teamId) => handleValidateTeamCode(eventId, teamId)}
-        formDataName={formData.name}
       />
 
       <CommonRulesModal

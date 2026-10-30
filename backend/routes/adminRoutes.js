@@ -9,6 +9,7 @@ const Event = require('../models/Event');
 const RolePermission = require('../models/RolePermission');
 const cloudinaryService = require('../services/cloudinaryService');
 const vercelService = require('../services/vercelService');
+const { sendRegistrationConfirmationEmail } = require('../utils/emailService');
 
 const DEFAULT_PERMISSIONS = {
   faculty: {
@@ -127,7 +128,7 @@ const ADMIN_PROFILES = {
   'princek@technika2026.online': { name: 'Prince Kumar', designation: 'Student Coordinator' },
   'anishs@technika2026.online': { name: 'Anish Kr Singh', designation: 'Student Coordinator' },
   'rishavs@technika2026.online': { name: 'Rishav Kr Singh', designation: 'Student Coordinator' },
-  'saraswatik@technika2026.online': { name: 'Saraswati Kumari', designation: 'Student Coordinator' }
+  'aweshh@technika2026.online': { name: 'Awesh Hussain', designation: 'Student Coordinator' }
 };
 
 const formatNameFromEmail = (email) => {
@@ -321,7 +322,14 @@ router.get('/users', verifyAdminToken, async (req, res) => {
         course: uObj.course,
         semester: uObj.semester,
         gender: uObj.gender,
+        source: uObj.source || 'website',
         createdAt: uObj.createdAt,
+        confirmationEmailSent: Boolean(uObj.confirmationEmailSent),
+        confirmationEmailSentAt: uObj.confirmationEmailSentAt || null,
+        confirmationEmailSentBy: uObj.confirmationEmailSentBy || null,
+        qrEmailSent: Boolean(uObj.qrEmailSent),
+        qrEmailSentAt: uObj.qrEmailSentAt || null,
+        qrEmailSentBy: uObj.qrEmailSentBy || null,
         registeredEvents: registeredEvents.map(re => ({
           _id: re._id,
           eventId: re.eventId,
@@ -432,6 +440,124 @@ router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (re
   } catch (err) {
     console.error('Error saving permissions:', err);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/drive-proxy
+// @desc    Fast stream proxy for Google Drive screenshots with auto-caching
+// @access  Public
+router.get('/drive-proxy', async (req, res) => {
+  try {
+    const fileId = req.query.id;
+    if (!fileId) return res.status(400).send('Missing file ID');
+
+    const urls = [
+      `https://lh3.googleusercontent.com/d/${fileId}`,
+      `https://drive.google.com/thumbnail?id=${fileId}&sz=w1600`,
+      `https://drive.google.com/uc?export=view&id=${fileId}`
+    ];
+
+    for (const u of urls) {
+      try {
+        const response = await fetch(u, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.startsWith('image/')) {
+          res.setHeader('Content-Type', contentType);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          const buffer = await response.arrayBuffer();
+          return res.send(Buffer.from(buffer));
+        }
+      } catch (err) {}
+    }
+
+    return res.status(404).send('Image could not be retrieved from Google Drive');
+  } catch (err) {
+    console.error('Drive proxy error:', err);
+    res.status(500).send('Proxy error');
+  }
+});
+
+// @route   POST /api/admin/send-email
+// @desc    Send Registration Confirmation Email or Entry QR Pass Email
+// @access  Private (Admin & Staff)
+router.post('/send-email', verifyAdminToken, async (req, res) => {
+  try {
+    const { userId, type } = req.body;
+    if (!userId || !type) {
+      return res.status(400).json({ message: 'Participant ID and email type (confirmation or qr) are required' });
+    }
+
+    if (!['confirmation', 'qr'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid email type. Must be "confirmation" or "qr"' });
+    }
+
+    // Lookup user by _id or registrationId
+    let user = null;
+    if (userId.match(/^[0-9a-fA-F]{24}$/)) {
+      user = await User.findById(userId);
+    }
+    if (!user) {
+      user = await User.findOne({ registrationId: String(userId).trim().toUpperCase() });
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'Participant record not found' });
+    }
+
+    if (!user.email) {
+      return res.status(400).json({ message: `Participant "${user.name}" has no registered email address` });
+    }
+
+    // Fetch registered events with event names and categories
+    const registrations = await Registration.find({ registrationId: user.registrationId });
+    const events = await Event.find();
+    const eventMap = {};
+    events.forEach(e => { eventMap[e.eventId] = e; });
+
+    const registeredEvents = registrations.map(reg => {
+      const eDoc = eventMap[reg.eventId];
+      return {
+        name: eDoc?.name || reg.eventId,
+        category: eDoc?.category || 'General',
+        type: eDoc?.teamAllowed ? 'TEAM' : 'INDIVIDUAL'
+      };
+    });
+
+    const senderName = req.admin?.name || 'Technika Organizing Committee';
+
+    if (type !== 'confirmation') {
+      return res.status(400).json({ message: 'Entry QR Pass email is coming soon. Only registration confirmation email is currently active.' });
+    }
+
+    await sendRegistrationConfirmationEmail({
+      user,
+      events: registeredEvents,
+      senderName,
+    });
+
+    user.confirmationEmailSent = true;
+    user.confirmationEmailSentAt = new Date();
+    user.confirmationEmailSentBy = senderName;
+    await user.save();
+
+    return res.json({
+      success: true,
+      message: `Registration confirmation email sent successfully to ${user.email}`,
+      user: {
+        _id: user._id,
+        registrationId: user.registrationId,
+        confirmationEmailSent: user.confirmationEmailSent,
+        confirmationEmailSentAt: user.confirmationEmailSentAt,
+        confirmationEmailSentBy: user.confirmationEmailSentBy,
+      }
+    });
+  } catch (err) {
+    console.error('Error in send-email endpoint:', err);
+    return res.status(500).json({ message: `Email failed to send: ${err.message}` });
   }
 });
 
@@ -585,39 +711,7 @@ router.get('/analytics', async (req, res) => {
     ]);
     const dailyTrend = dailyAgg.map(d => ({ date: d._id, count: d.count }));
 
-    // ── 7. Age Category Distribution ──
-    const ageAgg = await User.aggregate([
-      { $match: { age: { $exists: true, $ne: null } } },
-      { $group: { _id: '$age', count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
-    let under18 = 0, age18_20 = 0, age21_23 = 0, age24plus = 0;
-    let totalAgeSum = 0, totalAgeCount = 0;
-    const detailedAge = [];
-
-    ageAgg.forEach(a => {
-      const ageNum = parseInt(a._id);
-      if (!isNaN(ageNum) && ageNum > 0) {
-        totalAgeSum += ageNum * a.count;
-        totalAgeCount += a.count;
-        detailedAge.push({ age: `${ageNum} yrs`, count: a.count });
-
-        if (ageNum < 18) under18 += a.count;
-        else if (ageNum <= 20) age18_20 += a.count;
-        else if (ageNum <= 23) age21_23 += a.count;
-        else age24plus += a.count;
-      }
-    });
-
-    const averageAge = totalAgeCount > 0 ? (totalAgeSum / totalAgeCount).toFixed(1) : '0';
-    const ageDistribution = [
-      { category: '< 18 yrs', count: under18, share: totalAgeCount > 0 ? Number(((under18 / totalAgeCount) * 100).toFixed(1)) : 0 },
-      { category: '18 - 20 yrs', count: age18_20, share: totalAgeCount > 0 ? Number(((age18_20 / totalAgeCount) * 100).toFixed(1)) : 0 },
-      { category: '21 - 23 yrs', count: age21_23, share: totalAgeCount > 0 ? Number(((age21_23 / totalAgeCount) * 100).toFixed(1)) : 0 },
-      { category: '24+ yrs', count: age24plus, share: totalAgeCount > 0 ? Number(((age24plus / totalAgeCount) * 100).toFixed(1)) : 0 }
-    ];
-
-    // ── 8. Event Categories Breakdown (Technical, Cultural, Creative) ──
+    // ── 7. Event Categories Breakdown (Technical, Cultural, Creative) ──
     const eventCategoryMap = {};
     events.forEach(e => {
       eventCategoryMap[e.eventId] = e.category || 'Other';
@@ -664,8 +758,29 @@ router.get('/analytics', async (req, res) => {
       }
     ];
 
+    // ── 9. Source Breakdown (Website, Google Form, Admin Import) ──
+    const sourceAgg = await User.aggregate([
+      { $group: { _id: '$source', count: { $sum: 1 } } }
+    ]);
+    let websiteCount = 0;
+    let googleFormCount = 0;
+    let importCount = 0;
+    sourceAgg.forEach(s => {
+      if (s._id === 'google_form') googleFormCount += s.count;
+      else if (s._id === 'admin_import') importCount += s.count;
+      else websiteCount += s.count;
+    });
+
     res.json({
       totalRegistrations,
+      websiteRegistrations: websiteCount,
+      googleFormRegistrations: googleFormCount,
+      importRegistrations: importCount,
+      sourceBreakdown: {
+        website: websiteCount,
+        googleForm: googleFormCount,
+        import: importCount,
+      },
       instituteWise,
       totalInstitutes,
       eventWise,
@@ -674,9 +789,6 @@ router.get('/analytics', async (req, res) => {
       genderDistribution,
       courseDistribution,
       dailyTrend,
-      ageDistribution,
-      averageAge,
-      detailedAge,
       eventTypeBreakdown,
       totalEventRegistrations
     });

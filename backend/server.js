@@ -25,6 +25,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/google-form', require('./routes/googleFormRoutes'));
 
 // Fallback error handler for multer and system errors
 app.use((err, req, res, next) => {
@@ -47,6 +48,11 @@ app.get('*', (req, res) => {
 
 // Start Google Sheets Asynchronous Queue sync worker
 startQueueWorker();
+
+// Start automated Google Form Sheet Poller (fetches new registrations from Google Sheet automatically)
+const { startGoogleSheetPoller } = require('./services/googleSheetPoller');
+startGoogleSheetPoller(60000);
+
 
 // Start Server Listening (only if not running on Vercel serverless context)
 const PORT = process.env.PORT || 5000;

@@ -30,29 +30,6 @@ interface EventItem {
   maxMembers: number;
 }
 
-interface TeamMember {
-  registrationId: string;
-  name: string;
-  email: string;
-  whatsapp?: string;
-  institution?: string;
-  role: 'Leader' | 'Member';
-}
-
-interface UserTeam {
-  teamId: string;
-  teamName: string;
-  eventId: string;
-  eventName?: string;
-  leaderId: string;
-  status: 'forming' | 'registered';
-  members: TeamMember[];
-  isLeader: boolean;
-  memberCount: number;
-  minMembers: number;
-  maxMembers?: number;
-}
-
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -70,15 +47,6 @@ export const Dashboard: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [registeredEvents, setRegisteredEvents] = useState<EnrolledEvent[]>([]);
   const [allEvents, setAllEvents] = useState<EventItem[]>([]);
-  const [myTeams, setMyTeams] = useState<UserTeam[]>([]);
-
-  // Team Member Management States
-  const [addMemberInputs, setAddMemberInputs] = useState<Record<string, string>>({});
-  const [addingMember, setAddingMember] = useState<Record<string, boolean>>({});
-  const [formingTeam, setFormingTeam] = useState<Record<string, boolean>>({});
-  const [removingMember, setRemovingMember] = useState<Record<string, boolean>>({});
-  const [copiedTeamId, setCopiedTeamId] = useState<string | null>(null);
-
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -89,114 +57,6 @@ export const Dashboard: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [alert]);
-
-  const handleAddMember = async (teamId: string) => {
-    const input = (addMemberInputs[teamId] || '').trim();
-    if (!input) {
-      setAlert({ message: "Please enter your friend's Registration ID (e.g. SCLA3P) or Gmail address.", type: 'error' });
-      return;
-    }
-
-    setAddingMember(prev => ({ ...prev, [teamId]: true }));
-    try {
-      const res = await fetch('/api/teams/add-member', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ teamId, memberIdentifier: input })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to add member to team.');
-      }
-
-      setAlert({ message: data.message || 'Teammate added successfully!', type: 'success' });
-      setAddMemberInputs(prev => ({ ...prev, [teamId]: '' }));
-      await loadDashboardData();
-    } catch (err: any) {
-      setAlert({ message: err.message || 'Error adding teammate.', type: 'error' });
-    } finally {
-      setAddingMember(prev => ({ ...prev, [teamId]: false }));
-    }
-  };
-
-  const handleRemoveMember = async (teamId: string, memberId: string, memberName: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${memberName} (${memberId}) from your team roster?`)) {
-      return;
-    }
-
-    const key = `${teamId}_${memberId}`;
-    setRemovingMember(prev => ({ ...prev, [key]: true }));
-    try {
-      const res = await fetch('/api/teams/remove-member', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ teamId, targetUserId: memberId })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to remove member.');
-      }
-
-      setAlert({ message: data.message || 'Member removed successfully.', type: 'success' });
-      await loadDashboardData();
-    } catch (err: any) {
-      setAlert({ message: err.message || 'Error removing member.', type: 'error' });
-    } finally {
-      setRemovingMember(prev => ({ ...prev, [key]: false }));
-    }
-  };
-
-  const handleFormTeam = async (teamId: string, teamName: string, eventName: string, memberCount: number, minMembers: number) => {
-    if (memberCount < minMembers) {
-      setAlert({
-        message: `Cannot form team yet. Minimum required is ${minMembers} members (currently ${memberCount}/${minMembers}). Please add your teammates or share your Team Code (${teamId}) to complete the roster.`,
-        type: 'error'
-      });
-      return;
-    }
-
-    if (!window.confirm(`Lock and officially form team "${teamName}" (${teamId}) for "${eventName}" with ${memberCount} members? Once finalized, your team roster is officially locked for Technika 6.0.`)) {
-      return;
-    }
-
-    setFormingTeam(prev => ({ ...prev, [teamId]: true }));
-    try {
-      const res = await fetch('/api/teams/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ teamId })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to finalize team.');
-      }
-
-      setAlert({ message: data.message || 'Team successfully formed and officially registered!', type: 'success' });
-      await loadDashboardData();
-    } catch (err: any) {
-      setAlert({ message: err.message || 'Error finalizing team.', type: 'error' });
-    } finally {
-      setFormingTeam(prev => ({ ...prev, [teamId]: false }));
-    }
-  };
-
-  const handleCopyTeamCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedTeamId(code);
-    setTimeout(() => setCopiedTeamId(null), 2500);
-  };
 
   const loadDashboardData = async () => {
     if (!token) return;
@@ -222,15 +82,6 @@ export const Dashboard: React.FC = () => {
       if (evRes.ok) {
         const evData = await evRes.json();
         setAllEvents(evData);
-      }
-
-      // 3. Fetch My Teams
-      const teamRes = await fetch('/api/teams/my-teams', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (teamRes.ok) {
-        const teamData = await teamRes.json();
-        setMyTeams(teamData);
       }
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -358,8 +209,7 @@ export const Dashboard: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {registeredEvents.map((reg) => {
                         const event = allEvents.find((e) => e.eventId === reg.eventId);
-                        const isTeam = reg.registrationType === 'TEAM';
-                        const userTeam = myTeams.find((t) => t.eventId === reg.eventId);
+                        const isGroupEvent = (event?.maxMembers ?? 1) > 1 || Boolean(event?.teamAllowed);
 
                         return (
                           <div
@@ -383,7 +233,7 @@ export const Dashboard: React.FC = () => {
                                 <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Event ID: {reg.eventId}</small>
                               </div>
                               <span
-                                className={isTeam ? 'badge-team' : 'badge-indiv'}
+                                className="badge-indiv"
                                 style={{
                                   fontSize: '0.75rem',
                                   padding: '4px 10px',
@@ -391,266 +241,36 @@ export const Dashboard: React.FC = () => {
                                   border: '2px solid #000000',
                                   fontWeight: 800,
                                   textTransform: 'uppercase',
-                                  background: isTeam ? '#FFE600' : '#8aebee',
+                                  background: '#8aebee',
                                   color: '#000000',
                                   boxShadow: '2px 2px 0px 0px #000000',
                                 }}
                               >
-                                {isTeam ? `Team (${reg.teamId})` : 'Individual'}
+                                ✓ Confirmed (Individual)
                               </span>
                             </div>
 
-                            {/* Team Roster & Details (Interactive Formation & Management) */}
-                            {isTeam && (() => {
-                              const minRequired = userTeam?.minMembers || event?.minMembers || 2;
-                              const maxAllowed = userTeam?.maxMembers || event?.maxMembers || 4;
-                              const currentMembers = userTeam?.members || [];
-                              const memberCount = currentMembers.length > 0 ? currentMembers.length : 1;
-                              const isFormed = userTeam?.status === 'registered';
-                              const isReady = !isFormed && memberCount >= minRequired;
-                              const isIncomplete = !isFormed && memberCount < minRequired;
-                              const isLeader = userTeam ? (userTeam.isLeader || userTeam.leaderId === currentUser?.registrationId) : true;
-                              const teamId = reg.teamId || userTeam?.teamId || '';
-
-                              return (
-                                <div style={{ marginTop: '14px', borderTop: '2px solid var(--border-color)', paddingTop: '14px' }}>
-                                  
-                                  {/* ── Top Bar: Team Name, Code & Status ── */}
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <div>
-                                      <div style={{ fontSize: '1.05rem', fontWeight: 900, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                        <span>TEAM: <strong style={{ color: 'var(--accent, #f5a201)' }}>{userTeam?.teamName || 'Team'}</strong></span>
-                                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text-muted)' }}>
-                                          ({memberCount} of {minRequired}-{maxAllowed} players)
-                                        </span>
-                                      </div>
-                                      
-                                      {/* Team Code with quick Copy & WhatsApp share */}
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                                        <span style={{ fontFamily: 'var(--font-heading)', fontSize: '0.85rem', fontWeight: 900, color: '#000000', background: '#FFE600', padding: '2px 8px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000000' }}>
-                                          CODE: {teamId}
-                                        </span>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => handleCopyTeamCode(teamId)}
-                                          style={{
-                                            background: copiedTeamId === teamId ? '#10b981' : '#ffffff',
-                                            color: '#000000',
-                                            border: '1.5px solid #000000',
-                                            padding: '2px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 900,
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                          }}
-                                          title="Copy Team Code to share with friends"
-                                        >
-                                          <i className={copiedTeamId === teamId ? 'fa-solid fa-check' : 'fa-solid fa-copy'}></i>
-                                          {copiedTeamId === teamId ? 'Copied' : 'Copy'}
-                                        </button>
-
-                                        <a
-                                          href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Join my team *${userTeam?.teamName || 'Team'}* for *${event?.name || 'Technika 6.0'}*! \n\nTeam Code: *${teamId}*\nRegister here: ${window.location.origin}/register?teamCode=${teamId}`)}`}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          style={{
-                                            background: '#25D366',
-                                            color: '#ffffff',
-                                            border: '1.5px solid #000000',
-                                            padding: '2px 8px',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 900,
-                                            textDecoration: 'none',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: '4px'
-                                          }}
-                                          title="Invite friends on WhatsApp"
-                                        >
-                                          <i className="fa-brands fa-whatsapp"></i>
-                                          WhatsApp
-                                        </a>
-                                      </div>
-                                    </div>
-
-                                    <div>
-                                      {isFormed ? (
-                                        <span style={{ background: '#10b981', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          ✓ TEAM CONFIRMED
-                                        </span>
-                                      ) : isReady ? (
-                                        <span style={{ background: '#3ce6fc', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          ⚡ READY TO FORM
-                                        </span>
-                                      ) : (
-                                        <span style={{ background: '#ff7a00', color: '#000000', fontSize: '0.74rem', fontWeight: 900, padding: '4px 10px', border: '1.5px solid #000000', boxShadow: '2px 2px 0px #000', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                          ⚠️ NEEDS {minRequired - memberCount} MORE
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* ── Team Roster List ── */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                                    {currentMembers.length > 0 ? (
-                                      currentMembers.map((member) => (
-                                        <div
-                                          key={member.registrationId}
-                                          style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '8px 12px',
-                                            background: 'rgba(0,0,0,0.2)',
-                                            border: '1px solid var(--border-color)',
-                                            fontSize: '0.82rem',
-                                            flexWrap: 'wrap',
-                                            gap: '8px'
-                                          }}
-                                        >
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{
-                                              background: member.role === 'Leader' ? '#FFE600' : '#8aebee',
-                                              color: '#000',
-                                              fontSize: '0.65rem',
-                                              fontWeight: 900,
-                                              padding: '2px 6px',
-                                              border: '1px solid #000'
-                                            }}>
-                                              {member.role.toUpperCase()}
-                                            </span>
-                                            <strong>{member.name}</strong>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                                              ({member.registrationId})
-                                            </span>
-                                          </div>
-
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                                              {member.whatsapp || member.email}
-                                            </span>
-
-                                            {isLeader && !isFormed && member.role !== 'Leader' && (
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRemoveMember(teamId, member.registrationId, member.name)}
-                                                disabled={removingMember[`${teamId}_${member.registrationId}`]}
-                                                style={{
-                                                  background: '#ef4444',
-                                                  color: '#ffffff',
-                                                  border: '1px solid #000000',
-                                                  padding: '2px 6px',
-                                                  fontSize: '0.65rem',
-                                                  fontWeight: 800,
-                                                  cursor: 'pointer'
-                                                }}
-                                                title="Remove member"
-                                              >
-                                                ✕
-                                              </button>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <div style={{ padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', fontSize: '0.82rem' }}>
-                                        <strong>{currentUser?.name || 'Leader'}</strong> ({currentUser?.registrationId})
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* ── Leader Quick Action Strip ── */}
-                                  {isLeader && !isFormed && (
-                                    <div style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1.5px solid var(--border-color)', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                      
-                                      {/* Quick Add Bar */}
-                                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                        <input
-                                          type="text"
-                                          placeholder="Add friend by Registration ID (e.g. SCLA3P) or Gmail..."
-                                          value={addMemberInputs[teamId] || ''}
-                                          onChange={(e) => setAddMemberInputs({ ...addMemberInputs, [teamId]: e.target.value })}
-                                          onKeyDown={(e) => { if (e.key === 'Enter') handleAddMember(teamId); }}
-                                          style={{
-                                            flex: '1 1 240px',
-                                            padding: '7px 10px',
-                                            background: 'var(--input-bg, #000)',
-                                            color: 'var(--text-main, #fff)',
-                                            border: '2px solid var(--border-color, #000)',
-                                            fontSize: '0.8rem',
-                                            fontWeight: 600
-                                          }}
-                                        />
-                                        <button
-                                          type="button"
-                                          onClick={() => handleAddMember(teamId)}
-                                          disabled={addingMember[teamId]}
-                                          style={{
-                                            background: '#FFE600',
-                                            color: '#000000',
-                                            border: '2px solid #000000',
-                                            boxShadow: '2px 2px 0px #000000',
-                                            padding: '7px 14px',
-                                            fontSize: '0.78rem',
-                                            fontWeight: 900,
-                                            cursor: 'pointer',
-                                            whiteSpace: 'nowrap'
-                                          }}
-                                        >
-                                          {addingMember[teamId] ? 'ADDING...' : '+ ADD'}
-                                        </button>
-                                      </div>
-
-                                      {/* Bottom Bar: Instructions hint on left, Form Team Button on right */}
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', paddingTop: '4px' }}>
-                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                          Friends haven't registered? Share code <strong>{teamId}</strong> — they join when signing up.
-                                        </span>
-
-                                        {isIncomplete ? (
-                                          <button
-                                            type="button"
-                                            disabled
-                                            style={{
-                                              background: '#374151',
-                                              color: '#9ca3af',
-                                              border: '1.5px solid #4b5563',
-                                              padding: '7px 14px',
-                                              fontSize: '0.76rem',
-                                              fontWeight: 800,
-                                              cursor: 'not-allowed'
-                                            }}
-                                          >
-                                            🔒 FORM TEAM ({memberCount}/{minRequired} PLAYERS)
-                                          </button>
-                                        ) : (
-                                          <button
-                                            type="button"
-                                            onClick={() => handleFormTeam(teamId, userTeam?.teamName || 'Team', event?.name || 'Event', memberCount, minRequired)}
-                                            disabled={formingTeam[teamId]}
-                                            style={{
-                                              background: '#10b981',
-                                              color: '#000000',
-                                              border: '2px solid #000000',
-                                              boxShadow: '2px 2px 0px #000000',
-                                              padding: '7px 16px',
-                                              fontSize: '0.8rem',
-                                              fontWeight: 900,
-                                              cursor: 'pointer'
-                                            }}
-                                          >
-                                            {formingTeam[teamId] ? 'FORMING...' : `⚡ FORM TEAM (${memberCount} PLAYERS)`}
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
+                            {/* Group / Team Event On-Spot Notice */}
+                            {isGroupEvent && (
+                              <div style={{ marginTop: '12px', borderTop: '1.5px dashed var(--border-color)', paddingTop: '10px' }}>
+                                <div style={{
+                                  background: 'rgba(255, 230, 0, 0.12)',
+                                  border: '1.5px solid #FFE600',
+                                  padding: '8px 12px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  color: 'var(--text-main)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px'
+                                }}>
+                                  <span style={{ fontSize: '1.1rem' }}>👥</span>
+                                  <span>
+                                    <strong>Group / Team Event:</strong> Teams will be formed directly on-spot with your friends at the event venue during reporting!
+                                  </span>
                                 </div>
-                              );
-                            })()}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

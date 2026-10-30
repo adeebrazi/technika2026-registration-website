@@ -18,24 +18,25 @@ const UserSchema = new mongoose.Schema(
     },
     age: {
       type: Number,
-      required: true,
+      required: false,
     },
     gender: {
       type: String,
-      required: true,
-      enum: ['Male', 'Female', 'Other'],
+      required: false,
     },
     email: {
       type: String,
       required: true,
-      unique: true,
       trim: true,
       lowercase: true,
       validate: {
         validator: function (v) {
+          if (this.source === 'google_form' || this.source === 'admin_import') {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+          }
           return v.endsWith('@gmail.com');
         },
-        message: props => `${props.value} is not a valid Gmail address! Registration requires a Gmail account.`
+        message: props => `${props.value} is not a valid email address! Registration requires a Gmail account.`
       }
     },
     whatsapp: {
@@ -80,7 +81,10 @@ const UserSchema = new mongoose.Schema(
     },
     paymentScreenshotUrl: {
       type: String,
-      required: true,
+      required: function() {
+        return !this.source || this.source === 'website';
+      },
+      default: '',
     },
     expectedAmount: {
       type: Number,
@@ -108,6 +112,35 @@ const UserSchema = new mongoose.Schema(
       default: null,
     },
     collegeIdCardUrl: {
+      type: String,
+      default: null,
+    },
+    source: {
+      type: String,
+      enum: ['website', 'google_form', 'admin_import'],
+      default: 'website',
+    },
+    confirmationEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    confirmationEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+    confirmationEmailSentBy: {
+      type: String,
+      default: null,
+    },
+    qrEmailSent: {
+      type: Boolean,
+      default: false,
+    },
+    qrEmailSentAt: {
+      type: Date,
+      default: null,
+    },
+    qrEmailSentBy: {
       type: String,
       default: null,
     },

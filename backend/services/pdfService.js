@@ -81,7 +81,6 @@ const generateReceipt = (user, plainPassword, selectedEvents) => {
       drawDetailRow('WhatsApp Number:', user.whatsapp);
       drawDetailRow('Institution:', user.institution);
       drawDetailRow('Course & Semester:', `${user.course} - Sem ${user.semester}`);
-      drawDetailRow('Age / Gender:', `${user.age} / ${user.gender}`);
       drawDetailRow('Payment UTR:', user.paymentUTR, true);
       
       // Plaintext password for user memory

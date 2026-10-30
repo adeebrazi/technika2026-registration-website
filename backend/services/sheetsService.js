@@ -42,10 +42,15 @@ if (isConfigured && !global.mockSheetsClient) {
  */
 const queueParticipantSync = async (user) => {
   try {
+    // STRICT SEPARATION: Only website registrations go to the Central Registrations sheet
+    if (user.source && user.source !== 'website') {
+      return;
+    }
+
     const payload = {
       registrationId: user.registrationId,
       name: user.name,
-      age: user.age,
+      age: user.age || '',
       gender: user.gender,
       email: user.email,
       whatsapp: user.whatsapp,
@@ -54,7 +59,6 @@ const queueParticipantSync = async (user) => {
       semester: user.semester,
       utr: user.paymentUTR,
       screenshotUrl: user.paymentScreenshotUrl,
-      registeredAt: user.createdAt,
     };
 
     const task = new SheetsQueue({
@@ -75,6 +79,12 @@ const queueParticipantSync = async (user) => {
  */
 const queueRegistrationSync = async (registration, event) => {
   try {
+    const User = require('../models/User');
+    const user = await User.findOne({ registrationId: registration.registrationId }, 'source');
+    if (user && user.source && user.source !== 'website') {
+      return;
+    }
+
     const payload = {
       registrationId: registration.registrationId,
       eventId: registration.eventId,
@@ -118,8 +128,7 @@ const getDynamicHeaders = async () => {
     'Age', 
     'Gender', 
     'Payment UTR', 
-    'Screenshot URL', 
-    'Registered At'
+    'Screenshot URL'
   ];
   
   const Event = require('../models/Event');
@@ -276,7 +285,6 @@ const processSingleTask = async (task) => {
 
     if (task.type === 'PARTICIPANT') {
       const d = task.data;
-      const registeredAtStr = new Date(d.registeredAt).toLocaleString();
       
       const profileData = [
         d.registrationId,
@@ -286,18 +294,17 @@ const processSingleTask = async (task) => {
         d.institution,
         d.course,
         d.semester,
-        d.age,
+        d.age || '',
         d.gender,
         d.utr,
-        d.screenshotUrl,
-        registeredAtStr
+        d.screenshotUrl
       ];
 
       if (rowIndex !== -1) {
-        // Update only the fixed profile columns (A to L)
+        // Update only the fixed profile columns (A to K)
         await sheetsClient.spreadsheets.values.update({
           spreadsheetId,
-          range: `Registrations!A${rowIndex}:L${rowIndex}`,
+          range: `Registrations!A${rowIndex}:K${rowIndex}`,
           valueInputOption: 'USER_ENTERED',
           resource: { values: [profileData] }
         });
@@ -306,7 +313,7 @@ const processSingleTask = async (task) => {
         // Append a new row with just profile data. Event cells will be left blank.
         await sheetsClient.spreadsheets.values.append({
           spreadsheetId,
-          range: 'Registrations!A:L',
+          range: 'Registrations!A:K',
           valueInputOption: 'USER_ENTERED',
           resource: { values: [profileData] }
         });
@@ -498,7 +505,8 @@ const startQueueWorker = () => {
       const Registration = require('../models/Registration');
       const Event = require('../models/Event');
 
-      const users = await User.find({});
+      // STRICT SEPARATION: Reconcile ONLY website participants
+      const users = await User.find({ source: 'website' });
       for (const u of users) {
         const existingTask = await SheetsQueue.findOne({ registrationId: u.registrationId, type: 'PARTICIPANT' });
         if (!existingTask) {
@@ -517,7 +525,8 @@ const startQueueWorker = () => {
         }
       }
 
-      const regs = await Registration.find({ status: 'CONFIRMED' });
+      const websiteUserIds = users.map(u => u.registrationId);
+      const regs = await Registration.find({ status: 'CONFIRMED', registrationId: { $in: websiteUserIds } });
       for (const r of regs) {
         const ev = await Event.findOne({ eventId: r.eventId });
         if (ev) {
@@ -688,10 +697,49 @@ const appendVerificationRecord = async (record) => {
   }
 };
 
+/**
+ * Append a newly allotted Google Form registration to the dedicated "Google_Form_Allotted" tab
+ */
+const appendGoogleFormAllotted = async (user, resolvedEvents = []) => {
+  if (!isConfigured) return;
+  try {
+    const eventNames = Array.isArray(resolvedEvents)
+      ? resolvedEvents.map(e => (typeof e === 'string' ? e : e.name || e.eventId)).join(', ')
+      : '';
+
+    const rowData = [
+      user.registrationId,
+      user.name || '',
+      user.email || '',
+      user.whatsapp || '',
+      user.institution || '',
+      user.course ? `${user.course} ${user.semester || ''}`.trim() : (user.semester || ''),
+      user.gender || '',
+      user.paymentUTR || '',
+      user.paymentScreenshotUrl || '',
+      eventNames,
+      Array.isArray(resolvedEvents) ? resolvedEvents.length : 1,
+      user.createdAt ? new Date(user.createdAt).toLocaleString() : new Date().toLocaleString(),
+      'google_form'
+    ];
+
+    await sheetsClient.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Google_Form_Allotted!A:M',
+      valueInputOption: 'USER_ENTERED',
+      resource: { values: [rowData] }
+    });
+    console.log(`[GOOGLE FORM ALLOTTED SHEET] Appended ${user.registrationId} (${user.name}) to Google_Form_Allotted tab.`);
+  } catch (err) {
+    console.error('[GOOGLE FORM ALLOTTED SHEET ERROR]:', err.message);
+  }
+};
+
 module.exports = {
   queueParticipantSync,
   queueRegistrationSync,
   startQueueWorker,
   deleteRegistrationFromSheets,
   appendVerificationRecord,
+  appendGoogleFormAllotted,
 };
