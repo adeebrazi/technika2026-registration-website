@@ -443,6 +443,28 @@ router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (re
   }
 });
 
+// @route   DELETE /api/admin/permissions/:targetKey
+// @desc    Remove an individual override to revert to default role permissions
+// @access  Private (Administrator Only)
+router.delete('/permissions/:targetKey', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { targetKey } = req.params;
+    if (!targetKey) {
+      return res.status(400).json({ message: 'targetKey is required' });
+    }
+
+    await RolePermission.deleteOne({ targetKey: targetKey.toLowerCase() });
+
+    res.json({
+      success: true,
+      message: `Individual override removed. Reverted to standard role permissions.`
+    });
+  } catch (err) {
+    console.error('Error removing individual override:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/drive-proxy
 // @desc    Fast stream proxy for Google Drive screenshots with auto-caching
 // @access  Public
