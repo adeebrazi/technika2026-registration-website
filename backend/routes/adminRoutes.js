@@ -416,7 +416,7 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
 // @access  Private (Administrator Only)
 router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
   try {
-    const { targetKey, title, ...permissionsData } = req.body;
+    const { targetKey, title, _id, __v, ...permissionsData } = req.body;
     if (!targetKey) {
       return res.status(400).json({ message: 'targetKey is required (e.g. "faculty", "coordinator", or user email)' });
     }
@@ -426,11 +426,13 @@ router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (re
     const updated = await RolePermission.findOneAndUpdate(
       { targetKey: targetKey.toLowerCase() },
       {
-        targetKey: targetKey.toLowerCase(),
-        title: title || defaultTitle,
-        ...permissionsData,
-        updatedBy: req.admin?.name || 'Administrator',
-        updatedAt: new Date()
+        $set: {
+          targetKey: targetKey.toLowerCase(),
+          title: title || defaultTitle,
+          ...permissionsData,
+          updatedBy: req.admin?.name || 'Administrator',
+          updatedAt: new Date()
+        }
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
