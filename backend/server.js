@@ -15,8 +15,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const fs = require('fs');
+const staticDir = fs.existsSync(path.join(__dirname, '../frontend/dist', 'index.html'))
+  ? path.join(__dirname, '../frontend/dist')
+  : path.join(__dirname, 'public');
+
 // Serve static frontend files
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(staticDir));
 
 // Mount API Routes
 app.use('/api/events', require('./routes/eventRoutes'));
@@ -43,7 +48,7 @@ app.use((err, req, res, next) => {
 
 // Wildcard fallback to serve React index.html for client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(staticDir, 'index.html'));
 });
 
 // Start Google Sheets Asynchronous Queue sync worker
