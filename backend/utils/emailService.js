@@ -106,17 +106,17 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
         <tr>
           <td align="center">
             <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
-              
-              <!-- Header -->
+
+              <!-- Top Header: Official Technika 6.0 Banner -->
               <tr>
-                <td style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 30px 24px; text-align: center; border-bottom: 4px solid #2563eb;">
-                  <div style="color: #60a5fa; font-size: 11px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; margin-bottom: 6px;">
-                    ARKA JAIN University · School of Engineering & IT
-                  </div>
-                  <h1 style="color: #ffffff; font-size: 26px; font-weight: 900; margin: 0; letter-spacing: -0.5px;">
-                    TECHNIKA <span style="background: #2563eb; color: #ffffff; padding: 2px 8px; border-radius: 6px;">6.0</span>
-                  </h1>
-                  <p style="color: #94a3b8; font-size: 13px; margin: 8px 0 0 0;">Annual Techno-Cultural Fest · Official Confirmation</p>
+                <td style="padding: 0; margin: 0; background-color: #0f172a; text-align: center; border-bottom: 4px solid #2563eb;">
+                  <img
+                    src="https://i.postimg.cc/Bv7C2ZZc/Whats-App-Image-2026-10-30-at-12-42-52-PM.jpg"
+                    alt="ARKA JAIN University – Technika 6.0"
+                    width="600"
+                    border="0"
+                    style="display: block; width: 100%; max-width: 600px; height: auto; margin: 0 auto; padding: 0; border: 0; outline: none; text-decoration: none;"
+                  >
                 </td>
               </tr>
 
@@ -190,6 +190,7 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                         </tr>
                       </thead>
                       <tbody>
+                        <!-- Injected rows with Event Name, Category, Team/Individual -->
                         ${eventsListHtml}
                       </tbody>
                     </table>
@@ -207,9 +208,34 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                     </ul>
                   </div>
 
-                  <!-- Footer note -->
+                  <!-- Contact & Support -->
+                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
+                    <div style="color: #0f172a; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px;">
+                      📞 For Queries & Assistance:
+                    </div>
+                    <div style="color: #334155; font-size: 13px; line-height: 1.8;">
+                      <a href="tel:+916206782574" style="color: #2563eb; text-decoration: none;">+91 6206782574</a><br>
+                      <a href="tel:+917858812586" style="color: #2563eb; text-decoration: none;">+91 7858812586</a>
+                    </div>
+                  </div>
+
+                  <!-- WhatsApp Group -->
+                  <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
+                    <div style="color: #065f46; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 6px;">
+                      💬 Join the Official Technika 6.0 WhatsApp Group:
+                    </div>
+                    <p style="color: #047857; font-size: 12px; line-height: 1.5; margin: 0 0 10px 0;">
+                      Stay updated with important announcements, event schedules, and other fest-related information.
+                    </p>
+                    <a href="https://chat.whatsapp.com/LR0WpPwaKwVDie7H4zD7OJ" target="_blank" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: 700; padding: 10px 16px; border-radius: 6px;">
+                      Join WhatsApp Group
+                    </a>
+                  </div>
+
+                  <!-- Sign-off -->
                   <p style="color: #64748b; font-size: 12px; margin: 16px 0 0 0; line-height: 1.5;">
-                    Verified by <strong>${senderName}</strong> · Technika 6.0 Organizing Committee<br>
+                    Verified by <strong>${senderName}</strong><br>
+                    Technika 6.0 Organizing Committee<br>
                     School of Engineering & IT, ARKA JAIN University, Jamshedpur
                   </p>
                 </td>
