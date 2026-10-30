@@ -157,7 +157,7 @@ const ROLE_KEY_TO_TITLE = {
 // @route   POST /api/admin/login
 // @desc    Admin authentication with strict role verification
 // @access  Public
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password, role } = req.body;
 
   if (!email || !password) {
@@ -223,6 +223,8 @@ router.post('/login', (req, res) => {
     isAdmin: true
   };
 
+  const userPerms = await getActivePermissions(finalRoleKey, cleanEmail);
+
   jwt.sign(
     payload,
     process.env.JWT_SECRET,
@@ -234,7 +236,8 @@ router.post('/login', (req, res) => {
         token,
         role: finalRoleKey,
         name: displayName,
-        designation: finalDesignation
+        designation: finalDesignation,
+        permissions: userPerms
       });
     }
   );
