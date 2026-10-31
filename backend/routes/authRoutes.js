@@ -154,6 +154,17 @@ router.post('/send-otp', async (req, res) => {
   if (!email) return res.status(400).json({ message: 'Email is required.' });
 
   try {
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // On the Technika website, duplicate email registrations are not allowed.
+    // Multiple students sharing the same email are ONLY permitted via Google Sheets.
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({
+        message: `This email (${normalizedEmail}) is already registered with Participant ID: ${existingUser.registrationId}. On the website, multiple registrations under the same email are not allowed. Please log in instead.`
+      });
+    }
+
     // Generate a random 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     

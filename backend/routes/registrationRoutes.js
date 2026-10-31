@@ -129,15 +129,14 @@ router.post(
         return res.status(400).json({ message: 'Password must be at least 6 characters long!' });
       }
 
-      // Multiple students are allowed to register with the same email ID.
-      // Only block if the exact same participant (same name & email) is already registered.
-      const existingSameStudent = await User.findOne({
-        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+      // Direct website portal registration: Each email must be unique.
+      // Multiple students sharing the same email are ONLY permitted via Google Sheets.
+      const existingUserWithEmail = await User.findOne({
         email: email.toLowerCase().trim()
       });
-      if (existingSameStudent) {
+      if (existingUserWithEmail) {
         return res.status(400).json({
-          message: `Participant "${name}" is already registered with ID: ${existingSameStudent.registrationId}. If you are registering another student with this email, please enter their own name.`
+          message: `The email "${email}" is already registered (Participant: ${existingUserWithEmail.name}, ID: ${existingUserWithEmail.registrationId}). On the website, multiple registrations with the same email are not allowed.`
         });
       }
 

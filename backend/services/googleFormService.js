@@ -134,18 +134,42 @@ const resolveEvents = async (rawEventsInput, allEvents) => {
 };
 
 const getField = (obj, candidateKeys, defaultValue = '') => {
-  if (!obj) return defaultValue;
-  const lowerKeys = Object.keys(obj).reduce((acc, k) => {
-    acc[k.toLowerCase().replace(/[^a-z0-9]/g, '')] = obj[k];
-    return acc;
-  }, {});
+  if (!obj || typeof obj !== 'object') return defaultValue;
 
-  for (const c of candidateKeys) {
-    const norm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (lowerKeys[norm] !== undefined && lowerKeys[norm] !== null && String(lowerKeys[norm]).trim() !== '') {
-      return String(lowerKeys[norm]).trim();
+  const rawKeys = [];
+  const lowerKeys = {};
+
+  for (const k of Object.keys(obj)) {
+    const val = obj[k];
+    if (val !== undefined && val !== null && String(val).trim() !== '') {
+      const norm = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      lowerKeys[norm] = String(val).trim();
+      rawKeys.push({ raw: k.toLowerCase().replace(/\s+/g, ' '), norm, val: String(val).trim() });
     }
   }
+
+  // 1. Exact normalized match
+  for (const c of candidateKeys) {
+    const norm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (lowerKeys[norm] !== undefined) {
+      return lowerKeys[norm];
+    }
+  }
+
+  // 2. Substring match (handles multiline headers with help text, drop-down notes, etc.)
+  for (const c of candidateKeys) {
+    const norm = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+    for (const item of rawKeys) {
+      if (item.norm.includes(norm) || item.raw.includes(c.toLowerCase())) {
+        // Prevent 'current education status' from matching when looking for institute/school name
+        if (item.raw.includes('current education status') && !c.toLowerCase().includes('education') && !c.toLowerCase().includes('status')) {
+          continue;
+        }
+        return item.val;
+      }
+    }
+  }
+
   return defaultValue;
 };
 
@@ -157,11 +181,40 @@ const processGoogleFormSubmission = async (payload) => {
     // 1. Normalize and extract incoming payload fields flexibly
     const name = getField(payload, ['name', 'studentname', 'fullname', 'nameofstudent']);
     const rawEmail = getField(payload, ['email', 'emailaddress', 'parentemail', 'mail']).toLowerCase();
-    const phone = getField(payload, ['whatsapp', 'whatsappnumber', 'phone', 'phonenumber', 'contact', 'contactnumber', 'mobilenumber']);
-    const institution = getField(payload, ['institution', 'schoolcollegename', 'schoolcollegeuniversityname', 'schoolname', 'collegename', 'school'], 'School Student');
-    const course = getField(payload, ['course', 'stream', 'category'], 'School / College Student');
-    const semester = getField(payload, ['semester', 'class', 'standard', 'grade', 'classstandard'], 'N/A');
-    const rawUtr = getField(payload, ['paymentutr', 'transactionutrnumber', 'transactionutr', 'utr', 'transactionid', 'upireferenceno', 'referencenumber', 'upiref']);
+    const phone = getField(payload, ['contactnumber', 'contact', 'whatsapp', 'whatsappnumber', 'phone', 'phonenumber', 'mobilenumber']);
+    
+    // Extract institution from restructured Google Form column
+    const rawInst = getField(payload, [
+      'schoolcollegeuniversityname',
+      'schoolcollegename',
+      'schoolcollegeuniversity',
+      'schoolcollege',
+      'institution',
+      'institutename',
+      'collegename',
+      'schoolname'
+    ], '');
+    const institution = rawInst || 'Others';
+
+    // Current Education Status (e.g. SCHOOL, COLLEGE, DIPLOMA, B.TECH)
+    const course = getField(payload, [
+      'currenteducationstatus',
+      'educationstatus',
+      'course',
+      'stream',
+      'category'
+    ], 'School Student');
+
+    // Semester / Standard (e.g. Class 8, Class 9, Class 11, Class 12, Sem 3)
+    const semester = getField(payload, [
+      'semesterstandard',
+      'semester',
+      'standard',
+      'class',
+      'grade'
+    ], 'N/A');
+
+    const rawUtr = getField(payload, ['transactionutrnumber', 'transactionutr', 'paymentutr', 'utr', 'transactionid', 'upireferenceno', 'referencenumber', 'upiref']);
     const screenshotUrl = getField(payload, ['uploadpaymentscreenshot', 'paymentscreenshoturl', 'screenshoturl', 'screenshot', 'paymentscreenshot', 'receipt'], '');
     
     // Events can be array, string, or split across Technical, Cultural, Creative columns
@@ -199,7 +252,13 @@ const processGoogleFormSubmission = async (payload) => {
       }
     }
     
-    const gender = ['Male', 'Female', 'Other'].includes(payload.gender) ? payload.gender : 'Other';
+    const rawGender = getField(payload, ['gender', 'sex'], '');
+    let gender = 'Other';
+    if (rawGender) {
+      const g = rawGender.toLowerCase().trim();
+      if (g.startsWith('m')) gender = 'Male';
+      else if (g.startsWith('f')) gender = 'Female';
+    }
 
     // Must have at least a Name
     if (!name) {

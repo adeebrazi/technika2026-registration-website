@@ -111,11 +111,11 @@ const ADMIN_PROFILES = {
   'astikp@technika2026.online': { name: 'Prof. Astik Pradhan', designation: 'Faculty Coordinator' },
   'padmajat@technika2026.online': { name: 'Dr. Padmaja Tripathy', designation: 'Faculty Coordinator' },
 
-  // Administration
+  // Administration (Only Adeeb Razi)
   'adeeb@technika2026.online': { name: 'Adeeb Razi', designation: 'Administration' },
-  'anjali@technika2026.online': { name: 'Anjali Singh', designation: 'Administration' },
 
   // Student Coordinators
+  'anjali@technika2026.online': { name: 'Anjali Singh', designation: 'Student Coordinator' },
   'sonalim@technika2026.online': { name: 'Sonali Mahato', designation: 'Student Coordinator' },
   'nikitam@technika2026.online': { name: 'Nikita Mishra', designation: 'Student Coordinator' },
   'aadityas@technika2026.online': { name: 'Aaditya Singh', designation: 'Student Coordinator' },
@@ -712,6 +712,16 @@ router.get('/analytics', async (req, res) => {
     const instituteWise = instituteAgg.map(i => ({ institute: i._id || 'Unknown', count: i.count }));
     const totalInstitutes = instituteAgg.length;
 
+    // ── Arka Jain University (Internal) vs Other Institutes (External) ──
+    let internalRegistrations = 0;
+    instituteAgg.forEach(i => {
+      const instName = (i._id || '').toLowerCase();
+      if (instName.includes('arka') || instName.includes('jain') || instName === 'aju') {
+        internalRegistrations += i.count;
+      }
+    });
+    const externalRegistrations = Math.max(0, totalRegistrations - internalRegistrations);
+
     // ── 3. Event-wise registration counts ──
     const events = await Event.find();
     const eventMap = {};
@@ -821,6 +831,8 @@ router.get('/analytics', async (req, res) => {
       websiteRegistrations: websiteCount,
       googleFormRegistrations: googleFormCount,
       importRegistrations: importCount,
+      internalRegistrations,
+      externalRegistrations,
       sourceBreakdown: {
         website: websiteCount,
         googleForm: googleFormCount,

@@ -1,8 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import logoPng from '@/assets/logo.png';
-import technikaLogoJpg from '@/assets/technika_logo.jpg';
+import logoPng from '@/assets/logo.webp';
+import technikaLogoJpg from '@/assets/technika_logo.webp';
 import { Sparkles, Sun } from 'lucide-react';
 
 export const MAIN_WEBSITE_URL = typeof window !== 'undefined' && 

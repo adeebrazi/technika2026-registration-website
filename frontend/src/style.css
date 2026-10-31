@@ -1250,83 +1250,83 @@ body {
 }
 
 .event-card[data-id="cyber-shield"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/cyber shield.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/cyber shield.webp');
 }
 
 .event-card[data-id="code-busters"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Code Buster.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Code Buster.webp');
 }
 
 .event-card[data-id="design-dash"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Design Dash.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Design Dash.webp');
 }
 
 .event-card[data-id="red-tech"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/red tech.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/red tech.webp');
 }
 
 .event-card[data-id="robo-race"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo race.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo race.webp');
 }
 
 .event-card[data-id="robo-wars"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo wars.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo wars.webp');
 }
 
 .event-card[data-id="robo-pick-n-place"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo race.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/robo race.webp');
 }
 
 .event-card[data-id="brainstorm-battle"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/brainstorm battle.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/brainstorm battle.webp');
 }
 
 .event-card[data-id="circuit-crafter"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Circuit Crafter.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Circuit Crafter.webp');
 }
 
 .event-card[data-id="intelliquest"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Intelliquest.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Intelliquest.webp');
 }
 
 .event-card[data-id="electrofix-challenge"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Circuit Crafter.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Circuit Crafter.webp');
 }
 
 .event-card[data-id="ai-quizathon"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/ai quizzathon.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/ai quizzathon.webp');
 }
 
 .event-card[data-id="junkyard-wars"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/junkyard wars.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/junkyard wars.webp');
 }
 
 .event-card[data-id="project-model-exhibition"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/project model exhibition.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/project model exhibition.webp');
 }
 
 .event-card[data-id="ecoai-challenge"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/eco ai challenge.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/eco ai challenge.webp');
 }
 
 .event-card[data-id="coding-ladder"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/coding ladder.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/coding ladder.webp');
 }
 
 .event-card[data-id="load-bridging"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/load bridging.png');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/load bridging.webp');
 }
 
 .event-card[data-id="data-dash"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Design Dash.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/Design Dash.webp');
 }
 
 .event-card[data-id="web-wizard"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/red tech.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/red tech.webp');
 }
 
 .event-card[data-id="app-attack"]::after {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/cyber shield.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/cyber shield.webp');
 }
 
 /* Force all text content, tag, meta, and actions to render above the image */
@@ -2512,15 +2512,15 @@ a.contact-detail-value:hover {
 }
 
 #about-card-aju::before {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/ARKA JAIN U.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/ARKA JAIN U.webp');
 }
 
 #about-card-school::before {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/SOEIT.jpg');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/SOEIT.webp');
 }
 
 #about-card-fest::before {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/021A0239.JPG');
+  background-image: linear-gradient(rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.42)), url('/021A0239.webp');
 }
 
 /* Force all text content, labels, titles, and actions to render above the watermark */
@@ -3718,4 +3718,4 @@ select option {
   transform: translate(2px, 2px);
   box-shadow: 0px 0px 0px 0px #000000;
 }
-
+
