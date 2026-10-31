@@ -266,13 +266,23 @@ router.post('/dashboard-login', (req, res) => {
 });
 
 // @route   GET /api/admin/users
-// @desc    Get all users with their registrations (dynamic permission-filtered)
+// @desc    Get all users with their registered events (strictly permission-filtered)
 // @access  Private (All Admin Roles)
 router.get('/users', verifyAdminToken, async (req, res) => {
   try {
     const requestingRole = req.admin?.role; // 'admin' | 'faculty' | 'coordinator'
     const requestingEmail = req.admin?.email;
     const perms = await getActivePermissions(requestingRole, requestingEmail);
+
+    // Permission Enforcement: If canViewParticipants is false for non-admin, deny access
+    if (requestingRole !== 'admin' && perms.canViewParticipants === false) {
+      return res.status(403).json({
+        message: 'Access Restricted: You do not have permission to view registered participants.',
+        accessLevel: 'none',
+        permissions: perms,
+        users: []
+      });
+    }
 
     const users = await User.find().select('-passwordHash').sort({ createdAt: -1 });
     
@@ -531,6 +541,14 @@ router.get('/drive-proxy', async (req, res) => {
 // @access  Private (Admin & Staff)
 router.post('/send-email', verifyAdminToken, async (req, res) => {
   try {
+    const requestingRole = req.admin?.role;
+    const requestingEmail = req.admin?.email;
+    const perms = await getActivePermissions(requestingRole, requestingEmail);
+
+    if (requestingRole !== 'admin' && !perms.canViewContactInfo) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to communicate with participants.' });
+    }
+
     const { userId, type } = req.body;
     if (!userId || !type) {
       return res.status(400).json({ message: 'Participant ID and email type (confirmation or qr) are required' });
@@ -612,6 +630,16 @@ router.post('/send-email', verifyAdminToken, async (req, res) => {
 // NOTE: Uses manual lookups because all refs are String-based (not ObjectId)
 router.get('/teams', verifyAdminToken, async (req, res) => {
   try {
+    const requestingRole = req.admin?.role;
+    const requestingEmail = req.admin?.email;
+    const perms = await getActivePermissions(requestingRole, requestingEmail);
+
+    if (requestingRole !== 'admin' && perms.canViewTeams === false) {
+      return res.status(403).json({ message: 'Access Restricted: You do not have permission to view teams.' });
+    }
+
+    const canViewContact = requestingRole === 'admin' || Boolean(perms.canViewContactInfo);
+
     const teams = await Team.find().sort({ createdAt: -1 });
     
     // Build in-memory maps for events and users (string-keyed)
@@ -640,8 +668,8 @@ router.get('/teams', verifyAdminToken, async (req, res) => {
       const leaderDoc = userMap[teamObj.leaderId];
       teamObj.leaderId = leaderDoc ? {
         name: leaderDoc.name,
-        email: leaderDoc.email,
-        whatsapp: leaderDoc.whatsapp,
+        email: canViewContact ? leaderDoc.email : undefined,
+        whatsapp: canViewContact ? leaderDoc.whatsapp : undefined,
         institution: leaderDoc.institution
       } : { name: 'Unknown', email: '', whatsapp: '', institution: '' };
 
@@ -654,8 +682,8 @@ router.get('/teams', verifyAdminToken, async (req, res) => {
           role: m.role,
           userId: memberUser ? {
             name: memberUser.name,
-            email: memberUser.email,
-            whatsapp: memberUser.whatsapp,
+            email: canViewContact ? memberUser.email : undefined,
+            whatsapp: canViewContact ? memberUser.whatsapp : undefined,
             institution: memberUser.institution
           } : { name: 'Unknown', email: '', whatsapp: '', institution: '' }
         };
