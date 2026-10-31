@@ -171,7 +171,7 @@ export const Navbar: React.FC = () => {
             {/* Brochure button (Hidden on Admin pages) */}
             {!isAdminRoute && (
               <a
-                href="/brochure.pdf"
+                href="https://drive.google.com/file/d/1-g7Yprsh08tiBgp-xHWKInLqNxO1YFs_/view?usp=sharing"
                 target="_blank"
                 rel="noreferrer"
                 className="nav-btn-brochure"
