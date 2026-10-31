@@ -168,6 +168,8 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
         if (result.success) {
           if (result.duplicate) {
             duplicatesSkipped++;
+          } else if (result.alreadyAllotted) {
+            // Already allotted in previous run
           } else {
             newlyRegistered++;
           }

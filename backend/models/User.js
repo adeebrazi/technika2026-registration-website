@@ -120,6 +120,10 @@ const UserSchema = new mongoose.Schema(
       enum: ['website', 'google_form', 'admin_import'],
       default: 'website',
     },
+    formTimestamp: {
+      type: String,
+      default: null,
+    },
     confirmationEmailSent: {
       type: Boolean,
       default: false,
