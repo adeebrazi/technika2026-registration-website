@@ -703,6 +703,21 @@ const appendVerificationRecord = async (record) => {
 const appendGoogleFormAllotted = async (user, resolvedEvents = []) => {
   if (!isConfigured) return;
   try {
+    // Prevent duplicate entries in Google_Form_Allotted sheet
+    try {
+      const existingRes = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Google_Form_Allotted!A:A',
+      });
+      const existingIds = (existingRes.data.values || []).map(r => r[0]);
+      if (existingIds.includes(user.registrationId)) {
+        console.log(`[GOOGLE FORM ALLOTTED SHEET] Registration ID ${user.registrationId} already exists in tab. Skipping append.`);
+        return;
+      }
+    } catch (checkErr) {
+      // Continue if tab check fails
+    }
+
     const eventNames = Array.isArray(resolvedEvents)
       ? resolvedEvents.map(e => (typeof e === 'string' ? e : e.name || e.eventId)).join(', ')
       : '';
