@@ -22,6 +22,44 @@ const generateRegistrationId = async () => {
   return regId;
 };
 
+// Canonical approved institution resolution
+const getCanonicalInstitution = (raw) => {
+  if (!raw) return 'OTHERS';
+  const str = raw.trim();
+  const lower = str.toLowerCase();
+
+  if (lower.includes('arka') || lower.includes('jain') || lower === 'aju' || lower.includes('law department')) {
+    return 'ARKA JAIN UNIVERSITY';
+  }
+  if (lower.includes('women') && (lower.includes('poly') || lower.includes('poli'))) {
+    return "WOMEN'S POLYTECHNIC, GAMHARIA";
+  }
+  if (lower.includes('chandil')) return 'CHANDIL POLYTECHNIC';
+  if (lower.includes('icfai')) return 'THE ICFAI UNIVERSITY, JHARKHAND, RANCHI';
+  if (lower.includes('karim')) return 'KARIM CITY COLLEGE - SAKCHI';
+  if (lower.includes('church school')) return 'CHURCH SCHOOL BELDIH';
+  if (lower.includes('cm school') || lower.includes('burmamines')) return 'BPM +2 HIGH SCHOOL, BURMAMINES';
+  if (lower.includes('d.a.v') || lower.includes('dav')) return 'DAV PUBLIC SCHOOL, ADITYAPUR';
+  if (lower.includes('b.a.') || lower.includes('b.a')) return 'B.A. COLLEGE OF ENGINEERING AND TECHNOLOGY';
+  if (lower.includes('krishna') || lower === 'school') return 'SRI KRISHNA PUBLIC SCHOOL';
+  if (lower.includes('tata steel technical') || lower.includes('tsti')) return 'TATA STEEL TECHNICAL INSTITUTE';
+  if (lower.includes('dbms')) return 'DBMS ENGLISH SCHOOL';
+  if (lower.includes('polytechnic') && lower.includes('adityapur')) return 'GOVERNMENT POLYTECHNIC, ADITYAPUR';
+  if (lower.includes('govind')) return 'GOVIND VIDYALAYA, TAMULIA';
+  if (lower.includes('gulmohar')) return 'GULMOHAR HIGH SCHOOL';
+  if (lower.includes('danish') || lower.includes('idtr')) return 'INDO DANISH TOOL ROOM, JAMSHEDPUR';
+  if (lower.includes('nit') || lower.includes('national institute of technology')) return 'NATIONAL INSTITUTE OF TECHNOLOGY (NIT), JAMSHEDPUR';
+  if (lower.includes('netaji') || lower.includes('nsu')) return 'NETAJI SUBHAS UNIVERSITY, JAMSHEDPUR';
+  if (lower.includes('srinath public')) return 'SRINATH PUBLIC SCHOOL, JAMSHEDPUR';
+  if (lower.includes('central university of jharkhand') || lower.includes('cuj')) return 'CENTRAL UNIVERSITY OF JHARKHAND, RANCHI';
+  if (lower.includes('al-kabir') || lower.includes('alkabir')) return 'AL-KABIR POLYTECHNIC';
+  if (lower.includes('al-karim') || lower.includes('alkarim')) return 'AL-KARIM UNIVERSITY';
+  if (lower.includes('atomic')) return 'ATOMIC ENERGY CENTRAL SCHOOL';
+  if (lower.includes('amity')) return 'AMITY UNIVERSITY PATNA';
+
+  return str.toUpperCase();
+};
+
 // Normalize string for fuzzy comparison
 const normalizeStr = (str) => {
   return (str || '')
@@ -194,7 +232,7 @@ const processGoogleFormSubmission = async (payload) => {
       'collegename',
       'schoolname'
     ], '');
-    const institution = rawInst || 'Others';
+    const institution = getCanonicalInstitution(rawInst);
 
     const formTimestamp = getField(payload, ['timestamp', 'time', 'date', 'submittedat'], '');
 
