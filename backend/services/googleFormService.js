@@ -237,22 +237,38 @@ const processGoogleFormSubmission = async (payload) => {
     const formTimestamp = getField(payload, ['timestamp', 'time', 'date', 'submittedat'], '');
 
     // Current Education Status (e.g. SCHOOL, COLLEGE, DIPLOMA, B.TECH)
-    const course = getField(payload, [
+    let rawCourse = getField(payload, [
       'currenteducationstatus',
       'educationstatus',
       'course',
       'stream',
       'category'
-    ], 'School Student');
+    ], '').trim();
+
+    if (!rawCourse || rawCourse.toLowerCase() === 'school student' || rawCourse.toLowerCase() === 'school / college student') {
+      const instLower = (institution || '').toLowerCase();
+      if (instLower.includes('polytechnic') || instLower.includes('poly')) {
+        rawCourse = 'POLYTECHNIC / DIPLOMA';
+      } else if (instLower.includes('school') || instLower.includes('vidyalaya') || instLower.includes('academy')) {
+        rawCourse = 'SCHOOL';
+      } else if (instLower.includes('university') || instLower.includes('college') || instLower.includes('institute')) {
+        rawCourse = 'COLLEGE / UNIVERSITY';
+      } else {
+        rawCourse = '';
+      }
+    }
+    const course = rawCourse;
 
     // Semester / Standard (e.g. Class 8, Class 9, Class 11, Class 12, Sem 3)
-    const semester = getField(payload, [
+    let rawSem = getField(payload, [
       'semesterstandard',
       'semester',
       'standard',
       'class',
       'grade'
-    ], 'N/A');
+    ], '').trim();
+    if (rawSem.toUpperCase() === 'N/A') rawSem = '';
+    const semester = rawSem || (course === 'SCHOOL' ? 'Student' : 'General');
 
     const rawUtr = getField(payload, ['transactionutrnumber', 'transactionutr', 'paymentutr', 'utr', 'transactionid', 'upireferenceno', 'referencenumber', 'upiref']);
     const screenshotUrl = getField(payload, ['uploadpaymentscreenshot', 'paymentscreenshoturl', 'screenshoturl', 'screenshot', 'paymentscreenshot', 'receipt'], '');
@@ -311,106 +327,8 @@ const processGoogleFormSubmission = async (payload) => {
     // 2. Fetch all events for reference
     const allEvents = await Event.find({ isActive: true });
 
-    // ── 3. DEDUPLICATION ENGINE: ONLY COMPARE GOOGLE FORM AGAINST WEBSITE ──
-    // Website responses are left as-is. If an OG Google Form entry duplicates a Website registration,
-    // skip it so it is not added to Google Form Allotted sheet.
-    let matchedWebsiteUser = null;
-    let matchReason = '';
-
-    // Check A: Email match with Website registration
-    if (rawEmail) {
-      const websiteEmailMatch = await User.findOne({
-        source: 'website',
-        email: rawEmail
-      });
-      if (websiteEmailMatch) {
-        matchedWebsiteUser = websiteEmailMatch;
-        matchReason = 'WEBSITE_EMAIL_MATCH';
-      }
-    }
-
-    // Check B: Phone + Name match with Website registration
-    if (!matchedWebsiteUser && phone && phone.length >= 8) {
-      const phoneDigits = phone.replace(/[^0-9]/g, '').slice(-10);
-      const candidates = await User.find({
-        source: 'website',
-        whatsapp: { $regex: phoneDigits }
-      });
-      for (const cand of candidates) {
-        if (normalizeStr(cand.name) === normalizeStr(name)) {
-          matchedWebsiteUser = cand;
-          matchReason = 'WEBSITE_PHONE_AND_NAME_MATCH';
-          break;
-        }
-      }
-    }
-
-    // Check C: Exact UTR match with Website registration
-    if (!matchedWebsiteUser && rawUtr && rawUtr.length >= 6) {
-      const utrUser = await User.findOne({
-        source: 'website',
-        $or: [
-          { paymentUTR: rawUtr },
-          { utrEnteredManually: rawUtr }
-        ]
-      });
-      if (utrUser && normalizeStr(utrUser.name) === normalizeStr(name)) {
-        matchedWebsiteUser = utrUser;
-        matchReason = 'WEBSITE_UTR_MATCH';
-      }
-    }
-
-    // Check D: Name + School Match with Website registration
-    if (!matchedWebsiteUser && institution && institution !== 'School Student' && institution !== 'Others') {
-      const candidates = await User.find({
-        source: 'website',
-        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
-      });
-      for (const cand of candidates) {
-        if (normalizeStr(cand.institution) === normalizeStr(institution)) {
-          matchedWebsiteUser = cand;
-          matchReason = 'WEBSITE_NAME_AND_INSTITUTION_MATCH';
-          break;
-        }
-      }
-    }
-
-    // ── IF DUPLICATE OF WEBSITE: LEAVE WEBSITE DATA AS-IS & SKIP GOOGLE FORM ENTRY ──
-    if (matchedWebsiteUser) {
-      console.log(`[WEBSITE DUPLICATE DETECTED] Skipped Google Form entry for "${name}" (Matched Website ID: ${matchedWebsiteUser.registrationId}, Reason: ${matchReason})`);
-      
-      await DuplicateAttempt.create({
-        source: 'google_form',
-        attemptedName: name,
-        attemptedEmail: email,
-        attemptedPhone: phone,
-        attemptedUtr: rawUtr,
-        attemptedInstitution: institution,
-        attemptedCourse: course,
-        attemptedSemester: semester,
-        attemptedEvents: Array.isArray(eventsInput) ? eventsInput : [String(eventsInput)],
-        matchedUser: {
-          registrationId: matchedWebsiteUser.registrationId,
-          name: matchedWebsiteUser.name,
-          email: matchedWebsiteUser.email,
-          whatsapp: matchedWebsiteUser.whatsapp,
-          paymentUTR: matchedWebsiteUser.paymentUTR,
-          institution: matchedWebsiteUser.institution,
-        },
-        matchReason: `DUPLICATE_OF_WEBSITE_${matchReason}`,
-        status: 'SKIPPED',
-        rawPayload: payload,
-      });
-
-      return {
-        success: true,
-        duplicate: true,
-        status: 'WEBSITE_DUPLICATE_SKIPPED',
-        matchReason: `DUPLICATE_OF_WEBSITE_${matchReason}`,
-        registrationId: matchedWebsiteUser.registrationId,
-        message: `Duplicate of website registration (${matchReason}). Left website data as-is.`,
-      };
-    }
+    // ── 3. DEDUPLICATION ENGINE: DROPPED (ALL GOOGLE FORM SUBMISSIONS ACCEPTED) ──
+    // All Google Form entries are accepted regardless of website registrations ("Duplicates will work").
 
     // ── CHECK IF THIS SPECIFIC GOOGLE FORM SUBMISSION HAS ALREADY BEEN ALLOTTED ──
     // Do NOT remove duplicates from Google Form itself, but ensure recurring poller does not re-allot the same row.

@@ -106,6 +106,12 @@ router.post(
   ]),
   async (req, res) => {
     try {
+      // Direct website registrations are closed. All registrations are redirected to Google Form.
+      return res.status(403).json({
+        message: 'Direct website registrations are closed. Please register via our official Google Form.',
+        registrationClosed: true
+      });
+
       const {
         name,
         age,
