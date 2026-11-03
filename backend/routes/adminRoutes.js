@@ -270,6 +270,9 @@ router.post('/dashboard-login', (req, res) => {
 // @access  Private (All Admin Roles)
 router.get('/users', verifyAdminToken, async (req, res) => {
   try {
+    const forceSync = req.query.sync === '1' || req.query.sync === 'true';
+    await triggerLiveSyncIfNeeded(forceSync);
+
     const requestingRole = req.admin?.role; // 'admin' | 'faculty' | 'coordinator'
     const requestingEmail = req.admin?.email;
     const perms = await getActivePermissions(requestingRole, requestingEmail);
@@ -724,11 +727,45 @@ router.delete('/users/:id', verifyAdminToken, authorizeRoles('admin'), async (re
   }
 });
 
+// ── LIVE GOOGLE FORM SYNC AUTO-HOOK FOR SERVERLESS / LIVE DASHBOARD ──
+let lastLiveSyncTime = 0;
+let isLiveSyncRunning = false;
+
+const triggerLiveSyncIfNeeded = async (force = false) => {
+  const now = Date.now();
+  if ((force || (now - lastLiveSyncTime > 25000)) && !isLiveSyncRunning) {
+    isLiveSyncRunning = true;
+    lastLiveSyncTime = now;
+    try {
+      const { syncGoogleSheetNow } = require('../services/googleSheetPoller');
+      await syncGoogleSheetNow();
+    } catch (syncErr) {
+      console.warn('[LIVE SYNC FAILED]:', syncErr.message);
+    } finally {
+      isLiveSyncRunning = false;
+    }
+  }
+};
+
+// @route   ALL /api/admin/sync-live
+// @desc    Force trigger live sync from Google Sheet
+router.all('/sync-live', async (req, res) => {
+  try {
+    await triggerLiveSyncIfNeeded(true);
+    res.json({ success: true, timestamp: new Date(), message: 'Google Form responses synced successfully.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // @route   GET /api/admin/analytics
 // @desc    Get comprehensive analytics for dashboard
 // @access  Public (No login required)
 router.get('/analytics', async (req, res) => {
   try {
+    // Keep dashboard real-time: trigger ultra-fast Google Form sync if requested or if >25s since last sync
+    const forceSync = req.query.sync === '1' || req.query.sync === 'true';
+    await triggerLiveSyncIfNeeded(forceSync);
     // ── 1. Total number of registrations (unique users) ──
     const totalRegistrations = await User.countDocuments();
 

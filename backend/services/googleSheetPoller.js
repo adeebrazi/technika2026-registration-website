@@ -1,6 +1,7 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const User = require('../models/User');
 const { processGoogleFormSubmission } = require('./googleFormService');
 
 const DEFAULT_SHEET_CSV_URL = process.env.GOOGLE_SHEET_CSV_URL || 
@@ -154,6 +155,26 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
 
     console.log(`[SHEET POLLER] Successfully fetched ${parsedRows.length} active participant rows from sheet.`);
 
+    // Fast in-memory lookup cache to eliminate 300+ sequential MongoDB queries
+    const existingGFormUsers = await User.find(
+      { source: 'google_form' },
+      { formTimestamp: 1, name: 1, paymentScreenshotUrl: 1, registrationId: 1 }
+    ).lean();
+
+    const cache = {
+      existingKeySet: new Set(),
+      existingScreenshotSet: new Set(),
+    };
+
+    for (const u of existingGFormUsers) {
+      if (u.formTimestamp && u.name) {
+        cache.existingKeySet.add(`${u.formTimestamp.trim()}:::${u.name.trim().toLowerCase()}`);
+      }
+      if (u.paymentScreenshotUrl && !u.paymentScreenshotUrl.includes('offline-receipt.png') && u.name) {
+        cache.existingScreenshotSet.add(`${u.paymentScreenshotUrl.trim()}:::${u.name.trim().toLowerCase()}`);
+      }
+    }
+
     let newlyRegistered = 0;
     let duplicatesSkipped = 0;
     const errors = [];
@@ -161,8 +182,21 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
 
     for (let i = 0; i < parsedRows.length; i++) {
       const row = parsedRows[i];
+
+      // Instant in-memory pre-check: skip previously allotted rows in 0.001ms
+      const rawTimestamp = (row.Timestamp || row.timestamp || '').trim();
+      const rawName = (row.NAME || row.Name || row.name || '').trim().toLowerCase();
+      const rawScreenshot = (row['UPLOAD PAYMENT SCREENSHOT'] || row.uploadpaymentscreenshot || '').trim();
+
+      const isAllotted = (rawTimestamp && rawName && cache.existingKeySet.has(`${rawTimestamp}:::${rawName}`)) ||
+        (rawScreenshot && !rawScreenshot.includes('offline-receipt.png') && rawName && cache.existingScreenshotSet.has(`${rawScreenshot}:::${rawName}`));
+
+      if (isAllotted) {
+        continue;
+      }
+
       try {
-        const result = await processGoogleFormSubmission(row);
+        const result = await processGoogleFormSubmission(row, cache);
         syncResults.push(result);
 
         if (result.success) {

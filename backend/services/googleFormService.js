@@ -214,7 +214,7 @@ const getField = (obj, candidateKeys, defaultValue = '') => {
 /**
  * Process a single Google Form submission with silent deduplication
  */
-const processGoogleFormSubmission = async (payload) => {
+const processGoogleFormSubmission = async (payload, cache = null) => {
   try {
     // 1. Normalize and extract incoming payload fields flexibly
     const name = getField(payload, ['name', 'studentname', 'fullname', 'nameofstudent']);
@@ -324,28 +324,44 @@ const processGoogleFormSubmission = async (payload) => {
     // Ensure email exists or construct a fallback parent contact identifier
     const email = rawEmail || `school_${phone || Date.now()}@technika-participant.local`;
 
-    // 2. Fetch all events for reference
-    const allEvents = await Event.find({ isActive: true });
-
     // ── 3. DEDUPLICATION ENGINE: DROPPED (ALL GOOGLE FORM SUBMISSIONS ACCEPTED) ──
     // All Google Form entries are accepted regardless of website registrations ("Duplicates will work").
 
     // ── CHECK IF THIS SPECIFIC GOOGLE FORM SUBMISSION HAS ALREADY BEEN ALLOTTED ──
     // Do NOT remove duplicates from Google Form itself, but ensure recurring poller does not re-allot the same row.
     let alreadyAllottedUser = null;
-    if (formTimestamp && name) {
-      alreadyAllottedUser = await User.findOne({
-        source: 'google_form',
-        formTimestamp,
-        name: new RegExp(`^${name.trim()}$`, 'i'),
-      });
-    }
-    if (!alreadyAllottedUser && screenshotUrl && !screenshotUrl.includes('offline-receipt.png')) {
-      alreadyAllottedUser = await User.findOne({
-        source: 'google_form',
-        paymentScreenshotUrl: screenshotUrl,
-        name: new RegExp(`^${name.trim()}$`, 'i'),
-      });
+    const cleanFormTimestamp = (formTimestamp || '').trim();
+    const cleanName = (name || '').trim().toLowerCase();
+    const cleanScreenshot = (screenshotUrl || '').trim();
+
+    if (cache) {
+      if (cleanFormTimestamp && cleanName && cache.existingKeySet) {
+        const key = `${cleanFormTimestamp}:::${cleanName}`;
+        if (cache.existingKeySet.has(key)) {
+          alreadyAllottedUser = { registrationId: 'EXISTING', name };
+        }
+      }
+      if (!alreadyAllottedUser && cleanScreenshot && !cleanScreenshot.includes('offline-receipt.png') && cleanName && cache.existingScreenshotSet) {
+        const sKey = `${cleanScreenshot}:::${cleanName}`;
+        if (cache.existingScreenshotSet.has(sKey)) {
+          alreadyAllottedUser = { registrationId: 'EXISTING', name };
+        }
+      }
+    } else {
+      if (formTimestamp && name) {
+        alreadyAllottedUser = await User.findOne({
+          source: 'google_form',
+          formTimestamp,
+          name: new RegExp(`^${name.trim()}$`, 'i'),
+        });
+      }
+      if (!alreadyAllottedUser && screenshotUrl && !screenshotUrl.includes('offline-receipt.png')) {
+        alreadyAllottedUser = await User.findOne({
+          source: 'google_form',
+          paymentScreenshotUrl: screenshotUrl,
+          name: new RegExp(`^${name.trim()}$`, 'i'),
+        });
+      }
     }
 
     if (alreadyAllottedUser) {
@@ -361,6 +377,7 @@ const processGoogleFormSubmission = async (payload) => {
     }
 
     // ── 4. RESOLVE EVENTS FOR NEW UNIQUE PARTICIPANT ──
+    const allEvents = await Event.find({ isActive: true });
     const resolvedEvents = await resolveEvents(eventsInput, allEvents);
 
     // ── 5. HANDLE BATCH / SIBLING UTR COLLISION ──
@@ -404,6 +421,15 @@ const processGoogleFormSubmission = async (payload) => {
     });
 
     await newUser.save();
+
+    if (cache) {
+      if (cleanFormTimestamp && cleanName && cache.existingKeySet) {
+        cache.existingKeySet.add(`${cleanFormTimestamp}:::${cleanName}`);
+      }
+      if (cleanScreenshot && !cleanScreenshot.includes('offline-receipt.png') && cleanName && cache.existingScreenshotSet) {
+        cache.existingScreenshotSet.add(`${cleanScreenshot}:::${cleanName}`);
+      }
+    }
 
     // Create event registrations
     for (const ev of resolvedEvents) {
