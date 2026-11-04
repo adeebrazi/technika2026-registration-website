@@ -124,6 +124,12 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    formSubmissionKey: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
     confirmationEmailSent: {
       type: Boolean,
       default: false,

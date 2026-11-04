@@ -2,6 +2,7 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const User = require('../models/User');
+const SyncLock = require('../models/SyncLock');
 const { processGoogleFormSubmission } = require('./googleFormService');
 
 const DEFAULT_SHEET_CSV_URL = process.env.GOOGLE_SHEET_CSV_URL || 
@@ -149,6 +150,58 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
   const urlToFetch = customSheetUrl || pollerState.sheetUrl;
   console.log(`[SHEET POLLER] Starting live sync from: ${urlToFetch}`);
 
+  const now = new Date();
+  const lockTtlMs = 60000;
+  let hasLock = false;
+
+  try {
+    const lock = await SyncLock.findOneAndUpdate(
+      {
+        lockName: 'google_form_sync',
+        $or: [{ lockedUntil: { $lt: now } }, { lockedUntil: { $exists: false } }]
+      },
+      {
+        $set: {
+          lockedUntil: new Date(now.getTime() + lockTtlMs),
+          acquiredBy: `instance-${process.pid}-${Math.random().toString(36).slice(2, 7)}`
+        }
+      },
+      { upsert: false }
+    );
+
+    if (!lock) {
+      const existing = await SyncLock.findOne({ lockName: 'google_form_sync' });
+      if (!existing) {
+        try {
+          await SyncLock.create({
+            lockName: 'google_form_sync',
+            lockedUntil: new Date(now.getTime() + lockTtlMs),
+            acquiredBy: `instance-${process.pid}-${Math.random().toString(36).slice(2, 7)}`
+          });
+          hasLock = true;
+        } catch (e) {
+          hasLock = false;
+        }
+      } else {
+        hasLock = false;
+      }
+    } else {
+      hasLock = true;
+    }
+  } catch (lockErr) {
+    console.warn('[SHEET POLLER] Lock acquisition error:', lockErr.message);
+    hasLock = false;
+  }
+
+  if (!hasLock) {
+    console.log('[SHEET POLLER] Another instance is already actively synchronizing Google Form. Skipping this run.');
+    return {
+      success: true,
+      locked: true,
+      message: 'Sync currently in progress by another instance',
+    };
+  }
+
   try {
     const csvContent = await fetchCsvWithRedirect(urlToFetch);
     const parsedRows = parseCsv(csvContent);
@@ -255,6 +308,17 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
       timestamp: pollerState.lastSyncTime,
       error: error.message,
     };
+  } finally {
+    if (hasLock) {
+      try {
+        await SyncLock.updateOne(
+          { lockName: 'google_form_sync' },
+          { $set: { lockedUntil: new Date(0), lastSyncedAt: new Date() } }
+        );
+      } catch (relErr) {
+        // silent
+      }
+    }
   }
 };
 

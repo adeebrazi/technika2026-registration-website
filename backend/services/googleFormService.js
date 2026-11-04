@@ -400,6 +400,8 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(tempPassword, salt);
 
+    const submissionKey = cleanFormTimestamp && cleanName ? `${cleanFormTimestamp}:::${cleanName}` : undefined;
+
     const newUser = new User({
       registrationId,
       name,
@@ -418,9 +420,26 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
       verificationStatus: 'SUCCESS',
       source: 'google_form',
       formTimestamp: formTimestamp || null,
+      formSubmissionKey: submissionKey,
     });
 
-    await newUser.save();
+    try {
+      await newUser.save();
+    } catch (saveErr) {
+      if (saveErr.code === 11000 && (saveErr.keyPattern?.formSubmissionKey || saveErr.message?.includes('formSubmissionKey'))) {
+        console.log(`[ATOMIC DEDUPLICATION] Duplicate submission key rejected by DB index: ${submissionKey}`);
+        return {
+          success: true,
+          duplicate: false,
+          alreadyAllotted: true,
+          status: 'ALREADY_ALLOTTED',
+          registrationId: 'EXISTING',
+          name,
+          message: `Already allotted atomically`,
+        };
+      }
+      throw saveErr;
+    }
 
     if (cache) {
       if (cleanFormTimestamp && cleanName && cache.existingKeySet) {
