@@ -73,6 +73,16 @@ const connectDB = async () => {
       await Event.insertMany(initialEvents);
       console.log('Successfully seeded cloud/host database with 45 events!');
     }
+
+    // Automatically bootstrap and verify Master Admin Adeeb Razi in MongoDB
+    try {
+      const { ensureMasterAdmin } = require('../routes/adminRoutes');
+      if (typeof ensureMasterAdmin === 'function') {
+        await ensureMasterAdmin();
+      }
+    } catch (e) {
+      console.warn('Master admin bootstrap hook notice:', e.message);
+    }
   } catch (error) {
     console.warn(`\n[DB WARNING] Failed to connect to MongoDB Atlas/Host: ${error.message}`);
     
@@ -101,6 +111,16 @@ const connectDB = async () => {
         console.log('Seeding in-memory database with default events...');
         await Event.insertMany(initialEvents);
         console.log('Successfully seeded in-memory database with 45 events!\n');
+      }
+
+      // Automatically bootstrap and verify Master Admin Adeeb Razi in In-Memory DB
+      try {
+        const { ensureMasterAdmin } = require('../routes/adminRoutes');
+        if (typeof ensureMasterAdmin === 'function') {
+          await ensureMasterAdmin();
+        }
+      } catch (e) {
+        console.warn('Master admin bootstrap hook notice:', e.message);
       }
       
       // Store reference on global so we can close it during shutdown

@@ -1,15 +1,70 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { verifyAdminToken, authorizeRoles } = require('../middleware/role');
 const User = require('../models/User');
 const Team = require('../models/Team');
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 const RolePermission = require('../models/RolePermission');
+const AdminUser = require('../models/AdminUser');
 const cloudinaryService = require('../services/cloudinaryService');
 const vercelService = require('../services/vercelService');
 const { sendRegistrationConfirmationEmail } = require('../utils/emailService');
+
+// Permanent Master Administrator definition (Undestroyable Root Admin)
+const MASTER_ADMIN = {
+  name: 'Adeeb Razi',
+  email: 'adeeb@technika2026.online',
+  password: 'Lion@2048@Technika6.0',
+  role: 'admin',
+  designation: 'Administration',
+  isPermanent: true,
+  isActive: true,
+};
+
+// Automatic bootstrap helper: guarantees Master Admin Adeeb Razi is always active, permanent, and has correct credentials
+const ensureMasterAdmin = async () => {
+  try {
+    const existing = await AdminUser.findOne({ email: MASTER_ADMIN.email });
+    if (!existing) {
+      const hash = await bcrypt.hash(MASTER_ADMIN.password, 10);
+      await AdminUser.create({
+        name: MASTER_ADMIN.name,
+        email: MASTER_ADMIN.email,
+        passwordHash: hash,
+        role: MASTER_ADMIN.role,
+        designation: MASTER_ADMIN.designation,
+        isPermanent: true,
+        isActive: true,
+        createdBy: 'system_bootstrap',
+      });
+      console.log('🛡️ Master Admin bootstrapped into MongoDB:', MASTER_ADMIN.email);
+    } else {
+      let needsSave = false;
+      if (!existing.isPermanent || !existing.isActive || existing.role !== 'admin' || existing.name !== MASTER_ADMIN.name) {
+        existing.isPermanent = true;
+        existing.isActive = true;
+        existing.role = 'admin';
+        existing.designation = existing.designation || 'Administration';
+        existing.name = MASTER_ADMIN.name;
+        needsSave = true;
+      }
+      const isMatch = await bcrypt.compare(MASTER_ADMIN.password, existing.passwordHash);
+      if (!isMatch) {
+        existing.passwordHash = await bcrypt.hash(MASTER_ADMIN.password, 10);
+        needsSave = true;
+      }
+      if (needsSave) {
+        await existing.save();
+        console.log('🛡️ Master Admin verified & refreshed in MongoDB:', MASTER_ADMIN.email);
+      }
+    }
+  } catch (err) {
+    console.error('Error verifying master admin:', err.message);
+  }
+};
 
 const DEFAULT_PERMISSIONS = {
   faculty: {
@@ -144,7 +199,7 @@ const ROLE_KEY_TO_TITLE = {
 };
 
 // @route   POST /api/admin/login
-// @desc    Admin authentication with strict role verification
+// @desc    Admin authentication with database-first verified credentials & strict role verification
 // @access  Public
 router.post('/login', async (req, res) => {
   const { email, password, role } = req.body;
@@ -156,61 +211,102 @@ router.post('/login', async (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
   const cleanPass = password.trim();
 
-  // Load role groups from env
-  const rolesMap = {
-    faculty: parseEnvUsers(process.env.FACULTY_USERS),
-    admin: parseEnvUsers(process.env.ADMIN_USERS),
-    coordinator: parseEnvUsers(process.env.COORDINATOR_USERS),
-    volunteer: parseEnvUsers(process.env.VOLUNTEER_USERS)
-  };
+  // If logging in as master admin, ensure database entry is seeded and verified
+  if (cleanEmail === MASTER_ADMIN.email) {
+    await ensureMasterAdmin();
+  }
 
-  // Find which pool this user actually belongs to
-  let foundUser = null;
-  let actualRoleKey = null;
+  let matchedUser = null;
 
-  for (const [rKey, usersList] of Object.entries(rolesMap)) {
-    const match = usersList.find(u => u.email === cleanEmail && u.password === cleanPass);
-    if (match) {
-      foundUser = match;
-      actualRoleKey = rKey;
-      break;
+  // 1. First check MongoDB AdminUser collection
+  try {
+    const dbUser = await AdminUser.findOne({ email: cleanEmail, isActive: true });
+    if (dbUser) {
+      const isPasswordValid = await bcrypt.compare(cleanPass, dbUser.passwordHash);
+      if (isPasswordValid) {
+        matchedUser = {
+          _id: dbUser._id,
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          designation: dbUser.designation,
+          isPermanent: Boolean(dbUser.isPermanent) || cleanEmail === MASTER_ADMIN.email,
+        };
+      }
+    }
+  } catch (dbErr) {
+    console.error('Database lookup error in login:', dbErr.message);
+  }
+
+  // 2. Fallback for Master Admin emergency login (e.g. cold start)
+  if (!matchedUser && cleanEmail === MASTER_ADMIN.email && cleanPass === MASTER_ADMIN.password) {
+    await ensureMasterAdmin();
+    matchedUser = {
+      name: MASTER_ADMIN.name,
+      email: MASTER_ADMIN.email,
+      role: MASTER_ADMIN.role,
+      designation: MASTER_ADMIN.designation,
+      isPermanent: true,
+    };
+  }
+
+  // 3. Fallback for environment variables (if any configured)
+  if (!matchedUser) {
+    const rolesMap = {
+      admin: parseEnvUsers(process.env.ADMIN_USERS),
+      faculty: parseEnvUsers(process.env.FACULTY_USERS),
+      coordinator: parseEnvUsers(process.env.COORDINATOR_USERS),
+      volunteer: parseEnvUsers(process.env.VOLUNTEER_USERS)
+    };
+
+    for (const [rKey, usersList] of Object.entries(rolesMap)) {
+      const match = usersList.find(u => u.email === cleanEmail && u.password === cleanPass);
+      if (match) {
+        matchedUser = {
+          name: match.name || formatNameFromEmail(cleanEmail),
+          email: cleanEmail,
+          role: rKey,
+          designation: ROLE_KEY_TO_TITLE[rKey] || 'Staff Member',
+          isPermanent: cleanEmail === MASTER_ADMIN.email,
+        };
+        break;
+      }
     }
   }
 
-  // If no credentials matched in any pool
-  if (!foundUser) {
+  // If no credentials matched anywhere
+  if (!matchedUser) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
   // STRICT ROLE ENFORCEMENT:
-  // If user selected a specific role on frontend, it MUST match their assigned role in .env!
+  // If user selected a specific role on frontend, verify compatibility
   const requestedRoleKey = role ? ROLE_NAME_TO_KEY[role] : null;
 
-  if (requestedRoleKey && requestedRoleKey !== actualRoleKey) {
-    const actualTitle = ROLE_KEY_TO_TITLE[actualRoleKey] || actualRoleKey;
-    const requestedTitle = role;
-    return res.status(403).json({
-      message: `Access Denied: Your account is registered as ${actualTitle}. You cannot log in as ${requestedTitle}.`
-    });
+  if (requestedRoleKey && requestedRoleKey !== matchedUser.role) {
+    // Special exception: volunteer can log in under coordinator portal
+    if (!(matchedUser.role === 'volunteer' && requestedRoleKey === 'coordinator')) {
+      const actualTitle = ROLE_KEY_TO_TITLE[matchedUser.role] || matchedUser.role;
+      const requestedTitle = role;
+      return res.status(403).json({
+        message: `Access Denied: Your account is registered as ${actualTitle}. You cannot log in as ${requestedTitle}.`
+      });
+    }
   }
 
-  const finalRoleKey = actualRoleKey;
-  const finalDesignation = ROLE_KEY_TO_TITLE[finalRoleKey] || 'Staff Member';
-  
-  // Resolve display name:
-  // 1. Name specified in .env ("Name:email:pass")
-  // 2. Name from environment user list
-  // 3. Formatted email prefix name
-  const staffProfiles = getAllStaffProfiles();
-  const displayName = foundUser.name || staffProfiles[cleanEmail]?.name || formatNameFromEmail(cleanEmail);
+  const finalRoleKey = matchedUser.role;
+  const finalDesignation = matchedUser.designation || ROLE_KEY_TO_TITLE[finalRoleKey] || 'Staff Member';
+  const displayName = matchedUser.name;
 
   // Create JWT token
   const payload = {
+    id: matchedUser._id,
     email: cleanEmail,
     role: finalRoleKey,
     name: displayName,
     designation: finalDesignation,
-    isAdmin: true
+    isAdmin: true,
+    isPermanent: Boolean(matchedUser.isPermanent)
   };
 
   const userPerms = await getActivePermissions(finalRoleKey, cleanEmail);
@@ -227,10 +323,200 @@ router.post('/login', async (req, res) => {
         role: finalRoleKey,
         name: displayName,
         designation: finalDesignation,
+        isPermanent: Boolean(matchedUser.isPermanent),
         permissions: userPerms
       });
     }
   );
+});
+
+// @route   GET /api/admin/staff
+// @desc    Get all staff accounts from database
+// @access  Private (Administrator Only)
+router.get('/staff', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    await ensureMasterAdmin();
+    const staff = await AdminUser.find().select('-passwordHash').sort({ isPermanent: -1, createdAt: -1 });
+    res.json({
+      success: true,
+      staff,
+    });
+  } catch (err) {
+    console.error('Error fetching staff list:', err);
+    res.status(500).json({ message: 'Server error fetching staff members' });
+  }
+});
+
+// @route   POST /api/admin/staff
+// @desc    Create a new staff member (Admin, Faculty Coordinator, Student Coordinator, Volunteer)
+// @access  Private (Administrator Only)
+router.post('/staff', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { name, email, password, role, designation } = req.body;
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Name, email, password, and role are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (cleanPass.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    }
+
+    const allowedRoles = ['admin', 'faculty', 'coordinator', 'volunteer'];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: `Invalid role. Allowed roles: ${allowedRoles.join(', ')}` });
+    }
+
+    const existingUser = await AdminUser.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ message: 'A staff account with this email already exists.' });
+    }
+
+    const passwordHash = await bcrypt.hash(cleanPass, 10);
+    const resolvedDesignation = designation?.trim() || ROLE_KEY_TO_TITLE[role] || 'Staff Member';
+
+    const newStaff = await AdminUser.create({
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      role,
+      designation: resolvedDesignation,
+      isPermanent: false,
+      isActive: true,
+      createdBy: req.admin?.email || 'admin',
+    });
+
+    const staffObj = newStaff.toObject();
+    delete staffObj.passwordHash;
+
+    res.status(201).json({
+      success: true,
+      message: `Staff member ${newStaff.name} created successfully as ${resolvedDesignation}.`,
+      staff: staffObj,
+    });
+  } catch (err) {
+    console.error('Error creating staff member:', err);
+    res.status(500).json({ message: err.message || 'Server error creating staff account' });
+  }
+});
+
+// @route   PUT /api/admin/staff/:id
+// @desc    Update staff member designation, role, active status, or password
+// @access  Private (Administrator Only)
+router.put('/staff/:id', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, designation, role, isActive, password } = req.body;
+
+    let staff = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      staff = await AdminUser.findById(id);
+    }
+    if (!staff) {
+      staff = await AdminUser.findOne({ email: id.toLowerCase() });
+    }
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found.' });
+    }
+
+    // Protection for Master Admin Adeeb Razi:
+    if (staff.isPermanent || staff.email.toLowerCase() === MASTER_ADMIN.email.toLowerCase()) {
+      if (role && role !== 'admin') {
+        return res.status(403).json({ message: 'Forbidden: Master Administrator role cannot be demoted or changed.' });
+      }
+      if (isActive === false) {
+        return res.status(403).json({ message: 'Forbidden: Master Administrator cannot be deactivated.' });
+      }
+      if (password && password.trim()) {
+        if (req.admin?.email?.toLowerCase() !== MASTER_ADMIN.email.toLowerCase()) {
+          return res.status(403).json({ message: 'Forbidden: Only Master Administrator can change their own password.' });
+        }
+        if (password.trim().length < 6) {
+          return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+        }
+        staff.passwordHash = await bcrypt.hash(password.trim(), 10);
+      }
+      if (name) staff.name = name.trim();
+      if (designation) staff.designation = designation.trim();
+      await staff.save();
+
+      const staffObj = staff.toObject();
+      delete staffObj.passwordHash;
+      return res.json({ success: true, message: 'Master Administrator updated.', staff: staffObj });
+    }
+
+    // Regular staff update:
+    if (name) staff.name = name.trim();
+    if (designation) staff.designation = designation.trim();
+    if (role && ['admin', 'faculty', 'coordinator', 'volunteer'].includes(role)) {
+      staff.role = role;
+    }
+    if (typeof isActive === 'boolean') {
+      staff.isActive = isActive;
+    }
+    if (password && password.trim()) {
+      if (password.trim().length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+      }
+      staff.passwordHash = await bcrypt.hash(password.trim(), 10);
+    }
+
+    await staff.save();
+
+    const staffObj = staff.toObject();
+    delete staffObj.passwordHash;
+
+    res.json({
+      success: true,
+      message: `Staff member ${staff.name} updated successfully.`,
+      staff: staffObj,
+    });
+  } catch (err) {
+    console.error('Error updating staff member:', err);
+    res.status(500).json({ message: 'Server error updating staff member' });
+  }
+});
+
+// @route   DELETE /api/admin/staff/:id
+// @desc    Delete staff member account (STRICTLY PROHIBITED FOR MASTER ADMIN)
+// @access  Private (Administrator Only)
+router.delete('/staff/:id', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let staff = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      staff = await AdminUser.findById(id);
+    }
+    if (!staff) {
+      staff = await AdminUser.findOne({ email: id.toLowerCase() });
+    }
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found.' });
+    }
+
+    // STRICT UNDESTROYABLE GUARD
+    if (staff.isPermanent || staff.email.toLowerCase() === MASTER_ADMIN.email.toLowerCase()) {
+      return res.status(403).json({
+        message: 'Forbidden: Master Administrator (Adeeb Razi) is permanent and cannot be deleted or removed.'
+      });
+    }
+
+    // Remove any custom role permissions assigned to this user's email
+    await RolePermission.deleteOne({ targetKey: staff.email.toLowerCase() });
+    await AdminUser.findByIdAndDelete(staff._id);
+
+    res.json({
+      success: true,
+      message: `Staff member ${staff.name} (${staff.email}) deleted successfully.`,
+    });
+  } catch (err) {
+    console.error('Error deleting staff member:', err);
+    res.status(500).json({ message: 'Server error deleting staff member' });
+  }
 });
 
 // @route   POST /api/admin/dashboard-login
@@ -383,21 +669,55 @@ router.get('/users', verifyAdminToken, async (req, res) => {
 // @access  Private (All Authenticated Staff)
 router.get('/permissions', verifyAdminToken, async (req, res) => {
   try {
+    await ensureMasterAdmin();
     const dbPerms = await RolePermission.find();
     const permMap = {};
     dbPerms.forEach(p => {
       permMap[p.targetKey] = p.toObject();
     });
 
-    const staffProfiles = getAllStaffProfiles();
+    // 1. Fetch dynamic staff from MongoDB
+    const allDbStaff = await AdminUser.find({ isActive: true }).select('-passwordHash');
 
-    const staffFaculty = Object.entries(staffProfiles)
-      .filter(([_, p]) => p.designation === 'Faculty Coordinator')
-      .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
+    // 2. Also parse any env users as fallback
+    const envProfiles = getAllStaffProfiles();
+    const staffFaculty = [];
+    const staffCoordinators = [];
+    const staffAdmins = [];
+    const seenEmails = new Set();
 
-    const staffCoordinators = Object.entries(staffProfiles)
-      .filter(([_, p]) => p.designation === 'Student Coordinator')
-      .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
+    allDbStaff.forEach(s => {
+      seenEmails.add(s.email.toLowerCase());
+      const item = {
+        _id: s._id,
+        email: s.email,
+        name: s.name,
+        designation: s.designation,
+        role: s.role,
+        isPermanent: Boolean(s.isPermanent),
+        isActive: s.isActive,
+      };
+      if (s.role === 'admin') staffAdmins.push(item);
+      else if (s.role === 'faculty') staffFaculty.push(item);
+      else staffCoordinators.push(item);
+    });
+
+    Object.entries(envProfiles).forEach(([email, p]) => {
+      if (!seenEmails.has(email.toLowerCase())) {
+        const role = p.designation === 'Faculty Coordinator' ? 'faculty' : (p.designation === 'Administration' ? 'admin' : 'coordinator');
+        const item = {
+          email,
+          name: p.name,
+          designation: p.designation,
+          role,
+          isPermanent: email.toLowerCase() === MASTER_ADMIN.email.toLowerCase(),
+          isActive: true,
+        };
+        if (role === 'admin') staffAdmins.push(item);
+        else if (role === 'faculty') staffFaculty.push(item);
+        else staffCoordinators.push(item);
+      }
+    });
 
     res.json({
       success: true,
@@ -406,7 +726,8 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
       customOverrides: dbPerms.filter(p => p.targetKey !== 'faculty' && p.targetKey !== 'coordinator'),
       staffList: {
         faculty: staffFaculty,
-        coordinators: staffCoordinators
+        coordinators: staffCoordinators,
+        admins: staffAdmins
       },
       currentRole: req.admin?.role,
       userPermissions: await getActivePermissions(req.admin?.role, req.admin?.email)
@@ -1120,4 +1441,5 @@ router.get('/developer-status', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.ensureMasterAdmin = ensureMasterAdmin;
 
