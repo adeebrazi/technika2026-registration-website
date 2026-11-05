@@ -74,6 +74,66 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
     throw new Error('User email address is missing');
   }
 
+  const utrStr = (user.paymentUTR || user.utrEnteredManually || '').trim().toLowerCase();
+  const feeAmount = user.verifiedAmount || user.expectedAmount || 100;
+  
+  let paymentBadgeHtml = '';
+  let paymentHeaderHtml = '';
+  let paymentGuidelineHtml = '';
+
+  if (utrStr.includes('cash') || utrStr.includes('pay in cash') || utrStr.includes('hand')) {
+    paymentHeaderHtml = `
+      <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 14px 18px; text-align: center;">
+        <div style="color: #b45309; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          💵 REGISTRATION CONFIRMED · PAYMENT ON ARRIVAL
+        </div>
+        <div style="color: #92400e; font-size: 12px; font-weight: 600; margin-top: 4px;">
+          Your registration is confirmed. Please pay the registration fee of <strong>₹${feeAmount}</strong> in cash at the Registration Helpdesk upon campus arrival.
+        </div>
+      </div>
+    `;
+    paymentBadgeHtml = `
+      <span style="display: inline-block; background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">
+        💵 Pay in Cash at Helpdesk
+      </span>
+    `;
+    paymentGuidelineHtml = `<li><strong>Fee Pending:</strong> Please carry <strong>₹${feeAmount} cash</strong> to complete payment at the campus Registration Helpdesk on Day 1.</li>`;
+  } else if (utrStr.includes('teacher') || utrStr.includes('school') || utrStr.includes('coordinator')) {
+    paymentHeaderHtml = `
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 18px; text-align: center;">
+        <div style="color: #1d4ed8; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          🏫 REGISTRATION CONFIRMED · SCHOOL COLLECTION
+        </div>
+        <div style="color: #1e40af; font-size: 12px; font-weight: 600; margin-top: 4px;">
+          Your registration is confirmed under institutional collection. Registration fee of <strong>₹${feeAmount}</strong> was collected via your School/Teacher Coordinator.
+        </div>
+      </div>
+    `;
+    paymentBadgeHtml = `
+      <span style="display: inline-block; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">
+        🏫 Given to Teacher / School
+      </span>
+    `;
+    paymentGuidelineHtml = `<li><strong>Institutional Contingent:</strong> Payment collected via your school teacher. Present your School ID Card at entry.</li>`;
+  } else {
+    paymentHeaderHtml = `
+      <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; text-align: center;">
+        <div style="color: #059669; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          ✓ REGISTRATION & PAYMENT SUCCESSFUL
+        </div>
+        <div style="color: #047857; font-size: 12px; font-weight: 600; margin-top: 4px;">
+          Registration Fee of <strong>₹${feeAmount}</strong> received & verified. Congratulations! You are officially registered for TECHNIKA 6.0.
+        </div>
+      </div>
+    `;
+    paymentBadgeHtml = `
+      <span style="display: inline-block; background: #dcfce7; color: #15803d; border: 1px solid #86efac; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase;">
+        ✓ Payment Successful
+      </span>
+    `;
+    paymentGuidelineHtml = `<li>Online payment verified. Keep this email confirmation handy during desk check-in.</li>`;
+  }
+
   const eventsListHtml = events.length > 0 
     ? events.map((ev, idx) => `
       <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -120,17 +180,10 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
             </td>
           </tr>
 
-          <!-- Verification Badge -->
+          <!-- Dynamic Verification & Payment Header Banner -->
           <tr>
             <td style="padding: 24px 28px 12px 28px;">
-              <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px; text-align: center;">
-                <div style="color: #059669; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                  ✓ REGISTRATION & PAYMENT VERIFIED
-                </div>
-                <div style="color: #047857; font-size: 12px; font-weight: 600; margin-top: 4px;">
-                  Congratulations! You have successfully registered for TECHNIKA 6.0. We look forward to welcoming you and wish you an exciting experience ahead!
-                </div>
-              </div>
+              ${paymentHeaderHtml}
             </td>
           </tr>
 
@@ -171,6 +224,22 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Registered Email</span>
                     <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">
                       ${user.email}
+                    </div>
+                  </td>
+                </tr>
+              
+                <!-- Amount & Payment Status Row -->
+                <tr>
+                  <td style="padding: 14px 18px; border-top: 1px solid #e2e8f0;">
+                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Registration Fee</span>
+                    <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">
+                      ₹${feeAmount}
+                    </div>
+                  </td>
+                  <td style="padding: 14px 18px; border-top: 1px solid #e2e8f0;">
+                    <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Payment Status / Mode</span>
+                    <div style="margin-top: 4px;">
+                      ${paymentBadgeHtml}
                     </div>
                   </td>
                 </tr>
@@ -217,6 +286,7 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                 <ul style="color: #78350f; font-size: 12px; line-height: 1.5; margin: 0; padding-left: 18px;">
                   <li>Please carry your original <strong>College / School ID Card</strong> for campus entry.</li>
                   <li>You will receive your <strong>Digital Entry QR Pass</strong> separately before fest day.</li>
+                  ${paymentGuidelineHtml}
                   <li>For any schedule conflicts or queries, visit the Registration Helpdesk on Day 1.</li>
                 </ul>
               </div>
