@@ -250,31 +250,7 @@ router.post('/login', async (req, res) => {
     };
   }
 
-  // 3. Fallback for legacy environment variables (strictly bypassed for Master Admin Adeeb Razi)
-  if (!matchedUser && cleanEmail !== MASTER_ADMIN.email) {
-    const rolesMap = {
-      admin: parseEnvUsers(process.env.ADMIN_USERS),
-      faculty: parseEnvUsers(process.env.FACULTY_USERS),
-      coordinator: parseEnvUsers(process.env.COORDINATOR_USERS),
-      volunteer: parseEnvUsers(process.env.VOLUNTEER_USERS)
-    };
-
-    for (const [rKey, usersList] of Object.entries(rolesMap)) {
-      const match = usersList.find(u => u.email === cleanEmail && u.password === cleanPass);
-      if (match) {
-        matchedUser = {
-          name: match.name || formatNameFromEmail(cleanEmail),
-          email: cleanEmail,
-          role: rKey,
-          designation: ROLE_KEY_TO_TITLE[rKey] || 'Staff Member',
-          isPermanent: cleanEmail === MASTER_ADMIN.email,
-        };
-        break;
-      }
-    }
-  }
-
-  // If no credentials matched anywhere
+  // If no credentials matched in database or master admin
   if (!matchedUser) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
@@ -676,18 +652,14 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
       permMap[p.targetKey] = p.toObject();
     });
 
-    // 1. Fetch dynamic staff from MongoDB
+    // 1. Fetch dynamic staff strictly from MongoDB
     const allDbStaff = await AdminUser.find({ isActive: true }).select('-passwordHash');
 
-    // 2. Also parse any env users as fallback
-    const envProfiles = getAllStaffProfiles();
     const staffFaculty = [];
     const staffCoordinators = [];
     const staffAdmins = [];
-    const seenEmails = new Set();
 
     allDbStaff.forEach(s => {
-      seenEmails.add(s.email.toLowerCase());
       const item = {
         _id: s._id,
         email: s.email,
@@ -700,23 +672,6 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
       if (s.role === 'admin') staffAdmins.push(item);
       else if (s.role === 'faculty') staffFaculty.push(item);
       else staffCoordinators.push(item);
-    });
-
-    Object.entries(envProfiles).forEach(([email, p]) => {
-      if (!seenEmails.has(email.toLowerCase())) {
-        const role = p.designation === 'Faculty Coordinator' ? 'faculty' : (p.designation === 'Administration' ? 'admin' : 'coordinator');
-        const item = {
-          email,
-          name: p.name,
-          designation: p.designation,
-          role,
-          isPermanent: email.toLowerCase() === MASTER_ADMIN.email.toLowerCase(),
-          isActive: true,
-        };
-        if (role === 'admin') staffAdmins.push(item);
-        else if (role === 'faculty') staffFaculty.push(item);
-        else staffCoordinators.push(item);
-      }
     });
 
     res.json({
@@ -766,8 +721,9 @@ router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (re
       return res.status(400).json({ message: 'targetKey is required (e.g. "faculty", "coordinator", or user email)' });
     }
 
-    const staffProfiles = getAllStaffProfiles();
-    const defaultTitle = targetKey === 'faculty' ? 'Faculty Coordinator' : (targetKey === 'coordinator' ? 'Student Coordinator' : (staffProfiles[targetKey]?.name || targetKey));
+    let defaultTitle = targetKey === 'faculty' ? 'Faculty Coordinator' : (targetKey === 'coordinator' ? 'Student Coordinator' : targetKey);
+    const dbUser = await AdminUser.findOne({ email: targetKey.toLowerCase() });
+    if (dbUser && dbUser.name) defaultTitle = dbUser.name;
 
     const updated = await RolePermission.findOneAndUpdate(
       { targetKey: targetKey.toLowerCase() },
