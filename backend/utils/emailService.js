@@ -8,7 +8,9 @@ try {
 
 const nodemailer = require('nodemailer');
 
-const cleanPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.replace(/\s+/g, '') : '';
+const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || 'technika@arkajainuniversity.ac.in').trim();
+const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || 'jzjy unye bhzt psrj');
+const cleanPass = rawPass ? rawPass.replace(/\s+/g, '') : '';
 
 // Gmail SMTP using smtp.googlemail.com on port 587 (STARTTLS) with IPv4 resolution
 // smtp.googlemail.com is accessible and avoids ISP IP filtering on port 465
@@ -17,7 +19,7 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false, // upgrades via STARTTLS
   auth: {
-    user: process.env.SMTP_USER,
+    user: smtpUser,
     pass: cleanPass,
   },
   connectionTimeout: 20000,
@@ -26,7 +28,7 @@ const transporter = nodemailer.createTransport({
 
 const sendOtpEmail = async (email, otp) => {
   const mailOptions = {
-    from: `"Technika Registration" <${process.env.SMTP_USER}>`,
+    from: `"Technika Registration" <${smtpUser}>`,
     to: email,
     subject: 'Your Technika OTP Verification Code',
     text: `Your OTP for Technika registration is: ${otp}. It will expire in 10 minutes.`,
@@ -46,7 +48,7 @@ const sendOtpEmail = async (email, otp) => {
 
 const sendPasswordResetOtpEmail = async (email, otp) => {
   const mailOptions = {
-    from: `"Technika 6.0 Support" <${process.env.SMTP_USER}>`,
+    from: `"Technika 6.0 Support" <${smtpUser}>`,
     to: email,
     subject: 'Technika 6.0 — Password Reset OTP',
     text: `Your OTP for resetting your Technika 6.0 password is: ${otp}. It will expire in 10 minutes.`,
@@ -214,13 +216,13 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 14px 18px;">
+                  <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0;">
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Course & Semester</span>
                     <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">
                       ${user.course || 'N/A'} ${user.semester ? `· Sem ${user.semester}` : ''}
                     </div>
                   </td>
-                  <td style="padding: 14px 18px;">
+                  <td style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0;">
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Registered Email</span>
                     <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-top: 2px;">
                       ${user.email}
@@ -230,13 +232,13 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
               
                 <!-- Amount & Payment Status Row -->
                 <tr>
-                  <td style="padding: 14px 18px; border-top: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 18px;">
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Registration Fee</span>
                     <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">
                       ₹${feeAmount}
                     </div>
                   </td>
-                  <td style="padding: 14px 18px; border-top: 1px solid #e2e8f0;">
+                  <td style="padding: 14px 18px;">
                     <span style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Payment Status / Mode</span>
                     <div style="margin-top: 4px;">
                       ${paymentBadgeHtml}
@@ -297,8 +299,8 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
                   📞 For Queries & Assistance:
                 </div>
                 <div style="color: #334155; font-size: 13px; line-height: 1.8;">
-                  <div>Mr. Adeeb Razi (Student Coordinator): <a href="tel:+91 62067 82574" style="color: #2563eb; text-decoration: none;">+91 6206782574</a></div>
-                  <div>Prof. Mamatha Vayelapelli (Faculty Coordinator): <a href="tel:+91 78588 12586" style="color: #2563eb; text-decoration: none;">+91 7858812586</a></div>
+                  <div>Mr. Adeeb Razi (Student Coordinator): <a href="tel:+916206782574" style="color: #2563eb; text-decoration: none;">+91 6206782574</a></div>
+                  <div>Prof. Mamatha Vayelapelli (Faculty Coordinator): <a href="tel:+917858812586" style="color: #2563eb; text-decoration: none;">+91 7858812586</a></div>
                 </div>
               </div>
 
@@ -327,7 +329,7 @@ const sendRegistrationConfirmationEmail = async ({ user, events = [], senderName
   `;
 
   const mailOptions = {
-    from: `"Technika 6.0 | ARKA JAIN University" <${process.env.SMTP_USER}>`,
+    from: `"Technika 6.0 | ARKA JAIN University" <${smtpUser}>`,
     to: user.email,
     subject: `🎉 Registration Confirmed: Technika 6.0 [${user.registrationId}]`,
     text: `Hello ${user.name},\n\nYour registration for Technika 6.0 is confirmed!\nParticipant ID: ${user.registrationId}\nInstitution: ${user.institution || 'ARKA JAIN University'}\nEvents: ${events.map(e => e.name || e.title).join(', ')}\n\nSee you at the fest!`,
