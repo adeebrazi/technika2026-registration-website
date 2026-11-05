@@ -381,17 +381,21 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
     const resolvedEvents = await resolveEvents(eventsInput, allEvents);
 
     // ── 5. HANDLE BATCH / SIBLING UTR COLLISION ──
-    let finalUtr = rawUtr || `GFORM-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
-    const existingUtr = await User.findOne({
+    const baseUtr = (rawUtr || '').trim() || `GFORM-${Date.now()}`;
+    let finalUtr = baseUtr;
+    let isColliding = await User.exists({
       $or: [{ paymentUTR: finalUtr }, { utrEnteredManually: finalUtr }]
     });
 
-    if (existingUtr) {
-      // Sibling or contingent batch payment with same UTR
-      const siblingCount = await User.countDocuments({
-        paymentUTR: { $regex: `^${finalUtr}` }
-      });
-      finalUtr = `${finalUtr}-S${siblingCount + 1}`;
+    if (isColliding) {
+      let attempts = 0;
+      while (isColliding && attempts < 100) {
+        attempts++;
+        finalUtr = `${baseUtr}-S${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        isColliding = await User.exists({
+          $or: [{ paymentUTR: finalUtr }, { utrEnteredManually: finalUtr }]
+        });
+      }
     }
 
     // ── 6. CREATE USER AND REGISTRATIONS ──
@@ -460,13 +464,9 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
       });
     }
 
-    // Save to dedicated Google_Form_Allotted sheet tab
-    try {
-      const { appendGoogleFormAllotted } = require('./sheetsService');
-      await appendGoogleFormAllotted(newUser, resolvedEvents);
-    } catch (sheetErr) {
-      console.warn('[GOOGLE FORM SHEET SYNC ERROR]:', sheetErr.message);
-    }
+    // Synchronous write to Google_Form_Allotted sheet was removed to eliminate
+    // 50-second API lags and Vercel serverless function timeouts.
+    // Dashboard connects directly to MongoDB (synced from OG Form Sheet).
 
     console.log(`[GOOGLE FORM REGISTERED] Created registration ${registrationId} for ${name} (${resolvedEvents.length} events).`);
 
