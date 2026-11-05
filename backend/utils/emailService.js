@@ -8,8 +8,8 @@ try {
 
 const nodemailer = require('nodemailer');
 
-const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || 'technika@arkajainuniversity.ac.in').trim();
-const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || 'jzjy unye bhzt psrj');
+const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+const rawPass = (process.env.SMTP_PASS || process.env.EMAIL_PASS || '');
 const cleanPass = rawPass ? rawPass.replace(/\s+/g, '') : '';
 
 // Gmail SMTP using smtp.googlemail.com on port 587 (STARTTLS) with IPv4 resolution

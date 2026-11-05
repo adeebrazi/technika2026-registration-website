@@ -97,38 +97,27 @@ const parseEnvUsers = (envStr) => {
   }).filter(Boolean);
 };
 
-// Fallback known name mappings synced with Main Website (organisers.json)
-const ADMIN_PROFILES = {
-  // Convenors & Faculty Coordinators
-  'arvindk@technika2026.online': { name: 'Dr. Arvind Kumar Pandey', designation: 'Faculty Coordinator' },
-  'ashwinik@technika2026.online': { name: 'Dr. Ashwini Kumar', designation: 'Faculty Coordinator' },
-  'mamathav@technika2026.online': { name: 'Prof. Mamatha Vayelapelli', designation: 'Faculty Coordinator' },
-  'viranshuk@technika2026.online': { name: 'Dr. Viranshu Kumar', designation: 'Faculty Coordinator' },
-  'rashida@technika2026.online': { name: 'Prof. Syed Rashid Anwar', designation: 'Faculty Coordinator' },
-  'divyap@technika2026.online': { name: 'Prof. Divya Paikaray', designation: 'Faculty Coordinator' },
-  'premnaths@technika2026.online': { name: 'Dr. Prem Nath Suman', designation: 'Faculty Coordinator' },
-  'sayantanid@technika2026.online': { name: 'Prof. Sayantani De', designation: 'Faculty Coordinator' },
-  'astikp@technika2026.online': { name: 'Prof. Astik Pradhan', designation: 'Faculty Coordinator' },
-  'padmajat@technika2026.online': { name: 'Dr. Padmaja Tripathy', designation: 'Faculty Coordinator' },
+// Dynamically build staff profiles from environment variables (No hardcoded credentials or names in code)
+const getAllStaffProfiles = () => {
+  const profiles = {};
+  const admins = parseEnvUsers(process.env.ADMIN_USERS);
+  const faculty = parseEnvUsers(process.env.FACULTY_USERS);
+  const coordinators = parseEnvUsers(process.env.COORDINATOR_USERS);
+  const volunteers = parseEnvUsers(process.env.VOLUNTEER_USERS);
 
-  // Administration (Only Adeeb Razi)
-  'adeeb@technika2026.online': { name: 'Adeeb Razi', designation: 'Administration' },
-
-  // Student Coordinators
-  'anjali@technika2026.online': { name: 'Anjali Singh', designation: 'Student Coordinator' },
-  'sonalim@technika2026.online': { name: 'Sonali Mahato', designation: 'Student Coordinator' },
-  'nikitam@technika2026.online': { name: 'Nikita Mishra', designation: 'Student Coordinator' },
-  'aadityas@technika2026.online': { name: 'Aaditya Singh', designation: 'Student Coordinator' },
-  'sohailk@technika2026.online': { name: 'Sohail Khan', designation: 'Student Coordinator' },
-  'sanchita@technika2026.online': { name: 'Sanchit Agarwal', designation: 'Student Coordinator' },
-  'harshp@technika2026.online': { name: 'Harsh Pathak', designation: 'Student Coordinator' },
-  'ishikas@technika2026.online': { name: 'Ishika Shrivastava', designation: 'Student Coordinator' },
-  'ankitr@technika2026.online': { name: 'Ankit Raj', designation: 'Student Coordinator' },
-  'ssumanr@technika2026.online': { name: 'S Suman Rao', designation: 'Student Coordinator' },
-  'princek@technika2026.online': { name: 'Prince Kumar', designation: 'Student Coordinator' },
-  'anishs@technika2026.online': { name: 'Anish Kr Singh', designation: 'Student Coordinator' },
-  'rishavs@technika2026.online': { name: 'Rishav Kr Singh', designation: 'Student Coordinator' },
-  'aweshh@technika2026.online': { name: 'Awesh Hussain', designation: 'Student Coordinator' }
+  admins.forEach(u => {
+    profiles[u.email] = { name: u.name || formatNameFromEmail(u.email), designation: 'Administration' };
+  });
+  faculty.forEach(u => {
+    profiles[u.email] = { name: u.name || formatNameFromEmail(u.email), designation: 'Faculty Coordinator' };
+  });
+  coordinators.forEach(u => {
+    profiles[u.email] = { name: u.name || formatNameFromEmail(u.email), designation: 'Student Coordinator' };
+  });
+  volunteers.forEach(u => {
+    profiles[u.email] = { name: u.name || formatNameFromEmail(u.email), designation: 'Volunteer' };
+  });
+  return profiles;
 };
 
 const formatNameFromEmail = (email) => {
@@ -210,9 +199,10 @@ router.post('/login', async (req, res) => {
   
   // Resolve display name:
   // 1. Name specified in .env ("Name:email:pass")
-  // 2. Fallback known name from ADMIN_PROFILES
-  // 3. Formatted email name
-  const displayName = foundUser.name || ADMIN_PROFILES[cleanEmail]?.name || formatNameFromEmail(cleanEmail);
+  // 2. Name from environment user list
+  // 3. Formatted email prefix name
+  const staffProfiles = getAllStaffProfiles();
+  const displayName = foundUser.name || staffProfiles[cleanEmail]?.name || formatNameFromEmail(cleanEmail);
 
   // Create JWT token
   const payload = {
@@ -399,11 +389,13 @@ router.get('/permissions', verifyAdminToken, async (req, res) => {
       permMap[p.targetKey] = p.toObject();
     });
 
-    const staffFaculty = Object.entries(ADMIN_PROFILES)
+    const staffProfiles = getAllStaffProfiles();
+
+    const staffFaculty = Object.entries(staffProfiles)
       .filter(([_, p]) => p.designation === 'Faculty Coordinator')
       .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
 
-    const staffCoordinators = Object.entries(ADMIN_PROFILES)
+    const staffCoordinators = Object.entries(staffProfiles)
       .filter(([_, p]) => p.designation === 'Student Coordinator')
       .map(([email, p]) => ({ email, name: p.name, designation: p.designation }));
 
@@ -453,7 +445,8 @@ router.post('/permissions', verifyAdminToken, authorizeRoles('admin'), async (re
       return res.status(400).json({ message: 'targetKey is required (e.g. "faculty", "coordinator", or user email)' });
     }
 
-    const defaultTitle = targetKey === 'faculty' ? 'Faculty Coordinator' : (targetKey === 'coordinator' ? 'Student Coordinator' : (ADMIN_PROFILES[targetKey]?.name || targetKey));
+    const staffProfiles = getAllStaffProfiles();
+    const defaultTitle = targetKey === 'faculty' ? 'Faculty Coordinator' : (targetKey === 'coordinator' ? 'Student Coordinator' : (staffProfiles[targetKey]?.name || targetKey));
 
     const updated = await RolePermission.findOneAndUpdate(
       { targetKey: targetKey.toLowerCase() },
