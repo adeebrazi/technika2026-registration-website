@@ -250,8 +250,8 @@ router.post('/login', async (req, res) => {
     };
   }
 
-  // 3. Fallback for environment variables (if any configured)
-  if (!matchedUser) {
+  // 3. Fallback for legacy environment variables (strictly bypassed for Master Admin Adeeb Razi)
+  if (!matchedUser && cleanEmail !== MASTER_ADMIN.email) {
     const rolesMap = {
       admin: parseEnvUsers(process.env.ADMIN_USERS),
       faculty: parseEnvUsers(process.env.FACULTY_USERS),
