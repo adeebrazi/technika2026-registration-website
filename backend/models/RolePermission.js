@@ -17,7 +17,6 @@ const RolePermissionSchema = new mongoose.Schema({
   canViewDocuments: { type: Boolean, default: false },
   canViewTeams: { type: Boolean, default: true },
   canViewAnalytics: { type: Boolean, default: true },
-  canViewDeveloperHub: { type: Boolean, default: false },
 
   // ── WHAT THEY CAN EDIT (Action / Write Access) ──
   canVerifyPayments: { type: Boolean, default: false },
