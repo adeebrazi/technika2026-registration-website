@@ -406,6 +406,28 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
 
     const submissionKey = cleanFormTimestamp && cleanName ? `${cleanFormTimestamp}:::${cleanName}` : undefined;
 
+    // Check if student belongs to ARKA JAIN University and BTech / BCA / Diploma
+    const instLower = (institution || '').toLowerCase();
+    const isAju = instLower.includes('arka') || instLower.includes('jain') || instLower === 'aju';
+    const crsLower = `${course || ''} ${semester || ''}`.toLowerCase();
+    const isBtechBcaDiploma =
+      crsLower.includes('b.tech') ||
+      crsLower.includes('btech') ||
+      crsLower.includes('b.e.') ||
+      crsLower.includes('bca') ||
+      crsLower.includes('diploma') ||
+      crsLower.includes('polytechnic');
+    const isAjuStudentExempt = isAju && isBtechBcaDiploma;
+    const resolvedExpectedAmount = isAjuStudentExempt ? 600 : 100;
+
+    const hasRealScreenshot = Boolean(
+      screenshotUrl &&
+      typeof screenshotUrl === 'string' &&
+      screenshotUrl.trim() &&
+      !screenshotUrl.includes('offline-receipt.png') &&
+      (screenshotUrl.startsWith('http://') || screenshotUrl.startsWith('https://'))
+    );
+
     const newUser = new User({
       registrationId,
       name,
@@ -417,11 +439,12 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
       semester,
       passwordHash,
       paymentUTR: finalUtr,
-      utrEnteredManually: finalUtr,
-      paymentScreenshotUrl: screenshotUrl || 'https://technika.online/assets/offline-receipt.png',
-      expectedAmount: 100,
-      verifiedAmount: 100,
-      verificationStatus: 'SUCCESS',
+      utrEnteredManually: (rawUtr || '').trim() || finalUtr,
+      paymentScreenshotUrl: screenshotUrl || '',
+      expectedAmount: resolvedExpectedAmount,
+      verifiedAmount: hasRealScreenshot ? resolvedExpectedAmount : 0,
+      verificationStatus: hasRealScreenshot ? 'SUCCESS' : 'PENDING',
+      isAjuExempt: isAjuStudentExempt,
       source: 'google_form',
       formTimestamp: formTimestamp || null,
       formSubmissionKey: submissionKey,

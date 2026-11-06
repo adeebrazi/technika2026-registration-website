@@ -699,12 +699,31 @@ router.get('/users', verifyAdminToken, async (req, res) => {
         filteredUser.whatsapp = uObj.whatsapp;
       }
 
-      // CAN VIEW FINANCIALS
+            // CAN VIEW FINANCIALS
       if (perms.canViewFinancials) {
         filteredUser.paymentUTR = uObj.paymentUTR;
         filteredUser.utrEnteredManually = uObj.utrEnteredManually;
         filteredUser.paymentStatus = uObj.paymentStatus;
         filteredUser.isAjuExempt = uObj.isAjuExempt;
+        filteredUser.expectedAmount = uObj.expectedAmount;
+        filteredUser.verifiedAmount = uObj.verifiedAmount;
+        filteredUser.verificationStatus = uObj.verificationStatus;
+
+        // Force 600 for ARKA JAIN University B.Tech, BCA, Diploma
+        const instLower = (uObj.institution || '').toLowerCase();
+        const isAju = instLower.includes('arka') || instLower.includes('jain') || instLower === 'aju';
+        const crsLower = `${uObj.course || ''} ${uObj.semester || ''}`.toLowerCase();
+        const isBtechBcaDiploma =
+          crsLower.includes('b.tech') ||
+          crsLower.includes('btech') ||
+          crsLower.includes('b.e.') ||
+          crsLower.includes('bca') ||
+          crsLower.includes('diploma') ||
+          crsLower.includes('polytechnic');
+        if (isAju && isBtechBcaDiploma) {
+          filteredUser.expectedAmount = 600;
+          filteredUser.isAjuExempt = true;
+        }
       }
 
       // CAN VIEW DOCUMENTS
