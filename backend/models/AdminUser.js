@@ -29,13 +29,16 @@ const AdminUserSchema = new mongoose.Schema(
       default: 'Staff Member',
       trim: true,
     },
-    // Limited, focused permissions stored directly in database:
+    // Granular permissions stored directly in database:
     permissions: {
-      canViewContact: { type: Boolean, default: false },
+      canViewPhone: { type: Boolean, default: false },
+      canViewEmail: { type: Boolean, default: false },
+      canSendEmail: { type: Boolean, default: false },
       canVerifyPayments: { type: Boolean, default: false },
       canCheckIn: { type: Boolean, default: true },
       canExportCSV: { type: Boolean, default: false },
       canDelete: { type: Boolean, default: false },
+      canViewContact: { type: Boolean, default: false }, // backward compat
     },
     isPermanent: {
       type: Boolean,

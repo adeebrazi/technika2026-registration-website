@@ -69,35 +69,46 @@ const ensureMasterAdmin = async () => {
 const getDefaultStaffPermissions = (role) => {
   if (role === 'admin') {
     return {
-      canViewContact: true,
+      canViewPhone: true,
+      canViewEmail: true,
+      canSendEmail: true,
       canVerifyPayments: true,
       canCheckIn: true,
       canExportCSV: true,
       canDelete: true,
+      canViewContact: true,
     };
   }
   if (role === 'faculty') {
     return {
-      canViewContact: true,
+      canViewPhone: true,
+      canViewEmail: true,
+      canSendEmail: true,
       canVerifyPayments: true,
       canCheckIn: true,
       canExportCSV: true,
       canDelete: false,
+      canViewContact: true,
     };
   }
   // coordinator or volunteer
   return {
-    canViewContact: false,
+    canViewPhone: false,
+    canViewEmail: false,
+    canSendEmail: false,
     canVerifyPayments: false,
     canCheckIn: true,
     canExportCSV: false,
     canDelete: false,
+    canViewContact: false,
   };
 };
 
 const formatFullPermissions = (role, staffName, staffEmail, p = {}) => {
   const isAdmin = role === 'admin' || (staffEmail && staffEmail.toLowerCase() === MASTER_ADMIN.email.toLowerCase());
-  const canContact = isAdmin || Boolean(p.canViewContact);
+  const canPhone = isAdmin || Boolean(p.canViewPhone || p.canViewContact);
+  const canEmail = isAdmin || Boolean(p.canViewEmail);
+  const canSend = isAdmin || Boolean(p.canSendEmail);
   const canPay = isAdmin || Boolean(p.canVerifyPayments);
   const canCheckIn = isAdmin || (p.canCheckIn !== undefined ? Boolean(p.canCheckIn) : true);
   const canExport = isAdmin || Boolean(p.canExportCSV);
@@ -107,8 +118,11 @@ const formatFullPermissions = (role, staffName, staffEmail, p = {}) => {
     targetKey: staffEmail || role,
     title: staffName || role,
     canViewParticipants: true,
-    canViewContactInfo: canContact,
-    canViewContact: canContact,
+    canViewPhone: canPhone,
+    canViewEmail: canEmail,
+    canSendEmail: canSend,
+    canViewContactInfo: canPhone || canEmail,
+    canViewContact: canPhone,
     canViewFinancials: canPay,
     canViewDocuments: canPay,
     canVerifyPayments: canPay,
@@ -460,11 +474,14 @@ router.put('/staff/:id', verifyAdminToken, authorizeRoles('admin'), async (req, 
     }
     if (req.body.permissions && typeof req.body.permissions === 'object') {
       staff.permissions = {
-        canViewContact: Boolean(req.body.permissions.canViewContact),
+        canViewPhone: Boolean(req.body.permissions.canViewPhone !== undefined ? req.body.permissions.canViewPhone : req.body.permissions.canViewContact),
+        canViewEmail: Boolean(req.body.permissions.canViewEmail),
+        canSendEmail: Boolean(req.body.permissions.canSendEmail),
         canVerifyPayments: Boolean(req.body.permissions.canVerifyPayments),
         canCheckIn: req.body.permissions.canCheckIn !== undefined ? Boolean(req.body.permissions.canCheckIn) : true,
         canExportCSV: Boolean(req.body.permissions.canExportCSV),
         canDelete: Boolean(req.body.permissions.canDelete),
+        canViewContact: Boolean(req.body.permissions.canViewPhone !== undefined ? req.body.permissions.canViewPhone : req.body.permissions.canViewContact),
       };
     }
     if (password && password.trim()) {
@@ -519,11 +536,14 @@ router.put('/staff/:id/permissions', verifyAdminToken, authorizeRoles('admin'), 
     }
 
     staff.permissions = {
-      canViewContact: Boolean(permissions.canViewContact),
+      canViewPhone: Boolean(permissions.canViewPhone !== undefined ? permissions.canViewPhone : permissions.canViewContact),
+      canViewEmail: Boolean(permissions.canViewEmail),
+      canSendEmail: Boolean(permissions.canSendEmail),
       canVerifyPayments: Boolean(permissions.canVerifyPayments),
       canCheckIn: permissions.canCheckIn !== undefined ? Boolean(permissions.canCheckIn) : true,
       canExportCSV: Boolean(permissions.canExportCSV),
       canDelete: Boolean(permissions.canDelete),
+      canViewContact: Boolean(permissions.canViewPhone !== undefined ? permissions.canViewPhone : permissions.canViewContact),
     };
 
     await staff.save();
@@ -693,9 +713,11 @@ router.get('/users', verifyAdminToken, async (req, res) => {
         }))
       };
 
-      // CAN VIEW CONTACT INFO
-      if (perms.canViewContactInfo) {
+      // SEPARATE EMAIL AND PHONE / CONTACT:
+      if (perms.canViewEmail) {
         filteredUser.email = uObj.email;
+      }
+      if (perms.canViewPhone || perms.canViewContact) {
         filteredUser.whatsapp = uObj.whatsapp;
       }
 
@@ -925,8 +947,8 @@ router.post('/send-email', verifyAdminToken, async (req, res) => {
     const requestingEmail = req.admin?.email;
     const perms = await getActivePermissions(requestingRole, requestingEmail);
 
-    if (requestingRole !== 'admin' && !perms.canViewContactInfo) {
-      return res.status(403).json({ message: 'Forbidden: You do not have permission to communicate with participants.' });
+    if (requestingRole !== 'admin' && !perms.canSendEmail) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to send emails to participants.' });
     }
 
     const { userId, type } = req.body;
