@@ -66,73 +66,84 @@ const ensureMasterAdmin = async () => {
   }
 };
 
-const DEFAULT_PERMISSIONS = {
-  faculty: {
-    targetKey: 'faculty',
-    title: 'Faculty Coordinator',
-    canViewParticipants: true,
-    canViewContactInfo: true,
-    canViewFinancials: true,
-    canViewDocuments: true,
-    canViewTeams: true,
-    canViewAnalytics: true,
-    canVerifyPayments: true,
-    canDeleteParticipants: false,
-    canEditTeams: true,
-    canExportCSV: true,
-    canCheckInParticipants: true,
-    assignedEvents: []
-  },
-  coordinator: {
-    targetKey: 'coordinator',
-    title: 'Student Coordinator',
-    canViewParticipants: true,
-    canViewContactInfo: true,
-    canViewFinancials: false,
-    canViewDocuments: false,
-    canViewTeams: true,
-    canViewAnalytics: false,
-    canVerifyPayments: false,
-    canDeleteParticipants: false,
-    canEditTeams: false,
-    canExportCSV: false,
-    canCheckInParticipants: true,
-    assignedEvents: []
+const getDefaultStaffPermissions = (role) => {
+  if (role === 'admin') {
+    return {
+      canViewContact: true,
+      canVerifyPayments: true,
+      canCheckIn: true,
+      canExportCSV: true,
+      canDelete: true,
+    };
   }
+  if (role === 'faculty') {
+    return {
+      canViewContact: true,
+      canVerifyPayments: true,
+      canCheckIn: true,
+      canExportCSV: true,
+      canDelete: false,
+    };
+  }
+  // coordinator or volunteer
+  return {
+    canViewContact: false,
+    canVerifyPayments: false,
+    canCheckIn: true,
+    canExportCSV: false,
+    canDelete: false,
+  };
+};
+
+const formatFullPermissions = (role, staffName, staffEmail, p = {}) => {
+  const isAdmin = role === 'admin' || (staffEmail && staffEmail.toLowerCase() === MASTER_ADMIN.email.toLowerCase());
+  const canContact = isAdmin || Boolean(p.canViewContact);
+  const canPay = isAdmin || Boolean(p.canVerifyPayments);
+  const canCheckIn = isAdmin || (p.canCheckIn !== undefined ? Boolean(p.canCheckIn) : true);
+  const canExport = isAdmin || Boolean(p.canExportCSV);
+  const canDel = isAdmin || Boolean(p.canDelete);
+
+  return {
+    targetKey: staffEmail || role,
+    title: staffName || role,
+    canViewParticipants: true,
+    canViewContactInfo: canContact,
+    canViewContact: canContact,
+    canViewFinancials: canPay,
+    canViewDocuments: canPay,
+    canVerifyPayments: canPay,
+    canCheckInParticipants: canCheckIn,
+    canCheckIn: canCheckIn,
+    canExportCSV: canExport,
+    canDeleteParticipants: canDel,
+    canDelete: canDel,
+    canViewTeams: true,
+    canViewAnalytics: isAdmin || canPay || role === 'faculty',
+    assignedEvents: [],
+  };
 };
 
 const getActivePermissions = async (role, email) => {
-  if (role === 'admin') {
-    return {
-      targetKey: 'admin',
-      title: 'Administrator',
-      canViewParticipants: true,
-      canViewContactInfo: true,
-      canViewFinancials: true,
-      canViewDocuments: true,
-      canViewTeams: true,
-      canViewAnalytics: true,
-      canVerifyPayments: true,
-      canDeleteParticipants: true,
-      canEditTeams: true,
-      canExportCSV: true,
-      canCheckInParticipants: true,
-      assignedEvents: []
-    };
+  if (role === 'admin' || (email && email.toLowerCase() === MASTER_ADMIN.email.toLowerCase())) {
+    return formatFullPermissions('admin', 'Administrator', email, getDefaultStaffPermissions('admin'));
   }
 
-  try {
-    if (email) {
-      const emailPerm = await RolePermission.findOne({ targetKey: email.toLowerCase() });
-      if (emailPerm) return emailPerm.toObject();
+  if (email) {
+    try {
+      const dbStaff = await AdminUser.findOne({ email: email.toLowerCase() });
+      if (dbStaff) {
+        const staffPerms = dbStaff.permissions && typeof dbStaff.permissions === 'object'
+          ? (dbStaff.permissions.toObject ? dbStaff.permissions.toObject() : dbStaff.permissions)
+          : {};
+        const merged = { ...getDefaultStaffPermissions(dbStaff.role), ...staffPerms };
+        return formatFullPermissions(dbStaff.role, dbStaff.name, dbStaff.email, merged);
+      }
+    } catch (err) {
+      console.error('Error in getActivePermissions:', err.message);
     }
-    const rolePerm = await RolePermission.findOne({ targetKey: role });
-    if (rolePerm) return rolePerm.toObject();
-  } catch (err) {
-    console.error('Error reading role permissions:', err);
   }
 
-  return DEFAULT_PERMISSIONS[role] || DEFAULT_PERMISSIONS.coordinator;
+  return formatFullPermissions(role, role, email, getDefaultStaffPermissions(role));
 };
 
 // Parse env users string: supports both "Name:email:password" and "email:password"
@@ -310,9 +321,21 @@ router.get('/staff', verifyAdminToken, authorizeRoles('admin'), async (req, res)
   try {
     await ensureMasterAdmin();
     const staff = await AdminUser.find().select('-passwordHash').sort({ isPermanent: -1, createdAt: -1 });
+    const staffWithPerms = staff.map(s => {
+      const obj = s.toObject();
+      const roleDefaults = getDefaultStaffPermissions(obj.role);
+      const userPerms = (obj.permissions && typeof obj.permissions === 'object')
+        ? (obj.permissions.toObject ? obj.permissions.toObject() : obj.permissions)
+        : {};
+      obj.permissions = {
+        ...roleDefaults,
+        ...userPerms
+      };
+      return obj;
+    });
     res.json({
       success: true,
-      staff,
+      staff: staffWithPerms,
     });
   } catch (err) {
     console.error('Error fetching staff list:', err);
@@ -351,12 +374,17 @@ router.post('/staff', verifyAdminToken, authorizeRoles('admin'), async (req, res
     const passwordHash = await bcrypt.hash(cleanPass, 10);
     const resolvedDesignation = designation?.trim() || ROLE_KEY_TO_TITLE[role] || 'Staff Member';
 
+    const resolvedPermissions = req.body.permissions && typeof req.body.permissions === 'object'
+      ? { ...getDefaultStaffPermissions(role), ...req.body.permissions }
+      : getDefaultStaffPermissions(role);
+
     const newStaff = await AdminUser.create({
       name: name.trim(),
       email: cleanEmail,
       passwordHash,
       role,
       designation: resolvedDesignation,
+      permissions: resolvedPermissions,
       isPermanent: false,
       isActive: true,
       createdBy: req.admin?.email || 'admin',
@@ -430,6 +458,15 @@ router.put('/staff/:id', verifyAdminToken, authorizeRoles('admin'), async (req, 
     if (typeof isActive === 'boolean') {
       staff.isActive = isActive;
     }
+    if (req.body.permissions && typeof req.body.permissions === 'object') {
+      staff.permissions = {
+        canViewContact: Boolean(req.body.permissions.canViewContact),
+        canVerifyPayments: Boolean(req.body.permissions.canVerifyPayments),
+        canCheckIn: req.body.permissions.canCheckIn !== undefined ? Boolean(req.body.permissions.canCheckIn) : true,
+        canExportCSV: Boolean(req.body.permissions.canExportCSV),
+        canDelete: Boolean(req.body.permissions.canDelete),
+      };
+    }
     if (password && password.trim()) {
       if (password.trim().length < 6) {
         return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
@@ -450,6 +487,59 @@ router.put('/staff/:id', verifyAdminToken, authorizeRoles('admin'), async (req, 
   } catch (err) {
     console.error('Error updating staff member:', err);
     res.status(500).json({ message: 'Server error updating staff member' });
+  }
+});
+
+
+// @route   PUT /api/admin/staff/:id/permissions
+// @desc    Update staff member limited permissions directly in database
+// @access  Private (Administrator Only)
+router.put('/staff/:id/permissions', verifyAdminToken, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissions } = req.body;
+
+    if (!permissions || typeof permissions !== 'object') {
+      return res.status(400).json({ message: 'Permissions object is required' });
+    }
+
+    let staff = null;
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      staff = await AdminUser.findById(id);
+    }
+    if (!staff) {
+      staff = await AdminUser.findOne({ email: id.toLowerCase() });
+    }
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found in database.' });
+    }
+
+    if (staff.isPermanent || staff.email.toLowerCase() === MASTER_ADMIN.email.toLowerCase()) {
+      return res.status(403).json({ message: 'Master Administrator permissions are fixed and permanent.' });
+    }
+
+    staff.permissions = {
+      canViewContact: Boolean(permissions.canViewContact),
+      canVerifyPayments: Boolean(permissions.canVerifyPayments),
+      canCheckIn: permissions.canCheckIn !== undefined ? Boolean(permissions.canCheckIn) : true,
+      canExportCSV: Boolean(permissions.canExportCSV),
+      canDelete: Boolean(permissions.canDelete),
+    };
+
+    await staff.save();
+
+    const staffObj = staff.toObject();
+    delete staffObj.passwordHash;
+
+    res.json({
+      success: true,
+      message: `Permissions updated in database for ${staff.name}`,
+      staff: staffObj,
+      permissions: staff.permissions,
+    });
+  } catch (err) {
+    console.error('Error updating staff permissions:', err);
+    res.status(500).json({ message: 'Server error updating staff permissions' });
   }
 });
 
