@@ -23,7 +23,7 @@ const generateRegistrationId = async () => {
 };
 
 // Canonical approved institution resolution
-const getCanonicalInstitution = (raw, otherRaw = '') => {
+const getCanonicalInstitution = (raw, otherRaw = '', email = '') => {
   let str = (raw || '').trim();
   const otherStr = (otherRaw || '').trim();
   if (otherStr && (str.toLowerCase().includes('other') || !str)) {
@@ -46,7 +46,7 @@ const getCanonicalInstitution = (raw, otherRaw = '') => {
   }
 
   // 3. SRI KRISHNA PUBLIC SCHOOL
-  if (lower === 'school' || lower.includes('sri krishna') || lower.includes('shri krishna') || (lower.includes('krishna') && !lower.includes('rama') && !lower.includes('ravishankar'))) {
+  if (lower.includes('sri krishna') || lower.includes('shri krishna') || (lower.includes('krishna') && !lower.includes('rama') && !lower.includes('ravishankar'))) {
     return 'SRI KRISHNA PUBLIC SCHOOL';
   }
 
@@ -82,7 +82,7 @@ const getCanonicalInstitution = (raw, otherRaw = '') => {
   if (lower.includes('atomic')) return 'ATOMIC ENERGY CENTRAL SCHOOL';
   if (lower.includes('amity') && lower.includes('noida')) return 'AMITY UNIVERSITY NOIDA';
   if (lower.includes('amity')) return 'AMITY UNIVERSITY PATNA';
-  if (lower.includes('jusco') && lower.includes('south park')) return 'JUSCO SCHOOL SOUTH PARK';
+  if ((lower.includes('jusco') && lower.includes('south park')) || (lower === 'school' && (email || '').toLowerCase().includes('yeshsharma'))) return 'JUSCO SCHOOL SOUTH PARK';
   if (lower.includes('jusco')) return 'JUSCO SCHOOL KADMA';
   if (lower.includes('gitilata') || lower.includes('potka')) return 'HIGH SCHOOL GITILATA POTKA';
   if (lower.includes('snm') || lower.includes('urmal') || lower.includes('chouka')) return 'SNM HIGH SCHOOL, URMAL, CHOUKA';
@@ -291,7 +291,7 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
       'otherspecify',
       'other'
     ], '');
-    const institution = getCanonicalInstitution(rawInst, rawOtherInst);
+    const institution = getCanonicalInstitution(rawInst, rawOtherInst, rawEmail);
 
     const formTimestamp = getField(payload, ['timestamp', 'time', 'date', 'submittedat'], '');
 
