@@ -23,13 +23,36 @@ const generateRegistrationId = async () => {
 };
 
 // Canonical approved institution resolution
-const getCanonicalInstitution = (raw) => {
-  if (!raw) return 'OTHERS';
-  const str = raw.trim();
+const getCanonicalInstitution = (raw, otherRaw = '') => {
+  let str = (raw || '').trim();
+  const otherStr = (otherRaw || '').trim();
+  if (otherStr && (str.toLowerCase().includes('other') || !str)) {
+    str = otherStr;
+  }
+  if (!str) return 'OTHERS';
   const lower = str.toLowerCase();
 
+  // 1. ARKA JAIN UNIVERSITY
   if (lower.includes('arka') || lower.includes('jain') || lower === 'aju' || lower.includes('law department')) {
     return 'ARKA JAIN UNIVERSITY';
+  }
+
+  // 2. RAMAKRISHNA MISSION (Must be matched BEFORE Krishna!)
+  if (lower.includes('ramakrishna') || lower.includes('rama krishna') || lower.includes('rkm')) {
+    if (lower.includes('lady indra')) {
+      return 'RAMAKRISHNA MISSION LADY INDRA SINGH ENGLISH SCHOOL';
+    }
+    return 'RAMAKRISHNA MISSION ENGLISH SCHOOL';
+  }
+
+  // 3. SRI KRISHNA PUBLIC SCHOOL
+  if (lower === 'school' || lower.includes('sri krishna') || lower.includes('shri krishna') || (lower.includes('krishna') && !lower.includes('rama') && !lower.includes('ravishankar'))) {
+    return 'SRI KRISHNA PUBLIC SCHOOL';
+  }
+
+  // 4. Other approved & participating institutions
+  if (lower.includes('ravishankar') || lower.includes('ravi shankar')) {
+    return 'SRI SRI RAVISHANKAR VIDYA MANDIR, GHATSHILA';
   }
   if (lower.includes('women') && (lower.includes('poly') || lower.includes('poli'))) {
     return "WOMEN'S POLYTECHNIC, GAMHARIA";
@@ -38,11 +61,12 @@ const getCanonicalInstitution = (raw) => {
   if (lower.includes('icfai')) return 'THE ICFAI UNIVERSITY, JHARKHAND, RANCHI';
   if (lower.includes('karim')) return 'KARIM CITY COLLEGE - SAKCHI';
   if (lower.includes('church school')) return 'CHURCH SCHOOL BELDIH';
-  if (lower.includes('cm school') || lower.includes('burmamines')) return 'BPM +2 HIGH SCHOOL, BURMAMINES';
+  if (lower.includes('cm school') || lower.includes('burmamines') || lower.includes('bpm')) return 'BPM +2 HIGH SCHOOL, BURMAMINES';
   if (lower.includes('d.a.v') || lower.includes('dav')) return 'DAV PUBLIC SCHOOL, ADITYAPUR';
-  if (lower.includes('b.a.') || lower.includes('b.a')) return 'B.A. COLLEGE OF ENGINEERING AND TECHNOLOGY';
-  if (lower.includes('krishna') || lower === 'school') return 'SRI KRISHNA PUBLIC SCHOOL';
+  if (lower.includes('b.a.') || lower.includes('b.a college')) return 'B.A. COLLEGE OF ENGINEERING AND TECHNOLOGY';
   if (lower.includes('tata steel technical') || lower.includes('tsti')) return 'TATA STEEL TECHNICAL INSTITUTE';
+  if (lower.includes('maryland')) return 'MARYLAND INSTITUTE OF TECHNOLOGY & MANAGEMENT';
+  if (lower.includes('dbms career')) return 'DBMS CAREER ACADEMY';
   if (lower.includes('dbms')) return 'DBMS ENGLISH SCHOOL';
   if (lower.includes('polytechnic') && lower.includes('adityapur')) return 'GOVERNMENT POLYTECHNIC, ADITYAPUR';
   if (lower.includes('govind')) return 'GOVIND VIDYALAYA, TAMULIA';
@@ -51,11 +75,38 @@ const getCanonicalInstitution = (raw) => {
   if (lower.includes('nit') || lower.includes('national institute of technology')) return 'NATIONAL INSTITUTE OF TECHNOLOGY (NIT), JAMSHEDPUR';
   if (lower.includes('netaji') || lower.includes('nsu')) return 'NETAJI SUBHAS UNIVERSITY, JAMSHEDPUR';
   if (lower.includes('srinath public')) return 'SRINATH PUBLIC SCHOOL, JAMSHEDPUR';
+  if (lower.includes('srinath university') || lower.includes('srinath')) return 'SRINATH UNIVERSITY';
   if (lower.includes('central university of jharkhand') || lower.includes('cuj')) return 'CENTRAL UNIVERSITY OF JHARKHAND, RANCHI';
   if (lower.includes('al-kabir') || lower.includes('alkabir')) return 'AL-KABIR POLYTECHNIC';
   if (lower.includes('al-karim') || lower.includes('alkarim')) return 'AL-KARIM UNIVERSITY';
   if (lower.includes('atomic')) return 'ATOMIC ENERGY CENTRAL SCHOOL';
+  if (lower.includes('amity') && lower.includes('noida')) return 'AMITY UNIVERSITY NOIDA';
   if (lower.includes('amity')) return 'AMITY UNIVERSITY PATNA';
+  if (lower.includes('jusco') && lower.includes('south park')) return 'JUSCO SCHOOL SOUTH PARK';
+  if (lower.includes('jusco')) return 'JUSCO SCHOOL KADMA';
+  if (lower.includes('gitilata') || lower.includes('potka')) return 'HIGH SCHOOL GITILATA POTKA';
+  if (lower.includes('snm') || lower.includes('urmal') || lower.includes('chouka')) return 'SNM HIGH SCHOOL, URMAL, CHOUKA';
+  if (lower.includes('palli mangal') || lower.includes('pallimangal')) return 'PALLI MANGAL HIGH SCHOOL';
+  if (lower.includes('r. d. tata') || lower.includes('r.d. tata') || lower.includes('rd tata')) return 'R. D. TATA TECHNICAL EDUCATION CENTRE, GOLMURI';
+  if (lower.includes('rvs')) return 'RVS COLLEGE OF ENGINEERING AND TECHNOLOGY, JAMSHEDPUR';
+  if (lower.includes('workers college')) return 'WORKERS COLLEGE JAMSHEDPUR';
+  if (lower.includes('sri ram') || lower.includes('shri ram')) return 'SRI RAM ENGLISH HIGH SCHOOL';
+  if (lower.includes('chinmaya')) return 'VIDYA BHARATI CHINMAYA VIDYALAYA';
+  if (lower.includes('lal bahadur') || lower.includes('lbsm')) return 'LAL BAHADUR SHASTRI MEMORIAL COLLEGE';
+  if (lower.includes('polytechnic') && lower.includes('ranchi')) return 'GOVERNMENT POLYTECHNIC, RANCHI';
+  if (lower.includes('dayanand')) return 'DAYANAND PUBLIC SCHOOL';
+  if (lower.includes('carmel')) return 'CARMEL JUNIOR COLLEGE';
+  if (lower.includes('baldwin')) return 'BALDWIN FARM AREA HIGH SCHOOL';
+  if (lower.includes('tata workers')) return "TATA WORKERS' UNION HIGH SCHOOL, KADMA";
+  if (lower.includes('kerala public') || lower.includes('kps')) return 'KERALA PUBLIC SCHOOL (KPS), KADMA';
+  if (lower.includes('rajendra vidyalaya')) return 'RAJENDRA VIDYALAYA';
+  if (lower.includes('co-operative') || lower.includes('cooperative')) return 'JAMSHEDPUR CO-OPERATIVE COLLEGE';
+  if (lower.includes('kerala samajam') || lower.includes('ksms')) return 'KERALA SAMAJAM MODEL SCHOOL';
+  if (lower.includes('xavier')) return "XAVIER'S SCHOOL, GAMHARIA";
+  if (lower.includes('navyansh') || lower.includes('nstc')) return 'NAVYANSH SKILL TRAINING CENTRE (NSTC)';
+  if (lower.includes('makaut') || lower.includes('maulana abul kalam')) return 'MAULANA ABUL KALAM AZAD UNIVERSITY OF TECHNOLOGY, WEST BENGAL';
+  if (lower.includes('kiit') || lower.includes('kalinga')) return 'KALINGA INSTITUTE OF INDUSTRIAL TECHNOLOGY (KIIT)';
+  if (lower.includes('aiims')) return 'AIIMS BHOPAL';
 
   return str.toUpperCase();
 };
@@ -232,7 +283,15 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
       'collegename',
       'schoolname'
     ], '');
-    const institution = getCanonicalInstitution(rawInst);
+    const rawOtherInst = getField(payload, [
+      'enteryourinstitutenameonlyifchoosedothers',
+      'choosedothers',
+      'otherinstitute',
+      'otherinstitution',
+      'otherspecify',
+      'other'
+    ], '');
+    const institution = getCanonicalInstitution(rawInst, rawOtherInst);
 
     const formTimestamp = getField(payload, ['timestamp', 'time', 'date', 'submittedat'], '');
 
@@ -334,16 +393,27 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
     const cleanName = (name || '').trim().toLowerCase();
     const cleanScreenshot = (screenshotUrl || '').trim();
 
-    if (cache) {
-      if (cleanFormTimestamp && cleanName && cache.existingKeySet) {
+    if (cache && cache.existingUser) {
+      alreadyAllottedUser = cache.existingUser;
+    } else if (cache) {
+      if (cleanFormTimestamp && cleanName) {
         const key = `${cleanFormTimestamp}:::${cleanName}`;
-        if (cache.existingKeySet.has(key)) {
+        if (cache.usersByKey && cache.usersByKey.has(key)) {
+          alreadyAllottedUser = cache.usersByKey.get(key);
+        } else if (cache.existingKeySet && cache.existingKeySet.has(key)) {
           alreadyAllottedUser = { registrationId: 'EXISTING', name };
         }
       }
-      if (!alreadyAllottedUser && cleanScreenshot && !cleanScreenshot.includes('offline-receipt.png') && cleanName && cache.existingScreenshotSet) {
+      if (!alreadyAllottedUser && cleanFormTimestamp) {
+        if (cache.usersByTimestamp && cache.usersByTimestamp.has(cleanFormTimestamp)) {
+          alreadyAllottedUser = cache.usersByTimestamp.get(cleanFormTimestamp);
+        }
+      }
+      if (!alreadyAllottedUser && cleanScreenshot && !cleanScreenshot.includes('offline-receipt.png') && cleanName) {
         const sKey = `${cleanScreenshot}:::${cleanName}`;
-        if (cache.existingScreenshotSet.has(sKey)) {
+        if (cache.usersByScreenshot && cache.usersByScreenshot.has(sKey)) {
+          alreadyAllottedUser = cache.usersByScreenshot.get(sKey);
+        } else if (cache.existingScreenshotSet && cache.existingScreenshotSet.has(sKey)) {
           alreadyAllottedUser = { registrationId: 'EXISTING', name };
         }
       }
@@ -353,6 +423,12 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
           source: 'google_form',
           formTimestamp,
           name: new RegExp(`^${name.trim()}$`, 'i'),
+        });
+      }
+      if (!alreadyAllottedUser && formTimestamp) {
+        alreadyAllottedUser = await User.findOne({
+          source: 'google_form',
+          formTimestamp,
         });
       }
       if (!alreadyAllottedUser && screenshotUrl && !screenshotUrl.includes('offline-receipt.png')) {
@@ -365,19 +441,130 @@ const processGoogleFormSubmission = async (payload, cache = null) => {
     }
 
     if (alreadyAllottedUser) {
+      let targetUser = alreadyAllottedUser._id ? alreadyAllottedUser : null;
+      if (!targetUser && alreadyAllottedUser.registrationId && alreadyAllottedUser.registrationId !== 'EXISTING') {
+        targetUser = await User.findOne({ registrationId: alreadyAllottedUser.registrationId });
+      }
+      if (!targetUser && cleanFormTimestamp && cleanName) {
+        targetUser = await User.findOne({
+          source: 'google_form',
+          formTimestamp,
+          name: new RegExp(`^${name.trim()}$`, 'i'),
+        });
+      }
+      if (!targetUser && cleanFormTimestamp) {
+        targetUser = await User.findOne({
+          source: 'google_form',
+          formTimestamp,
+        });
+      }
+
+      if (targetUser) {
+        const instLower = (institution || '').toLowerCase();
+        const isAju = instLower.includes('arka') || instLower.includes('jain') || instLower === 'aju';
+        const crsLower = `${course || ''} ${semester || ''}`.toLowerCase();
+        const isBtechBcaDiploma =
+          crsLower.includes('b.tech') ||
+          crsLower.includes('btech') ||
+          crsLower.includes('b.e.') ||
+          crsLower.includes('bca') ||
+          crsLower.includes('diploma') ||
+          crsLower.includes('polytechnic');
+        const isAjuStudentExempt = isAju && isBtechBcaDiploma;
+        const resolvedExpectedAmount = isAjuStudentExempt ? 600 : 100;
+
+        const effectiveScreenshot = screenshotUrl || targetUser.paymentScreenshotUrl || '';
+        const hasRealScreenshot = Boolean(
+          effectiveScreenshot &&
+          typeof effectiveScreenshot === 'string' &&
+          effectiveScreenshot.trim() &&
+          !effectiveScreenshot.includes('offline-receipt.png') &&
+          (effectiveScreenshot.startsWith('http://') || effectiveScreenshot.startsWith('https://'))
+        );
+
+        const updateFields = {};
+        if (institution && institution !== targetUser.institution) {
+          updateFields.institution = institution;
+        }
+        if (name && name !== targetUser.name) {
+          updateFields.name = name;
+        }
+        if (course && course !== targetUser.course) {
+          updateFields.course = course;
+        }
+        if (semester && semester !== targetUser.semester) {
+          updateFields.semester = semester;
+        }
+        if (gender && gender !== targetUser.gender && gender !== 'Other') {
+          updateFields.gender = gender;
+        }
+        if (phone && phone !== targetUser.whatsapp && phone !== 'N/A' && targetUser.whatsapp !== 'N/A') {
+          const cleanP1 = phone.replace(/[^0-9]/g, '');
+          const cleanP2 = (targetUser.whatsapp || '').replace(/[^0-9]/g, '');
+          if (cleanP1 && cleanP2 && cleanP1 !== cleanP2) {
+            updateFields.whatsapp = phone;
+          }
+        }
+        if (rawEmail && rawEmail !== (targetUser.email || '').toLowerCase()) {
+          updateFields.email = rawEmail;
+        }
+        if (screenshotUrl && screenshotUrl !== targetUser.paymentScreenshotUrl) {
+          updateFields.paymentScreenshotUrl = screenshotUrl;
+        }
+        if (rawUtr && rawUtr.trim() && rawUtr.trim() !== targetUser.utrEnteredManually) {
+          updateFields.utrEnteredManually = rawUtr.trim();
+          const cleanUtr = rawUtr.trim();
+          const isPlaceholder = ['done', 'yes', 'ok', 'n/a', 'na', 'paid', 'none', 'nil', 'no', 'completed'].includes(cleanUtr.toLowerCase());
+          if (!isPlaceholder && (!targetUser.paymentUTR || targetUser.paymentUTR.startsWith('GFORM-'))) {
+            const colliding = await User.exists({ paymentUTR: cleanUtr, _id: { $ne: targetUser._id } });
+            if (!colliding) {
+              updateFields.paymentUTR = cleanUtr;
+            }
+          }
+        }
+        if (resolvedExpectedAmount !== targetUser.expectedAmount) {
+          updateFields.expectedAmount = resolvedExpectedAmount;
+          updateFields.isAjuExempt = isAjuStudentExempt;
+        }
+        const expectedStatus = hasRealScreenshot ? 'SUCCESS' : 'PENDING';
+        const expectedVerifiedAmount = hasRealScreenshot ? resolvedExpectedAmount : 0;
+        if (targetUser.verificationStatus !== expectedStatus) {
+          updateFields.verificationStatus = expectedStatus;
+        }
+        if (targetUser.verifiedAmount !== expectedVerifiedAmount) {
+          updateFields.verifiedAmount = expectedVerifiedAmount;
+        }
+
+        if (Object.keys(updateFields).length > 0) {
+          await User.updateOne({ _id: targetUser._id }, { $set: updateFields });
+          console.log(`[GOOGLE FORM SYNC] Reconciled existing user ${targetUser.registrationId} (${targetUser.name}):`, Object.keys(updateFields).join(', '));
+          return {
+            success: true,
+            updated: true,
+            registrationId: targetUser.registrationId,
+            name: targetUser.name,
+            changes: updateFields,
+          };
+        }
+      }
+
       return {
         success: true,
         duplicate: false,
         alreadyAllotted: true,
         status: 'ALREADY_ALLOTTED',
-        registrationId: alreadyAllottedUser.registrationId,
-        name: alreadyAllottedUser.name,
-        message: `Already allotted with ID ${alreadyAllottedUser.registrationId}`,
+        registrationId: (targetUser || alreadyAllottedUser).registrationId,
+        name: (targetUser || alreadyAllottedUser).name,
+        message: `Already allotted with ID ${(targetUser || alreadyAllottedUser).registrationId}`,
       };
     }
 
     // ── 4. RESOLVE EVENTS FOR NEW UNIQUE PARTICIPANT ──
-    const allEvents = await Event.find({ isActive: true });
+    let allEvents = (cache && cache.allEvents) ? cache.allEvents : null;
+    if (!allEvents) {
+      allEvents = await Event.find({ isActive: true });
+      if (cache) cache.allEvents = allEvents;
+    }
     const resolvedEvents = await resolveEvents(eventsInput, allEvents);
 
     // ── 5. HANDLE BATCH / SIBLING UTR COLLISION ──

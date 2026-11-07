@@ -71,8 +71,7 @@ const UserSchema = new mongoose.Schema(
     },
     utrEnteredManually: {
       type: String,
-      required: true,
-      unique: true,
+      required: false,
       trim: true,
     },
     utrFetchedFromScreenshot: {

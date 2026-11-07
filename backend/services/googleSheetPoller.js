@@ -2,6 +2,7 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const User = require('../models/User');
+const Event = require('../models/Event');
 const SyncLock = require('../models/SyncLock');
 const { processGoogleFormSubmission } = require('./googleFormService');
 
@@ -210,25 +211,39 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
 
     // Fast in-memory lookup cache to eliminate 300+ sequential MongoDB queries
     const existingGFormUsers = await User.find(
-      { source: 'google_form' },
-      { formTimestamp: 1, name: 1, paymentScreenshotUrl: 1, registrationId: 1 }
+      { source: 'google_form' }
     ).lean();
+
+    const allEvents = await Event.find({ isActive: true });
 
     const cache = {
       existingKeySet: new Set(),
       existingScreenshotSet: new Set(),
+      usersByKey: new Map(),
+      usersByTimestamp: new Map(),
+      usersByScreenshot: new Map(),
+      allEvents,
     };
 
     for (const u of existingGFormUsers) {
-      if (u.formTimestamp && u.name) {
-        cache.existingKeySet.add(`${u.formTimestamp.trim()}:::${u.name.trim().toLowerCase()}`);
+      const normName = (u.name || '').trim().toLowerCase();
+      if (u.formTimestamp) {
+        const ts = u.formTimestamp.trim();
+        cache.existingKeySet.add(`${ts}:::${normName}`);
+        cache.usersByKey.set(`${ts}:::${normName}`, u);
+        if (!cache.usersByTimestamp.has(ts)) {
+          cache.usersByTimestamp.set(ts, u);
+        }
       }
-      if (u.paymentScreenshotUrl && !u.paymentScreenshotUrl.includes('offline-receipt.png') && u.name) {
-        cache.existingScreenshotSet.add(`${u.paymentScreenshotUrl.trim()}:::${u.name.trim().toLowerCase()}`);
+      if (u.paymentScreenshotUrl && !u.paymentScreenshotUrl.includes('offline-receipt.png')) {
+        const sKey = `${u.paymentScreenshotUrl.trim()}:::${normName}`;
+        cache.existingScreenshotSet.add(sKey);
+        cache.usersByScreenshot.set(sKey, u);
       }
     }
 
     let newlyRegistered = 0;
+    let updatedCount = 0;
     let duplicatesSkipped = 0;
     const errors = [];
     const syncResults = [];
@@ -236,29 +251,39 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
     for (let i = 0; i < parsedRows.length; i++) {
       const row = parsedRows[i];
 
-      // Instant in-memory pre-check: skip previously allotted rows in 0.001ms
       const rawTimestamp = (row.Timestamp || row.timestamp || '').trim();
       const rawName = (row.NAME || row.Name || row.name || '').trim().toLowerCase();
       const rawScreenshot = (row['UPLOAD PAYMENT SCREENSHOT'] || row.uploadpaymentscreenshot || '').trim();
 
-      const isAllotted = (rawTimestamp && rawName && cache.existingKeySet.has(`${rawTimestamp}:::${rawName}`)) ||
-        (rawScreenshot && !rawScreenshot.includes('offline-receipt.png') && rawName && cache.existingScreenshotSet.has(`${rawScreenshot}:::${rawName}`));
-
-      if (isAllotted) {
-        continue;
+      let existingUser = null;
+      if (rawTimestamp && rawName) {
+        existingUser = cache.usersByKey.get(`${rawTimestamp}:::${rawName}`);
+      }
+      if (!existingUser && rawTimestamp) {
+        existingUser = cache.usersByTimestamp.get(rawTimestamp);
+      }
+      if (!existingUser && rawScreenshot && !rawScreenshot.includes('offline-receipt.png') && rawName) {
+        existingUser = cache.usersByScreenshot.get(`${rawScreenshot}:::${rawName}`);
       }
 
+      const rowCache = { ...cache, existingUser };
+
       try {
-        const result = await processGoogleFormSubmission(row, cache);
+        const result = await processGoogleFormSubmission(row, rowCache);
         syncResults.push(result);
 
         if (result.success) {
-          if (result.duplicate) {
+          if (result.updated) {
+            updatedCount++;
+          } else if (result.duplicate) {
             duplicatesSkipped++;
           } else if (result.alreadyAllotted) {
-            // Already allotted in previous run
+            duplicatesSkipped++;
           } else {
             newlyRegistered++;
+            if (rawTimestamp && rawName && cache.usersByKey) {
+              cache.usersByKey.set(`${rawTimestamp}:::${rawName}`, { registrationId: result.registrationId, name: row.NAME || row.name });
+            }
           }
         } else {
           errors.push({ row: i + 2, student: row.NAME || row.name, error: result.error });
@@ -281,6 +306,7 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
       timestamp: pollerState.lastSyncTime,
       totalRowsInSheet: parsedRows.length,
       newlyRegistered,
+      updatedCount,
       duplicatesSkipped,
       errorsCount: errors.length,
       errors,
@@ -290,11 +316,12 @@ const syncGoogleSheetNow = async (customSheetUrl = null) => {
       time: pollerState.lastSyncTime,
       total: parsedRows.length,
       registered: newlyRegistered,
+      updated: updatedCount,
       skipped: duplicatesSkipped,
     });
     if (pollerState.history.length > 20) pollerState.history.pop();
 
-    console.log(`[SHEET POLLER SYNC COMPLETE] Sheet Rows: ${parsedRows.length} | Newly Registered: ${newlyRegistered} | Skipped Duplicates: ${duplicatesSkipped} | Errors: ${errors.length}`);
+    console.log(`[SHEET POLLER SYNC COMPLETE] Sheet Rows: ${parsedRows.length} | Newly Registered: ${newlyRegistered} | Reconciled/Updated: ${updatedCount} | Skipped Duplicates: ${duplicatesSkipped} | Errors: ${errors.length}`);
 
     return summary;
   } catch (error) {
